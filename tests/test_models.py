@@ -52,6 +52,26 @@ def test_job_company_defaults_to_unknown_when_omitted():
 
 
 # ---------------------------------------------------------------------------
+# Thin-description flag (P21)
+# ---------------------------------------------------------------------------
+
+
+def test_thin_description_flagged_when_short():
+    job = make_job(description="Muy corta")
+    assert job.thin_description is True
+
+
+def test_thin_description_flagged_when_empty():
+    job = make_job(description="")
+    assert job.thin_description is True
+
+
+def test_thin_description_false_for_a_real_description():
+    job = make_job(description="A" * 250)
+    assert job.thin_description is False
+
+
+# ---------------------------------------------------------------------------
 # Content signature (ADR-001)
 # ---------------------------------------------------------------------------
 

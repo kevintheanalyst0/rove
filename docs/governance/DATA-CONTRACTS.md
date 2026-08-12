@@ -22,6 +22,7 @@ filters, cache, scoring, and the UI all speak these — no ad-hoc dicts.
 | `location_raw` | str | as scraped, for the UI |
 | `english_required` | bool | advanced-English-required signal |
 | `seniority_hint` | str | `junior` \| `mid` \| `senior` \| `unknown` (heuristic) |
+| `thin_description` | bool | auto-set when `description` < 200 chars after stripping (P21); scoring may down-weight or skip, collectors never drop the job for this alone |
 | `collected_at` | datetime | when this run saw it |
 
 > **`remote` is an enum, not a bool.** The legacy `remote:bool` is exactly why hybrid

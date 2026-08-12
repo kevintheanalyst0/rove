@@ -48,7 +48,7 @@ finance_accounting = [
 ]
 legal = ["legal", "attorney", "lawyer", "paralegal"]
 health = ["nurse", "doctor", "physician", "clinical", "mental health", "care coordinator"]
-education = ["teacher", "tutor"]
+education = ["teacher", "tutor", "docente", "profesor", "profesora", "maestro de"]
 government = ["government", "public sector"]
 design = [
     "graphic design", "ux designer", "ui designer", "product designer",

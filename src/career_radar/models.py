@@ -127,6 +127,11 @@ def grade_from_score(score: int) -> Grade:
 # ---------------------------------------------------------------------------
 
 
+# A description this short (after stripping) can't give the AI enough to evaluate
+# fairly (P21) — flag it instead of guessing at a threshold per source.
+_MIN_DESCRIPTION_LENGTH = 200
+
+
 class Job(BaseModel):
     """A normalized vacancy — collector output, common to all sources."""
 
@@ -144,6 +149,7 @@ class Job(BaseModel):
     location_raw: str = ""
     english_required: bool = False
     seniority_hint: SeniorityHint = SeniorityHint.UNKNOWN
+    thin_description: bool = False
     collected_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @model_validator(mode="after")
@@ -151,6 +157,14 @@ class Job(BaseModel):
         # Collectors normally don't need to compute this themselves.
         if not self.signature:
             self.signature = content_signature(self.company, self.title, self.description)
+        return self
+
+    @model_validator(mode="after")
+    def _flag_thin_description(self) -> Job:
+        # Auto-derived so every collector gets this for free (P21) instead of
+        # each one deciding its own threshold, the way the legacy collectors did.
+        if not self.thin_description and len(self.description.strip()) < _MIN_DESCRIPTION_LENGTH:
+            self.thin_description = True
         return self
 
 
