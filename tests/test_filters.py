@@ -17,6 +17,7 @@ from pathlib import Path
 
 from career_radar import config
 from career_radar.models import Job, RemoteStatus
+from career_radar.quality.cache import SignatureCache
 from career_radar.quality.filters import gate
 
 FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "latest_jobs.json").read_text())
@@ -198,3 +199,65 @@ def test_gate_on_real_fixture_rejects_every_non_remote_leak_independent_of_the_l
     assert rejected_titles["Analista de Reportes JR"] == "not_remote:onsite"
     # Absolute title exclusion still wins even for a remote-sounding posting.
     assert rejected_titles["Quality Assurance Engineer Senior"] == "excluded_title_or_company"
+
+
+# ---------------------------------------------------------------------------
+# gate() composes dedup (EATP-010) after Layer 1
+# ---------------------------------------------------------------------------
+
+
+def test_gate_drops_a_cross_source_repost_after_layer_1():
+    description = "Remoto 100%. Analiza datos con SQL y Power BI para el equipo de negocio."
+    original = _job(source="occ", source_job_id="1", description=description)
+    repost = _job(source="computrabajo", source_job_id="2", title="Data Analyst - Urgente", description=description)
+
+    result = gate([original, repost])
+
+    assert len(result.kept) == 1
+    assert result.kept[0].source_job_id == "1"
+    reason = next(r for j, r in result.rejected if j.source_job_id == "2")
+    assert reason == "duplicate_within_run"
+
+
+def test_gate_with_dedup_false_keeps_both_reposts():
+    description = "Remoto 100%. Analiza datos con SQL y Power BI para el equipo de negocio."
+    original = _job(source="occ", source_job_id="1", description=description)
+    repost = _job(source="computrabajo", source_job_id="2", description=description)
+
+    result = gate([original, repost], dedup=False)
+
+    assert len(result.kept) == 2
+
+
+# ---------------------------------------------------------------------------
+# gate() composes the signature cache (EATP-010) when one is passed in
+# ---------------------------------------------------------------------------
+
+
+def test_gate_without_a_cache_never_skips_on_prior_runs():
+    job = _job()
+    result = gate([job])
+
+    assert result.rejected == []
+    assert result.kept[0].source_job_id == job.source_job_id
+
+
+def test_gate_with_a_cache_skips_a_signature_seen_recently():
+    job = _job()
+    cache = SignatureCache()
+    cache.update(job.signature)
+
+    result = gate([job], cache=cache)
+
+    assert result.kept == []
+    assert result.rejected[0][1] == "cached_recently"
+
+
+def test_gate_with_a_cache_keeps_a_signature_not_seen_before():
+    job = _job()
+    cache = SignatureCache()
+
+    result = gate([job], cache=cache)
+
+    assert result.rejected == []
+    assert result.kept[0].source_job_id == job.source_job_id

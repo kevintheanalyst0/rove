@@ -22,6 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = BASE_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
 CACHE_DIR = DATA_DIR / "cache"
+HISTORY_DIR = DATA_DIR / "history"
 
 GATED_FILE = DATA_DIR / "gated.jsonl"
 RESULTS_FILE = DATA_DIR / "results.json"
@@ -110,8 +111,14 @@ CHROME_USER_DATA_DIR = os.getenv("CHROME_USER_DATA_DIR") or str(DATA_DIR / "brow
 MAX_DAYS_OLD = 15
 
 # How many days a content signature is considered "already seen" (ADR-001).
-# Owned here; enforced by the cache in EATP-010.
+# Owned here; enforced by the cache in EATP-010. Kevin confirmed 30 days.
 SIGNATURE_SEEN_WINDOW_DAYS = 30
+
+# Cross-source fuzzy dedup (EATP-010, rapidfuzz 0-100 scale): two jobs at the
+# same normalized company with description similarity at/above this collapse
+# to one, regardless of title (SCRAPING-GOTCHAS.md #4.3 — title is never a
+# required match).
+DEDUP_DESCRIPTION_SIMILARITY_THRESHOLD = 90
 
 # ---------------------------------------------------------------------------
 # Logging

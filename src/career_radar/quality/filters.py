@@ -1,16 +1,22 @@
 """Layer 1 hard filters (EVALUATION-RUBRIC.md) — deterministic, no AI.
 
-Four checks, cheapest/least-ambiguous first, each with its own rejection
-reason (for run counts/debugging; never shown to Kevin in the UI):
+`gate()` runs every job through, in order:
 
 1. `title_is_rejected()` — absolute title/company exclusion (ADR-009:
    deliberately narrow, never the ambiguous caution words).
 2. `requires_advanced_english()` — advanced English required.
 3. The remote hard-gate (ADR-002) — `remote_status` must be `remote`.
 4. Staleness — `days_old` beyond `config.MAX_DAYS_OLD`.
+5. Cross-source fuzzy dedup (EATP-010, `quality/dedup.py`) — a repost from a
+   second source within this same run.
+6. The content-signature cache (EATP-010, `quality/cache.py`, ADR-001) — a
+   posting seen within the configured window on a *prior* run, if a cache is
+   passed in. Skipped entirely when `cache=None` (e.g. EATP-009's own tests,
+   or any caller that doesn't have one yet).
 
-Dedup/cache (EATP-010) and the matcher/AI (EATP-012/013) are out of scope
-here — a kept `Job` is just "structurally plausible", nothing more.
+Each rejection carries its own reason string (for run counts/debugging;
+never shown to Kevin in the UI). The matcher/AI (EATP-012/013) is out of
+scope here — a kept `Job` is just "structurally plausible", nothing more.
 
 A kept job's `title_caution_flags` (ADR-009) are computed and attached to it
 as data — never a reject reason at this layer — so the matcher can weigh
@@ -25,6 +31,8 @@ from dataclasses import dataclass, field
 from career_radar import config, criteria
 from career_radar.config import get_logger
 from career_radar.models import Job, RemoteStatus
+from career_radar.quality.cache import SignatureCache
+from career_radar.quality.dedup import dedup as fuzzy_dedup
 
 logger = get_logger(__name__)
 
@@ -64,10 +72,17 @@ def _check_job(job: Job) -> tuple[Job, str | None]:
     return job, None
 
 
-def gate(jobs: Iterable[Job]) -> GateResult:
-    """Run every job through Layer 1. Never raises: one malformed job can't
-    take down a whole run (same discipline as `collectors/base.py`'s
-    `run_collector` — a single bad record becomes a rejection, not a crash).
+def gate(
+    jobs: Iterable[Job],
+    *,
+    dedup: bool = True,
+    cache: SignatureCache | None = None,
+) -> GateResult:
+    """Run every job through Layer 1, then (by default) cross-source dedup,
+    then the signature cache if one is passed in. Never raises: one
+    malformed job can't take down a whole run (same discipline as
+    `collectors/base.py`'s `run_collector` — a single bad record becomes a
+    rejection, not a crash).
     """
     result = GateResult()
     for job in jobs:
@@ -82,4 +97,19 @@ def gate(jobs: Iterable[Job]) -> GateResult:
             result.kept.append(updated)
         else:
             result.rejected.append((updated, reason))
+
+    if dedup:
+        deduped, dropped = fuzzy_dedup(result.kept)
+        result.kept = deduped
+        result.rejected.extend((job, "duplicate_within_run") for job in dropped)
+
+    if cache is not None:
+        still_kept: list[Job] = []
+        for job in result.kept:
+            if cache.seen_recently(job.signature):
+                result.rejected.append((job, "cached_recently"))
+            else:
+                still_kept.append(job)
+        result.kept = still_kept
+
     return result

@@ -89,6 +89,7 @@ number, so it can never look contradictory.
 | `gated.jsonl` | `Job` per line | quality layer |
 | `results.json` | `RunResult` | orchestrator (atomic) |
 | `cache/signatures.jsonl` | `{signature, first_seen, last_seen, final_score}` | cache |
+| `history/<run-timestamp>.jsonl` | `{signature, source, title, company, shown_at}` per shown job | history store (append-only, one file per run) |
 | `status.json` | run status for the UI | orchestrator |
 
 > Use **JSONL (one record per line)** for large collections so writes stream and a
