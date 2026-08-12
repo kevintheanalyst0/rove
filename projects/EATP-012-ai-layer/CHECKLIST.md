@@ -20,7 +20,7 @@
 
 ### Phase 4 — Close
 - [x] offline pytest
-- [ ] optional approved smoke test — skipped: Kevin has no API key yet, not a blocker
+- [x] optional approved smoke test — ran with Kevin's real keys, caught + fixed a bug (see notes)
 - [x] ROADMAP + notes
 
 ## Time log
@@ -47,7 +47,14 @@ verbatim. Malformed-JSON handling (P11) lives in `ai/parse.py`, confirmed in-sco
 Design note for EATP-013: `AiResult` intentionally carries no `fit` — that's derived from
 `final_score` the same way `grade` is, and belongs to the scoring/guards layer, not here.
 
-43 new tests (parse, id-match, usage, router with a scripted mock provider, and provider
+44 new tests (parse, id-match, usage, router with a scripted mock provider, and provider
 internals — retry/backoff, daily-quota vs transient error classification, `response_format`
-fallback — using a fake SDK client). 259/259 total pass, no live AI calls made this session
-(Kevin has no API key yet; `build_default_router()` is ready for EATP-014 once he adds one).
+fallback — using a fake SDK client). 259/259 total pass.
+
+Kevin then provided Groq/Gemini/OpenRouter keys and approved the one live smoke test.
+It caught a real bug on the first try: the pinned `gemini-2.5-flash` 404s for new API keys
+("no longer available to new users") though it still lists in the API — fixed by switching
+`GEMINI_FLASH_MODEL`/`GEMINI_FLASH_LITE_MODEL` to the `-latest` alias models, which won't go
+stale the same way. Re-ran end-to-end against a real test job: `gemini_flash` answered
+correctly on the first provider, no fallback needed, well-reasoned pros/summary in Spanish.
+`.env` now holds all three keys (gitignored, never committed).
