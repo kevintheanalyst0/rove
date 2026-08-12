@@ -79,6 +79,11 @@ planner = ["data", "analytics", "business", "bi"]
 coordinator = ["data", "analytics", "business"]
 operations = ["data", "analytics", "business", "bi"]
 administrator = ["data", "analytics", "business", "bi", "power bi", "sql", "reporting"]
+# Spanish stem for "administrativo/administrativa" — "administrator" above is
+# English-only and never matches it, which is exactly the ADR-009 case
+# (Kevin, EATP-013): "Analista administrativo" must still be readable as a
+# caution flag, never silently un-flagged just because the title is Spanish.
+administrativ = ["data", "analytics", "business", "bi", "power bi", "sql", "reporting"]
 engineer = ["data", "analytics", "business", "bi", "power bi", "reporting", "business intelligence"]
 developer = ["power bi", "bi", "reporting", "data", "business intelligence"]
 security = ["data", "analytics", "business", "bi", "reporting", "business intelligence"]
@@ -174,4 +179,4 @@ recency_bonus = [
 # EATP-013 once real run data exists.
 [matcher.score_floors]
 prefilter_reject_floor = 20
-ai_cap_top_n = 500
+ai_cap_top_n = 50

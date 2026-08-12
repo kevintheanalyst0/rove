@@ -97,6 +97,14 @@ def test_plain_title_never_hard_rejects_on_ambiguity_alone():
     assert not title_is_rejected("Analista administrativo", "Acme")
 
 
+def test_spanish_administrativo_title_is_caution_flagged_like_its_english_counterpart():
+    # EATP-013: "administrator" (English-only) never matched "administrativo"
+    # — the exact ADR-009 case would have silently skipped the caution flag
+    # for a Spanish title. "administrativ" catches the Spanish stem too.
+    assert title_caution_flags("Analista administrativo") == ["administrativ"]
+    assert not title_is_rejected("Analista administrativo", "Acme")
+
+
 def test_title_is_rejected_only_covers_absolute_categories():
     assert title_is_rejected("Graphic Designer", "Acme")
     assert title_is_rejected("Data Analyst", "BairesDev")

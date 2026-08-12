@@ -132,6 +132,25 @@ def grade_from_score(score: int) -> Grade:
     return Grade.D
 
 
+def fit_from_score(score: int) -> Fit:
+    """The ONE place a score becomes a `fit` label — same score guide the AI
+    prompt is given (`ai/prompts.py`'s SCORE GUIDE), so `fit` and the number
+    it's shown next to can never read as contradictory (same fix as
+    `grade_from_score`, applied to the other label EATP-012's prompt output
+    doesn't itself carry)."""
+    if score >= 95:
+        return Fit.IDEAL
+    if score >= 85:
+        return Fit.STRONG
+    if score >= 70:
+        return Fit.GOOD
+    if score >= 50:
+        return Fit.MODERATE
+    if score >= 30:
+        return Fit.WEAK
+    return Fit.POOR
+
+
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
@@ -193,7 +212,7 @@ class ScoredJob(BaseModel):
     ai_score: int | None = None
     final_score: int = 0
     grade: Grade = Grade.D
-    fit: Fit
+    fit: Fit = Fit.POOR
     pros: list[str] = Field(default_factory=list)
     contras: list[str] = Field(default_factory=list)
     summary: str = ""
@@ -205,6 +224,7 @@ class ScoredJob(BaseModel):
         # that broke in the legacy system (two scales -> "B" with "No cons").
         self.final_score = self.ai_score if (self.ai_evaluated and self.ai_score is not None) else self.prefilter_score
         self.grade = grade_from_score(self.final_score)
+        self.fit = fit_from_score(self.final_score)
         return self
 
 

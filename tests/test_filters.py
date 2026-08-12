@@ -65,8 +65,19 @@ def test_ambiguous_caution_title_is_not_rejected_and_is_flagged_for_the_matcher(
     assert result.kept[0].title_caution_flags  # advisory, attached as data
 
 
-def test_plain_unremarkable_title_is_kept_with_no_caution_flags():
+def test_administrativo_title_is_kept_and_flagged_never_hard_rejected():
+    # EATP-013 fix: "administrator" (English-only) never matched the Spanish
+    # "administrativo" — this exact case was silently skipped for the
+    # advisory flag it exists for. Kept either way; the point is it's never
+    # rejected, and now correctly flagged for the matcher to weigh.
     result = gate([_job(title="Analista administrativo")])
+
+    assert result.rejected == []
+    assert result.kept[0].title_caution_flags
+
+
+def test_plain_title_with_no_ambiguous_word_has_no_caution_flags():
+    result = gate([_job(title="Analista de Datos")])
 
     assert result.rejected == []
     assert result.kept[0].title_caution_flags == []
