@@ -54,7 +54,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-008** | New sources — ATS + LatAm boards | B | ✅ | 003 | Medium | ~1 h (2026-08-12) |
 | **EATP-009** | Quality gates — filters + remote hard-gate | B | ✅ | 002 | Medium | ~40 min (2026-08-12) |
 | **EATP-010** | Dedup, content-signature cache & run history | B | ✅ | 001, 009 | Medium | ~45 min (2026-08-12) |
-| **EATP-011** | Source health & self-check | B | ⬜ | 003–008, 010 | Light | — |
+| **EATP-011** | Source health & self-check | B | ✅ | 003–008, 010 | Light | ~35 min (2026-08-12) |
 | **EATP-012** | Multi-provider AI layer | C | ⬜ | 001, 002 | Medium | — |
 | **EATP-013** | Scoring & evaluation pipeline | C | ⬜ | 002, 009, 012 | Medium | — |
 | **EATP-014** | Orchestrator & resumable/memory-safe run | D | ⬜ | 004–011, 013 | Medium | — |

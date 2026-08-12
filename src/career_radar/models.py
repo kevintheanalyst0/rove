@@ -61,6 +61,16 @@ class RunStatus(str, Enum):
     ERROR = "error"
 
 
+class SourceHealthStatus(str, Enum):
+    """ADR-008: a source's raw collector yield classified against its own
+    rolling baseline — never a global threshold."""
+
+    OK = "ok"
+    LOW = "low"
+    ZERO = "zero"
+    ERROR = "error"
+
+
 # ---------------------------------------------------------------------------
 # Content signature (ADR-001) — the stable identity, not a volatile site id
 # ---------------------------------------------------------------------------
@@ -198,6 +208,17 @@ class ScoredJob(BaseModel):
         return self
 
 
+class SourceHealth(BaseModel):
+    """ADR-008: one source's health verdict for this run — informational
+    only, a broken source never blocks or crashes the run."""
+
+    source: str
+    status: SourceHealthStatus
+    yielded: int
+    baseline: float | None = None
+    reason: str = ""
+
+
 class RunResult(BaseModel):
     """The output of one full run."""
 
@@ -206,5 +227,6 @@ class RunResult(BaseModel):
     status: RunStatus = RunStatus.RUNNING
     message: str = ""
     counts: dict[str, int] = Field(default_factory=dict)
+    source_health: list[SourceHealth] = Field(default_factory=list)
     jobs: list[ScoredJob] = Field(default_factory=list)
     ai_usage: dict[str, int] = Field(default_factory=dict)

@@ -23,6 +23,7 @@ DATA_DIR = BASE_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
 CACHE_DIR = DATA_DIR / "cache"
 HISTORY_DIR = DATA_DIR / "history"
+HEALTH_DIR = DATA_DIR / "health"
 
 GATED_FILE = DATA_DIR / "gated.jsonl"
 RESULTS_FILE = DATA_DIR / "results.json"
@@ -119,6 +120,15 @@ SIGNATURE_SEEN_WINDOW_DAYS = 30
 # to one, regardless of title (SCRAPING-GOTCHAS.md #4.3 — title is never a
 # required match).
 DEDUP_DESCRIPTION_SIMILARITY_THRESHOLD = 90
+
+# Source health (EATP-011, ADR-008): a source's raw yield below this fraction
+# of its own rolling baseline is flagged "low". How many past runs feed that
+# baseline, and the minimum runs of history needed before a baseline is
+# trusted at all (too little history -> compare against nothing, not a
+# misleading number).
+HEALTH_LOW_YIELD_RATIO = 0.3
+HEALTH_BASELINE_MAX_RUNS = 10
+HEALTH_MIN_RUNS_FOR_BASELINE = 2
 
 # ---------------------------------------------------------------------------
 # Logging

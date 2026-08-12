@@ -78,8 +78,19 @@ number, so it can never look contradictory.
 | `status` | enum | `running` \| `success` \| `paused` \| `error` |
 | `message` | str | human-readable |
 | `counts` | dict | collected / gated / prefiltered / ai_evaluated / shown |
+| `source_health` | list[SourceHealth] | ADR-008: per-source `ok\|low\|zero\|error` + reason, from `health/check.py` (EATP-011) |
 | `jobs` | list[ScoredJob] | ranked, best first |
 | `ai_usage` | dict | provider → calls made (quota visibility) |
+
+## `SourceHealth` — one source's verdict for a run (ADR-008)
+
+| field | type | notes |
+|-------|------|-------|
+| `source` | str | collector id |
+| `status` | enum | `ok` \| `low` \| `zero` \| `error` — classified against the source's own rolling baseline, never a global threshold |
+| `yielded` | int | this run's **raw** collector yield (before the quality gate — gate attrition must never look like a broken scraper) |
+| `baseline` | float \| None | average raw yield over recent past runs; `None` when there isn't enough history yet |
+| `reason` | str | calm Spanish note, e.g. `"indeed no devolvió resultados - posible bloqueo"` |
 
 ## Files on disk (`data/`, all gitignored)
 
@@ -90,6 +101,7 @@ number, so it can never look contradictory.
 | `results.json` | `RunResult` | orchestrator (atomic) |
 | `cache/signatures.jsonl` | `{signature, first_seen, last_seen, final_score}` | cache |
 | `history/<run-timestamp>.jsonl` | `{signature, source, title, company, shown_at}` per shown job | history store (append-only, one file per run) |
+| `health/yields.jsonl` | `{run_started_at, source, yielded, status}` per source per run | health check (EATP-011, append-only, one cumulative file — raw yield, not shown count, so gate attrition never looks like a broken scraper) |
 | `status.json` | run status for the UI | orchestrator |
 
 > Use **JSONL (one record per line)** for large collections so writes stream and a
