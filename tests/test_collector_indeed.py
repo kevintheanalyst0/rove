@@ -46,14 +46,15 @@ def _detail_from_fixture(fixture: dict) -> dict[str, str]:
 
 
 def _ld_html(
-    *, title: str, company: str, description: str = "", date_published: str = ""
+    *, title: str, company: str, description: str = "", date_posted: str = ""
 ) -> str:
     payload = {
         "@context": "https://schema.org",
         "@type": "JobPosting",
         "title": title,
         "hiringOrganization": {"@type": "Organization", "name": company},
-        "datePublished": date_published,
+        # Indeed's real field name — confirmed live, not schema.org's usual "datePublished".
+        "datePosted": date_posted,
     }
     return (
         "<html><head>"
@@ -125,7 +126,7 @@ def test_extract_job_id_from_card_none_when_nothing_found():
 
 def test_parse_job_ld_extracts_the_job_posting_block():
     html = _ld_html(
-        title="Analista de Datos", company="Acme", date_published="2026-08-01T00:00:00Z"
+        title="Analista de Datos", company="Acme", date_posted="2026-08-01T00:00:00Z"
     )
     ld = parse_job_ld(html)
     assert ld is not None
@@ -142,7 +143,7 @@ def test_parse_detail_page_maps_title_company_description():
         title="Analista BI",
         company="Acme",
         description="Descripción larga del puesto.",
-        date_published="2026-08-01T00:00:00Z",
+        date_posted="2026-08-01T00:00:00Z",
     )
     detail = parse_detail_page(html)
     assert detail == {
@@ -280,7 +281,7 @@ def _detail_response(fixture: dict) -> tuple[str, str, list[_FakeCard], str]:
         title=fixture["title"],
         company=fixture["company"],
         description=fixture["description"],
-        date_published="2026-08-01T00:00:00Z",
+        date_posted="2026-08-01T00:00:00Z",
     )
     return (build_job_view_url(fixture["job_id"]), html, [], "")
 

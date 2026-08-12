@@ -140,7 +140,9 @@ def parse_detail_page(html: str) -> dict[str, str] | None:
         "title": clean_text(ld.get("title", "")),
         "company": _company_from_ld(ld),
         "description": description,
-        "posted": clean_text(str(ld.get("datePublished") or "")),
+        # Indeed's real JSON-LD uses "datePosted", not schema.org's usual
+        # "datePublished" — confirmed against a live detail page.
+        "posted": clean_text(str(ld.get("datePosted") or "")),
     }
 
 

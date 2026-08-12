@@ -28,8 +28,9 @@
 | Session date | Phase | Elapsed | Notes |
 |--------------|-------|---------|-------|
 | 2026-08-12 | Fases 1-4 | ~45 min | Sin diagnóstico de login (Indeed no requiere sesión) — más simple que EATP-005 |
+| 2026-08-12 | Verificación en vivo | ~15 min | Encontró y corrigió un bug real (ver notas) |
 
-**Total project time:** ~45 min (2026-08-12)
+**Total project time:** ~1 h (2026-08-12)
 
 ## Session notes
 Reconstruido (no portado) sobre el framework: una sola pestaña secuencial (legacy usaba
@@ -43,6 +44,15 @@ Indeed se detiene limpiamente para esa corrida sin bloquear las demás fuentes. 
 `collect()` transmite cada `Job` en cuanto se construye, lo ya recolectado antes del
 captcha nunca se pierde. Se filtra solo con `criteria.title_is_rejected()` (título +
 empresa), igual que las demás fuentes — el inglés avanzado y el remoto siguen
-centralizados en EATP-009. No se probó en vivo (a diferencia de LinkedIn, esta sesión
-no lo requería para completar el charter); la primera corrida real conviene vigilarla
-por si el timing del captcha necesita un ajuste, tal como el charter ya anticipaba.
+centralizados en EATP-009.
+
+**Verificación en vivo (a petición de Kevin, no se cerraba sin esto):** corrida real
+con un solo término ("analista de datos") contra Indeed real. Encontró un bug genuino:
+el JSON-LD real de Indeed usa el campo `datePosted`, no `datePublished` (el nombre
+estándar de schema.org que asumía el charter) — con el nombre equivocado, los 20
+trabajos recolectados daban `days_old=999` para todos. Corregido en
+`parse_detail_page()`; segunda corrida confirmó valores reales (0-22 días). Títulos,
+empresas y descripciones completas y plausibles en los 20 casos, sin captcha en esta
+corrida (así que el camino de reintento/abandono solo quedó probado con los tests
+scripteados, no en vivo — vale la pena vigilarlo en la primera corrida programada real,
+tal como ya anticipaba el charter).
