@@ -30,6 +30,11 @@ RESULTS_FILE = DATA_DIR / "results.json"
 STATUS_FILE = DATA_DIR / "status.json"
 SIGNATURES_FILE = CACHE_DIR / "signatures.jsonl"
 
+# Orchestrator checkpoints (EATP-014) — let a crashed/interrupted run resume
+# without re-scraping or re-paying for AI (CLAUDE.md golden rule 3).
+CHECKPOINT_FILE = DATA_DIR / "checkpoint.json"
+AI_CHECKPOINT_FILE = DATA_DIR / "ai_checkpoint.jsonl"
+
 
 def raw_source_file(source: str) -> Path:
     """Path to a source's raw JSONL file (e.g. 'linkedin' -> data/raw/linkedin.jsonl)."""
