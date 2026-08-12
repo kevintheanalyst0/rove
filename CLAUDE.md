@@ -67,6 +67,14 @@ understand what the old system did and why we are rebuilding it.
 10. **Repo/code in English, conversation in Spanish.** Always.
 11. **Never commit secrets or runtime data.** `.env` and `data/` are gitignored.
     GitHub publish happens only in EATP-018, only after Kevin approves.
+12. **Legacy code is reference material, never a default to port.** Every project with
+    a `legacy/` file in its "Context to load" (004-010+) must be judged on its own
+    merits against the two non-negotiable premises — **speed** and **quality of
+    results** (§1: few excellent matches, not hundreds of mediocre ones), never
+    "volume of vacancies found." Rebuild from scratch if the legacy approach doesn't
+    hold up against those premises; keep and adapt it only where you determine it's
+    genuinely the right design. State that rebuild-vs-keep verdict explicitly in the
+    session's plan (§3 Step C) — don't silently port-and-tweak out of habit.
 
 ---
 
@@ -90,6 +98,8 @@ When Kevin says **"Trabajemos en EATP-00X"** (or similar), do this, in order:
 6. If the charter has **"Open questions for Kevin"**, collect them.
 
 **Step C — Return the plan and STOP.** Reply to Kevin (in Spanish) with:
+   - **Legacy: reconstruir o conservar** — if the charter has a `legacy/` reference
+     file, your verdict on it (golden rule 12) and why, before anything else.
    - **Qué voy a construir** — a short, concrete list of what this session will produce.
    - **Fases** — the phases you'll go through (maps to the checklist).
    - **Tiempo estimado** — your honest estimate.

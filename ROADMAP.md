@@ -122,8 +122,10 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 | **P22** | *No way to measure if quality improved* | EATP-017 |
 | **P23** | *Scraping ToS / account-ban risk* | EATP-003, 005, 006 |
 | **P24** | *Title-only judgment buries good jobs / waves through bad ones (ADR-009)* | EATP-002 (done), 003-008, 009, 013 |
+| P25 | Fraudulent/ghost companies mass-posting to harvest data (esp. LinkedIn) | EATP-002 (blocklist, done), 009, 013 |
 
-> Bold = problems we surfaced that Kevin didn't list.
+> Bold = problems we surfaced that Kevin didn't list. P25 isn't bold — it's Kevin's own,
+> just recalled later than the original P1-P16 pass.
 >
 > **P24 detail:** Kevin caught this directly — a legacy vacancy titled "Analista
 > administrativo" was genuinely excellent but got buried because the title alone looked
@@ -133,6 +135,12 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 > title-based filtering (collectors 003-008, quality gates 009, matcher/AI 013) must
 > respect it: only a short absolute keyword list may hard-reject on title alone;
 > everything else is judged on the full job text.
+>
+> **P25 detail:** see `docs/governance/SCRAPING-GOTCHAS.md` §6-7 — the blocklist
+> mechanism already exists (`criteria.excluded_companies`, currently just BairesDev +
+> Indi Staffing Services) but is almost certainly incomplete; grow it as Kevin names
+> more, and keep the door open for a behavioral heuristic in EATP-009/013 rather than
+> relying on the static list alone.
 
 ---
 

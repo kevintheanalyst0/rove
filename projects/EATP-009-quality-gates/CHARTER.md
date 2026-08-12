@@ -16,9 +16,9 @@ P4, P6 (quality), P8 (remote leaks — the 57/123 case).
 | `docs/governance/DATA-CONTRACTS.md` | remote_status enum + evidence. |
 | `docs/adr/ADR-002-remote-hard-gate.md` | Remote gate design. |
 | `docs/adr/ADR-009-title-is-a-signal-not-a-verdict.md` | title_is_rejected() stays narrow (absolute categories only); title_caution_flags() is advisory, never a Layer-1 reject. |
-| `docs/governance/SCRAPING-GOTCHAS.md` | §5: don't port legacy's conditional-title-rescue logic when porting `filters.py` — ADR-009 already replaced it. |
+| `docs/governance/SCRAPING-GOTCHAS.md` | §5: drop legacy's conditional-title-rescue logic (ADR-009 already replaced it). §6-7: fraud-company blocklist is a stopgap (P25); English/company checks must be centralized here, not per-collector. |
 | `src/career_radar/criteria.py` | Signals/exclusions/weights + title_is_rejected/title_caution_flags (EATP-002). |
-| `legacy/jobmatch/collectors/filters.py` | Reference: existing filters to port. |
+| `legacy/jobmatch/collectors/filters.py` | Reference only — evaluate before porting (CLAUDE.md golden rule 12); four collectors called these checks inconsistently, which is itself part of what's being fixed. |
 | `tests/fixtures/latest_jobs.json` | Contains the 57 non-remote leaks to reject. |
 
 ## Dependencies

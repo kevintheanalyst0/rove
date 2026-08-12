@@ -133,3 +133,60 @@ don't solve them all the same way.
   empty description as a reason to drop the job rather than pass along a job the AI
   can't meaningfully evaluate; keep that discipline in every new HTTP/browser
   collector.
+
+## 6. Fraudulent / ghost companies mass-posting to harvest data (P25)
+
+Kevin's own words: *"hay muchas empresas fraudulentas, que anuncian cientos de empleos
+distintos a diario... luego usan esas vacantes para robar datos de la gente. Esto
+principalmente se logra ver en LinkedIn."* Real companies he's identified from the
+legacy system: **BairesDev**, **Indi Staffing Services**. These are already in
+`criteria.toml -> excluded_companies` (ported from legacy's `EXCLUDED_COMPANIES`) and
+`criteria.is_excluded_company()` enforces the block — so the mechanism exists, but
+**the list is almost certainly incomplete**; it only has the two companies Kevin
+happened to remember.
+
+- **This is a static blocklist, not a detector.** It only catches a fraudulent company
+  by name, after Kevin has already identified it once. Treat it as a stopgap, not a
+  solution: grow the list any time Kevin names a new offender, and when building
+  EATP-009 (or later, EATP-013's matcher), consider whether a behavioral heuristic is
+  worth adding on top — e.g. a company posting an implausibly large number of
+  unrelated titles/locations within one run is itself a signal, independent of whether
+  it's on the list yet. Don't build that heuristic speculatively before Kevin confirms
+  it's worth the complexity; just don't design the gate so narrowly that a heuristic
+  couldn't be added later.
+- **Concentrated on LinkedIn** per Kevin, but don't assume other sources are immune —
+  the same staffing-mill pattern (one "company" with hundreds of near-identical
+  postings) can show up anywhere; watch for it when building 007/008 too.
+- Traceability: added to `ROADMAP.md`'s problem list as **P25**.
+
+## 7. Where a quality check lives: collector vs. centralized gate
+
+Kevin correctly recalled that in the legacy system, filters like the English-required
+check and the fraud-company check lived **inside each collector** (`occ.py`,
+`computrabajo.py`, `indeed.py` all called `filters.title_is_rejected()` +
+`filters.requires_advanced_english()`; `linkedin.py`'s `process_single_job()` called
+`is_excluded_company`, `has_excluded_title`, `fails_conditional_title_rules`, and
+`requires_advanced_english` directly, with its own slightly different order/set of
+checks than the other three). That divergence — four collectors each deciding
+filtering slightly differently — is itself a quality bug: it's how the same rule could
+behave inconsistently by source. **Don't reproduce it.**
+
+The rule for EATP-004-010, resolving the ambiguity:
+
+- **May live in the collector, as a request-saving pre-filter (ADR-009):**
+  `criteria.title_is_rejected()` — title + company only, absolute-category list only
+  (this covers both the excluded-title-keywords check **and** the fraud-company
+  check from §6, since a company name is normally visible on the listing card/search
+  result before you'd fetch the full detail). This is the *only* filter allowed to run
+  before a job's full description exists.
+- **Must NOT live in the collector — centralize in EATP-009's `quality/filters.py`,
+  run once over the pooled jobs from every source:** the English-requirement check
+  (`requires_advanced_english`), `title_caution_flags()` (advisory, per ADR-009), the
+  remote hard-gate, and any future junk/fraud heuristic beyond the static company
+  list. None of these need to happen inside a collector — English detection in
+  particular needs the full description, which means the detail request has already
+  happened by the time you'd check it, so embedding it in the collector saves nothing
+  and only reintroduces the four-different-implementations problem above.
+- Site-native search filters (§3 of this file) are a third, separate thing — a URL
+  query param, not app logic — and don't count as either of the above; keep using them
+  freely, they reduce volume before any of this even applies.
