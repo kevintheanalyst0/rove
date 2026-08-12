@@ -134,6 +134,33 @@ don't solve them all the same way.
   can't meaningfully evaluate; keep that discipline in every new HTTP/browser
   collector.
 
+## 5b. The persistent browser profile starts EMPTY — needs a one-time manual login
+
+Discovered live in EATP-005, not something Kevin flagged in advance: `browser.py`'s
+`CHROME_USER_DATA_DIR` (EATP-003) defaults to a brand-new directory under `data/` —
+unlike legacy, which pointed at an existing, already-logged-in automation profile on
+Kevin's machine. The first live run against LinkedIn with `use_profile=True` returned
+**zero jobs with no error at all**: LinkedIn didn't redirect to `/login` or show any
+health/error marker — it silently served the logged-out **public** search page instead
+(different markup entirely: `base-search-card__title` instead of
+`scaffold-layout__list-item`, no `data-occludable-job-id`, and it ignored the
+`location=` search param). `is_login_page()` (URL-based) cannot catch this — the URL
+never changes.
+
+- **Any collector that turns on `use_profile=True` for the first time needs a manual,
+  one-time, visible-browser login** before it will do anything useful — this is not
+  optional setup, it's a hard prerequisite. In this WSL environment, a non-headless
+  `build_page()` shows a real window via WSLg (`DISPLAY`/`WAYLAND_DISPLAY` are set) —
+  use that to let Kevin log in once; the persistent profile dir keeps the session
+  after that.
+- **Relevant to EATP-006 (Indeed) too** if it reuses a persistent profile — check
+  whether the profile has ever been logged into before assuming a browser-based
+  collector "just works" on a fresh environment/machine.
+- A logged-out **public** job-search view existing at all (rather than a hard
+  authwall) is itself worth remembering: it's a plausible silent-failure mode for any
+  LinkedIn-like site with a public SEO fallback — a health-check that only looks for
+  error markers won't catch "successfully loaded the wrong, degraded page."
+
 ## 6. Fraudulent / ghost companies mass-posting to harvest data (P25)
 
 Kevin's own words: *"hay muchas empresas fraudulentas, que anuncian cientos de empleos
