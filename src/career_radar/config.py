@@ -57,6 +57,18 @@ SEARCH_TERMS = [
     "analista funcional",
 ]
 
+# English terms: for remote-first/global boards (Remotive, RemoteOK, We Work
+# Remotely, Himalayas — EATP-007) that post almost exclusively in English.
+# See docs/governance/SEARCH-STRATEGY.md.
+ENGLISH_SEARCH_TERMS = [
+    "data analyst",
+    "business intelligence analyst",
+    "reporting analyst",
+    "business analyst",
+    "bi analyst",
+    "analytics analyst",
+]
+
 # ---------------------------------------------------------------------------
 # Browser (Chromium via DrissionPage — LinkedIn/Indeed collectors)
 # ---------------------------------------------------------------------------

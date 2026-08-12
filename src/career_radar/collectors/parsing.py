@@ -1,6 +1,9 @@
-"""Shared text/date parsing for the Spanish-language HTTP sources (OCC,
-Computrabajo). Both post relative dates in the same handful of Spanish
-formats, so this is one correct parser instead of two copies of it.
+"""Shared text/date parsing for the HTTP-based collectors.
+
+The Spanish-language parts (OCC, Computrabajo post relative dates in the same
+handful of Spanish formats) live alongside a small English-market helper used
+by the remote-first boards (EATP-007), which have no server-side keyword
+search and need a client-side match instead.
 """
 
 from __future__ import annotations
@@ -60,3 +63,14 @@ def parse_days_old_es(text: str | None) -> int:
         return max((now - posted).days, 0)
     except (ValueError, KeyError, IndexError):
         return 999
+
+
+def matches_any_term(text: str, terms: list[str]) -> bool:
+    """Case-insensitive substring match against a list of search phrases.
+
+    Used by boards whose API/feed ignores server-side search (RemoteOK,
+    Himalayas) or only exposes a broad category (We Work Remotely) — the
+    collector fetches once and filters client-side instead.
+    """
+    lowered = text.lower()
+    return any(term in lowered for term in terms)

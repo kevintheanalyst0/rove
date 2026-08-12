@@ -50,7 +50,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-004** | HTTP collectors — OCC & Computrabajo | B | ✅ | 003 | Light-med | ~1 h (2026-08-12) |
 | **EATP-005** | LinkedIn collector (refactor + harden) | B | ✅ | 003 | Medium | ~2.5 h (2026-08-12) |
 | **EATP-006** | Indeed collector — optimize & de-captcha | B | ✅ | 003 | Medium | ~1.8 h (2026-08-12) |
-| **EATP-007** | New sources — remote-first boards | B | ⬜ | 003 | Light-med | — |
+| **EATP-007** | New sources — remote-first boards | B | ✅ | 003 | Light-med | ~45 min (2026-08-12) |
 | **EATP-008** | New sources — ATS + LatAm boards | B | ⬜ | 003 | Medium | — |
 | **EATP-009** | Quality gates — filters + remote hard-gate | B | ⬜ | 002 | Medium | — |
 | **EATP-010** | Dedup, content-signature cache & run history | B | ⬜ | 001, 009 | Medium | — |

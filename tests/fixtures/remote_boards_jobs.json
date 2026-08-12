@@ -1,0 +1,23 @@
+[
+    {
+        "id": "1001",
+        "title": "Data Analyst",
+        "company": "Northwind Analytics",
+        "description": "We are looking for a remote Data Analyst to build dashboards, write SQL queries, and partner with stakeholders across the business on reporting needs. You will own our weekly metrics review and help the team make data-driven decisions every day.",
+        "location": "Worldwide"
+    },
+    {
+        "id": "1002",
+        "title": "Business Intelligence Analyst",
+        "company": "Harbor Systems",
+        "description": "Join our BI team to design Power BI dashboards, maintain our data warehouse models, and support leadership with recurring business intelligence reporting across finance and operations.",
+        "location": "Americas"
+    },
+    {
+        "id": "1003",
+        "title": "Senior Business Analyst",
+        "company": "Fieldstone Group",
+        "description": "We need a Business Analyst to gather requirements from stakeholders, document processes, and translate business needs into functional specs for our engineering team, working closely with product managers.",
+        "location": "US Only"
+    }
+]
