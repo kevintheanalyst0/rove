@@ -80,7 +80,11 @@ def test_groq_happy_path_returns_parsed_results():
     assert fake.chat.completions.calls[0]["response_format"] == {"type": "json_object"}
 
 
-def test_groq_without_api_key_raises_provider_error_without_calling_client():
+def test_groq_without_api_key_raises_provider_error_without_calling_client(monkeypatch):
+    # GroqProvider(api_key=None) falls back to config.GROQ_API_KEY by design
+    # (see GroqProvider.__init__) — force that fallback to empty too, so this
+    # test is deterministic regardless of a real key sitting in .env.
+    monkeypatch.setattr(config, "GROQ_API_KEY", None)
     provider = GroqProvider(api_key=None)
     with pytest.raises(ProviderError):
         provider.evaluate_batch([_job()], PROFILE)

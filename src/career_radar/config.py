@@ -104,7 +104,9 @@ CHROME_BROWSER_PATH = os.getenv("CHROME_BROWSER_PATH") or None
 # Persistent profile dir: keeps LinkedIn/Indeed logins between runs so fewer
 # captchas trigger (mirrors legacy CHROME_USER_DATA_PATH, now cross-platform
 # and gitignored under data/).
-CHROME_USER_DATA_DIR = os.getenv("CHROME_USER_DATA_DIR") or str(DATA_DIR / "browser_profile")
+CHROME_USER_DATA_DIR = os.getenv("CHROME_USER_DATA_DIR") or str(
+    DATA_DIR / "browser_profile"
+)
 
 # ---------------------------------------------------------------------------
 # Tunables
@@ -144,7 +146,9 @@ AI_USAGE_FILE = DATA_DIR / "ai_usage.json"
 # (which drift) don't need to be exact for this to work.
 AI_PROVIDER_ORDER = [
     provider.strip()
-    for provider in os.getenv("AI_PROVIDER_ORDER", "gemini_flash,groq,gemini_flash_lite,openrouter").split(",")
+    for provider in os.getenv(
+        "AI_PROVIDER_ORDER", "gemini_flash,groq,gemini_flash_lite,openrouter"
+    ).split(",")
     if provider.strip()
 ]
 
@@ -153,9 +157,18 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or None
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or None
 
 GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
-GEMINI_FLASH_MODEL = os.getenv("GEMINI_FLASH_MODEL", "gemini-2.5-flash")
-GEMINI_FLASH_LITE_MODEL = os.getenv("GEMINI_FLASH_LITE_MODEL", "gemini-2.5-flash-lite")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+# "-latest" aliases (not a pinned "2.5"): confirmed 2026-08-12 that
+# "gemini-2.5-flash" 404s for new API keys ("no longer available to new
+# users") even though it still lists in the API — Google had already moved
+# newer generations (3.x) in by then. The aliases track whatever Google
+# currently recommends, so this doesn't go stale the same way again.
+GEMINI_FLASH_MODEL = os.getenv("GEMINI_FLASH_MODEL", "gemini-flash-latest")
+GEMINI_FLASH_LITE_MODEL = os.getenv(
+    "GEMINI_FLASH_LITE_MODEL", "gemini-flash-lite-latest"
+)
+OPENROUTER_MODEL = os.getenv(
+    "OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free"
+)
 
 # Jobs per AI request. Keeps prompts within per-day TOKEN caps (which bite
 # before per-day request caps on the bigger models) while still batching
