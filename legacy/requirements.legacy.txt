@@ -1,0 +1,14 @@
+# Dependencias reales del proyecto.
+# (Sustituye el volcado completo de `pip list` que había antes.)
+
+streamlit>=1.40
+google-genai>=1.0
+python-dotenv>=1.0
+requests>=2.31
+beautifulsoup4>=4.12
+DrissionPage>=4.1
+python-docx>=1.1
+langdetect>=1.0.9
+
+# Conversión de DOCX a PDF mediante Microsoft Word (solo Windows).
+pywin32>=306; sys_platform == "win32"

@@ -1,0 +1,58 @@
+# Candidate profile — who Kevin is. Source of truth for humans is
+# docs/governance/CANDIDATE-PROFILE.md; this is its machine-readable twin.
+# Both the rule pre-filter (EATP-009/013) and the AI rubric prompt (EATP-012/013)
+# read from here.
+
+name = "Kevin Castillo"
+location = "Puebla, MX"
+open_to_remote_scope = "MX/LatAm, remote anywhere"
+current_role = "Process & Systems Planner / SAP MM Key User at Audi México"
+background = "Industrial Engineering (data analysis & process optimization), Instituto Tecnológico de Morelia"
+english_level = "B2"
+
+# Goes straight into the AI prompt (EATP-012/013).
+career_goal = """
+Find genuinely remote Data Analyst / BI / Business Analyst roles where Kevin can start
+contributing now. Prioritize real fit and true remote over prestige, seniority, salary,
+or tool-for-tool matching. Overqualification is a plus. Reject non-remote, advanced-
+English-required, and out-of-field (DBA/Linux/dev/finance/design/etc.) roles.
+"""
+
+target_roles = [
+    "Data Analyst",
+    "Analista de Datos",
+    "Business Intelligence Analyst",
+    "Analista BI",
+    "Reporting Analyst",
+    "Analista de Reportes",
+    "Business Analyst",
+    "Analista de Negocios",
+    "Power BI Analyst",
+    "Analytics Specialist",
+    "Business Systems Analyst",
+    "Analista Funcional",
+]
+
+[skills]
+bi_and_analytics = [
+    "Power BI", "DAX", "Power Query", "Tableau", "KPI design",
+    "executive reporting", "data modeling",
+]
+data_and_automation = [
+    "SQL", "Python", "dbt", "PostgreSQL", "SAP MM/HANA",
+    "Power Automate", "Power Apps", "VBA", "Microsoft Fabric",
+]
+
+# THE PRIORITY (CANDIDATE-PROFILE.md) — read before tuning any weight elsewhere.
+[priority]
+salary_is_priority = false
+seniority_is_priority = false
+overqualification_is_positive = true
+partial_skill_match_is_good = true
+statement = """
+Kevin urgently needs a remote job of this type. Salary and seniority are not
+priorities: junior/mid is fine, and being overqualified is a positive, never a con.
+A partial skill match (roughly half the requirements) with room to learn the rest is a
+good match, as long as the role is genuinely his kind of work. A simpler role he can do
+today beats a fancier role needing several unknown skills.
+"""

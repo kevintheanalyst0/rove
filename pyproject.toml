@@ -1,0 +1,53 @@
+[project]
+name = "career-radar"
+version = "0.1.0"
+description = "Remote-first job-discovery engine (rebuild of JobMatchEngine)."
+requires-python = ">=3.11"
+readme = "README.md"
+
+# Master dependency list. Keep in sync with docs/governance/DEPENDENCIES.md.
+# Add new deps ONLY after asking Kevin (see CLAUDE.md §8).
+dependencies = [
+    # --- Core ---
+    "python-dotenv>=1.0",
+    "pydantic>=2.6",          # typed data contracts (Job, ScoredJob, ...)
+    "httpx>=0.27",            # modern HTTP client (sync+async), replaces bare requests
+    "beautifulsoup4>=4.12",   # HTML parsing for HTTP-based collectors
+    "lxml>=5.0",              # fast parser backend for bs4
+    "tenacity>=8.2",          # retry/backoff for network + AI calls
+    "python-dateutil>=2.9",   # robust date parsing
+    "rapidfuzz>=3.6",         # fast fuzzy dedup (replaces difflib)
+    "orjson>=3.9",            # fast JSON read/write for large files
+
+    # --- Browser-based collectors ---
+    "DrissionPage>=4.1",      # Chromium automation (LinkedIn/Indeed listing pages)
+
+    # --- AI providers ---
+    "groq>=0.11",             # primary free provider (OpenAI-compatible)
+    "google-genai>=1.0",      # Gemini (Flash-Lite / Flash)
+    "openai>=1.40",           # used for OpenAI-compatible endpoints (OpenRouter, Groq)
+
+    # --- Web UI (EATP-009) ---
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+
+    # --- Verification (EATP-010) ---
+    "playwright>=1.44",       # visual verification of the web UI
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,42 @@
+# --- Secrets & runtime data (NEVER commit) ---
+.env
+.env.*
+!.env.example
+data/
+!data/.gitkeep
+output/
+debug/
+*.log
+
+# --- Browser profiles / scraping artifacts ---
+chrome-profile/
+*.cookies
+*.har
+
+# --- Personal artifacts ---
+*.pdf
+*.docx
+cover_letters/
+resumes/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

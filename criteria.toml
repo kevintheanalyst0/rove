@@ -1,0 +1,177 @@
+# Evaluation criteria — what "a good job for Kevin" means, as data.
+# Source of truth for the rationale: docs/governance/CANDIDATE-PROFILE.md +
+# docs/governance/EVALUATION-RUBRIC.md. Read together with profile.toml.
+#
+# Design note (Kevin, 2026-08-12, x2): the legacy system was too rigid about
+# what counted as a good match, AND it trusted the title too much — a real
+# posting titled "Analista administrativo" was genuinely excellent but got
+# buried because the title alone looked bad, and the mirror case (a "Data
+# Analyst" title hiding a Linux/frontend/DBA job) is just as real. So:
+#
+# - `excluded_title_keywords` below is the ONLY thing allowed to hard-reject a
+#   job from its title alone, before the description is ever read — and it's
+#   restricted to categories where no description could change the verdict
+#   (designer, sales, marketing, recruiting, legal, health, education, ...).
+# - `title_caution_words` (formerly a hard "conditional reject") is now
+#   ADVISORY ONLY: an ambiguous trigger word ("engineer", "administrator",
+#   "developer", "manager", "security", "financial analyst", ...) is a signal
+#   for the matcher (EATP-013, which sees the full text) to weigh — it must
+#   never block a job from reaching the description-reading stages.
+
+excluded_companies = [
+    "bairesdev",
+    "indi staffing services",
+]
+
+# ---------------------------------------------------------------------------
+# Title exclusions — blanket (unambiguous off-field categories).
+# ---------------------------------------------------------------------------
+[excluded_title_keywords]
+sales = [
+    "account executive", "inside sales", "sales executive",
+    "sales representative", "sales manager",
+]
+marketing = [
+    "marketing", "seo", "social media", "media buyer", "content creator",
+    "copywriter", "media manager", "paid media", "youtube", "streaming",
+    "video manager", "video editor",
+]
+recruiting_hr = [
+    "recruiter", "talent acquisition", "human resources", "hr ", "people operations",
+]
+support_call_center = [
+    "customer service", "customer support", "call center",
+]
+finance_accounting = [
+    "bookkeeper", "accounting", "payroll", "accounts payable",
+    "accounts receivable", "treasury", "tax accountant",
+]
+legal = ["legal", "attorney", "lawyer", "paralegal"]
+health = ["nurse", "doctor", "physician", "clinical", "mental health", "care coordinator"]
+education = ["teacher", "tutor"]
+government = ["government", "public sector"]
+design = [
+    "graphic design", "ux designer", "ui designer", "product designer",
+    "visual designer", "ui/ux designer",
+]
+# Dev/infra/QA titles that don't contain "engineer"/"administrator"/"developer"
+# (those are handled by title_caution_words below — advisory, not a hard reject).
+dev_infra_qa = [
+    "devops", "site reliability", "sysadmin", "full stack",
+    "qa automation", "quality assurance", "test automation",
+]
+contract_type = [
+    "unpaid", "internship (unpaid)", "voluntary position",
+]
+
+# ---------------------------------------------------------------------------
+# Title caution words — ADVISORY, not a hard reject (Kevin's "Analista
+# administrativo" case: a plain title must never be the final verdict). A
+# trigger word present with none of its rescue words nearby is a flag the
+# matcher (EATP-013, reading the full job) should weigh — never a reason to
+# stop a job from being read.
+# ---------------------------------------------------------------------------
+[title_caution_words]
+manager = ["data", "analytics", "business", "bi", "power bi", "sql", "machine learning", "ai"]
+specialist = ["data", "analytics", "business", "analyst", "bi", "power bi", "sql", "automation", "report"]
+support = ["analyst", "data", "business", "bi", "sql"]
+planner = ["data", "analytics", "business", "bi"]
+coordinator = ["data", "analytics", "business"]
+operations = ["data", "analytics", "business", "bi"]
+administrator = ["data", "analytics", "business", "bi", "power bi", "sql", "reporting"]
+engineer = ["data", "analytics", "business", "bi", "power bi", "reporting", "business intelligence"]
+developer = ["power bi", "bi", "reporting", "data", "business intelligence"]
+security = ["data", "analytics", "business", "bi", "reporting", "business intelligence"]
+"financial analyst" = ["data", "bi", "analytics", "reporting", "business intelligence"]
+"finance analyst" = ["data", "bi", "analytics", "reporting", "business intelligence"]
+
+# ---------------------------------------------------------------------------
+# Advanced English required -> reject (Kevin is B2; B1/B2 "intermediate" is fine).
+# ---------------------------------------------------------------------------
+[advanced_english]
+phrases = [
+    "advanced english", "advanced level of english", "advanced spoken english",
+    "advanced written english", "excellent english", "strong english",
+    "fluent english", "fluency in english", "english fluency", "native english",
+    "professional english", "english required", "english is required",
+    "must speak english", "written and spoken english", "resume in english",
+    "cv in english", "interview in english", "bilingual", "fully bilingual",
+    "english communication skills", "strong communication skills in english",
+    "inglés avanzado", "ingles avanzado", "inglés fluido", "ingles fluido",
+    "dominio del inglés", "dominio del ingles", "inglés indispensable",
+    "ingles indispensable",
+]
+regex = [
+    '\bc1\b', '\bc2\b', '\bc1 english\b', '\bc2 english\b',
+    '\benglish level c1\b', '\benglish level c2\b',
+    '\bnivel c1\b', '\bnivel c2\b', '\bielts\b', '\btoefl\b',
+]
+
+# ---------------------------------------------------------------------------
+# Remote signals (ADR-002) — anti-remote overrides positive. On-site tolerance
+# is data, not hardcoded: up to `max_onsite_days_per_month` still counts as
+# remote-ok; anything weekly, or a bare hybrid/onsite phrase, does not.
+# ---------------------------------------------------------------------------
+[remote_signals]
+positive_phrases = [
+    "remoto", "100% remoto", "totalmente remoto", "trabajo remoto",
+    "home office", "remote", "fully remote", "100% remote", "full remote",
+    "work from home", "remote-first", "remote work", "trabajo desde casa",
+    "teletrabajo",
+]
+hybrid_phrases = [
+    "híbrido", "hibrido", "hybrid", "modelo hibrido", "modelo híbrido",
+]
+onsite_phrases = [
+    "presencial", "on-site", "onsite", "in-office", "in office", "on site",
+]
+# Regex with a captured day-count, matched against the tolerance below.
+onsite_per_week_regex = '(\d+)\s*d[ií]as?\s*(?:a la semana|por semana|/semana|semanales?)'
+onsite_per_month_regex = '(\d+)\s*d[ií]as?\s*(?:al mes|por mes|/mes|mensuales?)'
+onsite_per_week_regex_en = '(\d+)\s*days?\s*(?:a|per)\s*week'
+onsite_per_month_regex_en = '(\d+)\s*days?\s*(?:a|per)\s*month'
+max_onsite_days_per_month = 1  # confirmed by Kevin 2026-08-12: ~1 day/month = remote-ok
+
+# ---------------------------------------------------------------------------
+# Matcher pre-filter weights (EATP-013 reads these). Ported from legacy
+# config.py ROLE_WEIGHTS/SKILL_WEIGHTS/REMOTE_BONUS/RECENCY_BONUS.
+# ---------------------------------------------------------------------------
+[matcher.role_weights]
+"business intelligence" = 40
+"business solutions" = 40
+"reporting analyst" = 35
+"business systems" = 30
+"business analyst" = 30
+"analytics" = 25
+"supply chain" = 20
+"data analyst" = 15
+
+[matcher.skill_weights]
+"Power BI" = 25
+"SQL" = 25
+"Reporting" = 20
+"Business Intelligence" = 20
+"Automation" = 15
+"SAP" = 15
+"Tableau" = 10
+"Power Apps" = 10
+"Power Automate" = 10
+"Python" = 5
+
+[matcher]
+remote_bonus = 20
+# (max_days_old, bonus points), evaluated in order — first match wins.
+recency_bonus = [
+    [3, 10],
+    [7, 8],
+    [14, 5],
+    [30, 2],
+]
+
+# Kept deliberately permissive (Kevin's note: don't be the rigid legacy
+# system). This only rejects clearly off-role noise before AI; genuine
+# borderline matches should still reach the AI for real judgment. Tune in
+# EATP-013 once real run data exists.
+[matcher.score_floors]
+prefilter_reject_floor = 20
+ai_cap_top_n = 500
