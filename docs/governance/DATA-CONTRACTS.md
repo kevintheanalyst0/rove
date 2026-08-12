@@ -23,6 +23,7 @@ filters, cache, scoring, and the UI all speak these — no ad-hoc dicts.
 | `english_required` | bool | advanced-English-required signal |
 | `seniority_hint` | str | `junior` \| `mid` \| `senior` \| `unknown` (heuristic) |
 | `thin_description` | bool | auto-set when `description` < 200 chars after stripping (P21); scoring may down-weight or skip, collectors never drop the job for this alone |
+| `title_caution_flags` | list[str] | ADR-009: ambiguous title words with no rescue word nearby (e.g. `engineer`, `manager`); set by the quality gate (EATP-009), advisory only for the matcher (EATP-013) — **never** a reject reason at the gate |
 | `collected_at` | datetime | when this run saw it |
 
 > **`remote` is an enum, not a bool.** The legacy `remote:bool` is exactly why hybrid

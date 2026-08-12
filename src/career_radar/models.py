@@ -150,6 +150,11 @@ class Job(BaseModel):
     english_required: bool = False
     seniority_hint: SeniorityHint = SeniorityHint.UNKNOWN
     thin_description: bool = False
+    # ADR-009: advisory only — a caution word (e.g. "engineer", "manager")
+    # present with no rescue word nearby. Set by the quality gate (EATP-009)
+    # for the matcher (EATP-013) to weigh against the full description; NEVER
+    # a reason to reject a job at the gate itself.
+    title_caution_flags: list[str] = Field(default_factory=list)
     collected_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @model_validator(mode="after")

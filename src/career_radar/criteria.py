@@ -156,42 +156,63 @@ def requires_advanced_english(title: str, description: str, criteria: Criteria |
 # ---------------------------------------------------------------------------
 
 
-def classify_remote(text: str, criteria: Criteria | None = None) -> RemoteStatus:
-    """Classify free text (title + description) into a `RemoteStatus`.
+def classify_remote_with_evidence(
+    text: str, criteria: Criteria | None = None
+) -> tuple[RemoteStatus, list[str]]:
+    """Classify free text (title + description) into a `RemoteStatus`, plus
+    the phrase(s) that decided it (DATA-CONTRACTS.md's `remote_evidence` —
+    auditable, so a rejection is never just "trust me").
 
     Anti-remote signals override positive ones. A weekly on-site cadence, or a
     monthly cadence beyond `max_onsite_days_per_month`, is treated as hybrid
     (partial remote); a bare "presencial"/"onsite" phrase with no remote
     component is onsite. Within the monthly tolerance -> the "~1 day/month"
-    exception -> remote-ok. No signal at all -> unknown, never counted as
-    remote by default.
+    exception -> remote-ok (the tolerance match is kept as supporting
+    evidence alongside whatever ultimately confirms it as remote). No signal
+    at all -> unknown, never counted as remote by default.
     """
     if not text:
-        return RemoteStatus.UNKNOWN
+        return RemoteStatus.UNKNOWN, []
     criteria = criteria or load_criteria()
     signals = criteria.remote_signals
     lowered = text.lower()
+    evidence: list[str] = []
 
-    if any(phrase in lowered for phrase in signals.hybrid_phrases):
-        return RemoteStatus.HYBRID
+    hybrid_phrase = next((p for p in signals.hybrid_phrases if p in lowered), None)
+    if hybrid_phrase:
+        return RemoteStatus.HYBRID, [hybrid_phrase]
 
     for pattern in (signals.onsite_per_week_regex, signals.onsite_per_week_regex_en):
         match = re.search(pattern, lowered)
         if match and int(match.group(1)) >= 1:
-            return RemoteStatus.HYBRID
+            return RemoteStatus.HYBRID, [match.group(0)]
 
     for pattern in (signals.onsite_per_month_regex, signals.onsite_per_month_regex_en):
         match = re.search(pattern, lowered)
         if match:
             days = int(match.group(1))
             if days > signals.max_onsite_days_per_month:
-                return RemoteStatus.HYBRID
-            # Within tolerance -> falls through to the positive-signal check below.
+                return RemoteStatus.HYBRID, [match.group(0)]
+            # Within tolerance -> falls through to the positive-signal check
+            # below, keeping this match as context for why it's still remote.
+            evidence.append(match.group(0))
 
-    if any(phrase in lowered for phrase in signals.onsite_phrases):
-        return RemoteStatus.ONSITE
+    onsite_phrase = next((p for p in signals.onsite_phrases if p in lowered), None)
+    if onsite_phrase:
+        return RemoteStatus.ONSITE, [*evidence, onsite_phrase]
 
-    if any(phrase in lowered for phrase in signals.positive_phrases):
-        return RemoteStatus.REMOTE
+    positive_phrase = next((p for p in signals.positive_phrases if p in lowered), None)
+    if positive_phrase:
+        return RemoteStatus.REMOTE, [*evidence, positive_phrase]
 
-    return RemoteStatus.UNKNOWN
+    return RemoteStatus.UNKNOWN, evidence
+
+
+def classify_remote(text: str, criteria: Criteria | None = None) -> RemoteStatus:
+    """Classify free text (title + description) into a `RemoteStatus`.
+
+    See `classify_remote_with_evidence()` for the full decision logic and the
+    matched-phrase evidence; this is the status-only convenience wrapper most
+    callers (including this module's own tests) use.
+    """
+    return classify_remote_with_evidence(text, criteria)[0]

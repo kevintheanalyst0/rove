@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from career_radar.criteria import (
     classify_remote,
+    classify_remote_with_evidence,
     has_excluded_title,
     is_excluded_company,
     load_criteria,
@@ -156,3 +157,34 @@ def test_classify_remote_no_signal_is_unknown():
 
 def test_classify_remote_empty_text_is_unknown():
     assert classify_remote("") == RemoteStatus.UNKNOWN
+
+
+# ---------------------------------------------------------------------------
+# Remote evidence — the phrase(s) that decided the classification (auditable)
+# ---------------------------------------------------------------------------
+
+
+def test_remote_evidence_captures_the_deciding_positive_phrase():
+    status, evidence = classify_remote_with_evidence("Puesto 100% remoto para todo el pais")
+    assert status == RemoteStatus.REMOTE
+    assert evidence and all(phrase in "puesto 100% remoto para todo el pais" for phrase in evidence)
+
+
+def test_remote_evidence_captures_the_deciding_hybrid_phrase_even_with_remote_present():
+    status, evidence = classify_remote_with_evidence("Remoto, modelo híbrido con 2 días en oficina")
+    assert status == RemoteStatus.HYBRID
+    assert evidence
+
+
+def test_remote_evidence_is_empty_when_there_is_no_signal_at_all():
+    status, evidence = classify_remote_with_evidence("Analista de datos con experiencia en SQL")
+    assert status == RemoteStatus.UNKNOWN
+    assert evidence == []
+
+
+def test_remote_evidence_within_monthly_tolerance_keeps_both_matches():
+    # Auditable: shows the office-visit mention AND what confirmed it as
+    # remote anyway, rather than hiding the "hasta 1 día al mes" nuance.
+    status, evidence = classify_remote_with_evidence("Trabajo remoto, 1 dia al mes en oficina")
+    assert status == RemoteStatus.REMOTE
+    assert len(evidence) == 2
