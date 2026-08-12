@@ -6,26 +6,37 @@ want a free, cloud-hosted alternative). The design: a **provider-agnostic AI lay
 single provider never stalls a run. **Everything is cloud-hosted — nothing runs on
 Kevin's machine.**
 
-## The quota reality (verified, mid-2026 — re-check before relying on exact numbers)
+## The quota reality (re-check before relying on exact numbers — this moves fast)
 
-Free tiers change often. As of mid-2026:
+Free tiers change often, and Google in particular reshuffles which model generation is
+"the free one" as new ones ship. What's confirmed as of **2026-08-12**:
 
-- **Google Gemini — 2.5 Flash:** free tier was **cut to ~20 requests/day** in late 2025.
-  This is exactly Kevin's pain. **Do not** make 2.5 Flash the primary.
-- **Google Gemini — 2.5 Flash-Lite:** far more generous free tier (**~1,000–1,500
-  requests/day**, ~1M tokens/minute, 1M-token context). Native JSON-schema output. This
-  is the *good* Gemini option and a strong fallback.
+- **Google Gemini — top-tier free Flash model:** Kevin directly observed in AI Studio
+  that the current newest Flash (Gemini 3.6 Flash, reached via the `gemini-flash-latest`
+  alias — see `ai/providers/gemini.py`) gets only **~5 free requests/day**. Smaller than
+  the ~20/day previously assumed for 2.5 Flash — the trend is the newest/best model
+  getting the *smallest* free allowance, not a fixed number. Still first in
+  `AI_PROVIDER_ORDER` (quality-first, Kevin's call) — the router just falls back to Groq
+  after those ~5 are spent, same mechanism either way.
+- **Google Gemini — Flash-Lite:** Kevin observed **~15 free requests/day** for the
+  current Flash-Lite generation (3.5, via `gemini-flash-lite-latest`) — also much
+  smaller than the ~1,000-1,500/day previously assumed for 2.5 Flash-Lite. Still bigger
+  than top-tier Flash's allowance, so it's still the broader-quota fallback, just not a
+  huge one anymore.
 - **Groq:** genuinely free, **no credit card**, OpenAI-compatible endpoint, extremely
   fast (LPU, 300–800+ tok/s). Free limits are **per model, per organization**, typically
   **~30 req/min and ~1,000 req/day**, with per-model token/day caps (e.g. Llama-3.3-70B
-  ~100K tokens/day; GPT-OSS-120B ~200K tokens/day). Great for short structured-JSON
-  evaluations. **Recommended primary.**
+  ~100K tokens/day; GPT-OSS-120B ~200K tokens/day). By far the largest daily allowance
+  of the four — carries most of a normal run's volume once Gemini's ~5+15 are spent.
 - **OpenRouter:** aggregator with some `:free` models behind one key; good overflow.
 - **Cerebras:** also fast/free-tier; optional extra fallback.
 
 > A `503`/`429` still consumes a Gemini call, and daily caps are the real constraint.
 > The whole point of the fallback layer is that hitting one cap just rolls to the next
-> provider instead of pausing the run for a day.
+> provider instead of pausing the run for a day — **this is exactly why the router
+> classifies by the real error it gets back instead of hardcoding a request count**: with
+> quotas this small and this volatile, a normal run will exhaust Gemini's ~5+15 most
+> days and fall through to Groq for the bulk of the batch, without any code change.
 
 ## Chosen strategy
 
@@ -49,18 +60,22 @@ the current batch, and it's tried again on the next one.
 > the *real* error it receives rather than a hardcoded number, this doesn't depend on
 > the exact published limits below staying accurate.
 
-**Default primary: Gemini 2.5 Flash.** Best quality free-tier model available, native
-structured output (`response_schema`), huge context — but a small daily cap (~20
-req/day as of late 2025/mid-2026), so it's used first and exhausted quickly on a normal
-run, then the router moves on.
+**Default primary: Gemini Flash** (`gemini-flash-latest` — currently resolves to
+3.6 Flash). Best quality free-tier model available, native structured output
+(`response_schema`), huge context — but a tiny daily cap (**~5 req/day**, confirmed
+2026-08-12), so it's used first and exhausted almost immediately on a normal run, then
+the router moves on. `AI_BATCH_SIZE` (default 10 jobs/request) means those ~5 requests
+still cover ~50 jobs at the best quality before falling through.
 
 **Default second: Groq.** Fast, free, no card, OpenAI-compatible, good at JSON. Use a
 capable open model (e.g. `llama-3.3-70b-versatile` or `openai/gpt-oss-120b`). Keep
 batches small enough to respect the per-day **token** cap, not just the request cap.
+With Gemini's daily allowance this small, Groq carries most of a normal run's volume.
 
-**Default third: Gemini 2.5 Flash-Lite** via `google-genai`, using native structured
-output (response schema). Big daily allowance, big context — the workhorse fallback
-once Flash and Groq are spent.
+**Default third: Gemini Flash-Lite** (`gemini-flash-lite-latest` — currently 3.5
+Flash-Lite) via `google-genai`, native structured output. **~15 req/day** (confirmed
+2026-08-12) — bigger than top-tier Flash but no longer the huge allowance the older 2.5
+generation had. Workhorse fallback once Flash and Groq are spent.
 
 **Default last: OpenRouter's free models** (Llama 3.3, Qwen3, GPT-OSS, Gemma, …) — most
 variable in quality and the smallest free daily cap, so it's the final overflow.
