@@ -17,3 +17,10 @@
 - **Alternatives considered:** Stay Gemini-only (rejected: 20/day is unusable). Local
   models/Ollama (rejected: Kevin removed them; must not run on his machine). Paid tiers
   (rejected: Kevin wants free).
+- **Amendment (2026-08-12, EATP-012 build session):** Kevin asked explicitly for the
+  fallback order to prioritize **quality** over raw speed/quota — use the best free
+  model first, degrade only once its quota is actually exhausted. Default
+  `AI_PROVIDER_ORDER` changed from `groq,gemini_flash_lite,openrouter,gemini_flash` to
+  `gemini_flash,groq,gemini_flash_lite,openrouter`. See `AI-PROVIDERS.md` for the
+  detail; the router design (fallback on the real error, not a hardcoded number) is
+  unaffected.

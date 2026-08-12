@@ -34,17 +34,36 @@ Free tiers change often. As of mid-2026:
 provider (`groq.py`, `gemini.py`, `openrouter.py`, …) adapts its SDK/endpoint.
 
 **Router with fallback** (`ai/router.py`): reads `AI_PROVIDER_ORDER` from `.env`
-(default `groq,gemini_flash_lite,openrouter,gemini_flash`). For each batch it uses the
-first provider that is configured **and** not over its tracked quota; on quota/error it
-falls back to the next. It tracks per-provider daily usage locally so it stops *before*
-wasting calls, and never retries a hard daily-quota error against the same provider.
+(default `gemini_flash,groq,gemini_flash_lite,openrouter` — see amendment below). For
+each batch it uses the first provider that is configured **and** not over its tracked
+quota; on quota/error it falls back to the next. It tracks per-provider daily usage
+locally so it stops *before* wasting calls, and never retries a hard daily-quota error
+against the same provider — a transient (non-daily) error only skips that provider for
+the current batch, and it's tried again on the next one.
 
-**Default primary: Groq.** Fast, free, no card, OpenAI-compatible, good at JSON. Use a
+> **Amendment (Kevin, 2026-08-12):** the order below was originally chosen for
+> speed/quota (Groq first). Kevin's explicit call for EATP-012: order by **quality**
+> first, and only degrade once a provider's daily quota actually runs out — the north
+> star is match quality (§1 mission), not raw throughput. Default order is now
+> `gemini_flash, groq, gemini_flash_lite, openrouter`. Because the router falls back on
+> the *real* error it receives rather than a hardcoded number, this doesn't depend on
+> the exact published limits below staying accurate.
+
+**Default primary: Gemini 2.5 Flash.** Best quality free-tier model available, native
+structured output (`response_schema`), huge context — but a small daily cap (~20
+req/day as of late 2025/mid-2026), so it's used first and exhausted quickly on a normal
+run, then the router moves on.
+
+**Default second: Groq.** Fast, free, no card, OpenAI-compatible, good at JSON. Use a
 capable open model (e.g. `llama-3.3-70b-versatile` or `openai/gpt-oss-120b`). Keep
 batches small enough to respect the per-day **token** cap, not just the request cap.
 
-**Default first fallback: Gemini 2.5 Flash-Lite** via `google-genai`, using native
-structured output (response schema). Big daily allowance, big context.
+**Default third: Gemini 2.5 Flash-Lite** via `google-genai`, using native structured
+output (response schema). Big daily allowance, big context — the workhorse fallback
+once Flash and Groq are spent.
+
+**Default last: OpenRouter's free models** (Llama 3.3, Qwen3, GPT-OSS, Gemma, …) — most
+variable in quality and the smallest free daily cap, so it's the final overflow.
 
 ## Structured output + robust parsing (fixes P11)
 

@@ -131,6 +131,40 @@ HEALTH_BASELINE_MAX_RUNS = 10
 HEALTH_MIN_RUNS_FOR_BASELINE = 2
 
 # ---------------------------------------------------------------------------
+# AI layer (EATP-012, ADR-003) — cloud-only, multi-provider with fallback.
+# ---------------------------------------------------------------------------
+AI_USAGE_FILE = DATA_DIR / "ai_usage.json"
+
+# Kevin (2026-08-12): order by QUALITY first, degrading only once a provider's
+# daily quota is actually exhausted — not by raw speed. Gemini 2.5 Flash is
+# the best free-tier model available but has a tiny daily cap; Groq is strong
+# and fast with a generous cap; Gemini Flash-Lite is the big-quota workhorse;
+# OpenRouter's free models are the last, most variable-quality resort. The
+# router falls back on the real error it gets, so exact published limits
+# (which drift) don't need to be exact for this to work.
+AI_PROVIDER_ORDER = [
+    provider.strip()
+    for provider in os.getenv("AI_PROVIDER_ORDER", "gemini_flash,groq,gemini_flash_lite,openrouter").split(",")
+    if provider.strip()
+]
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY") or None
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or None
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or None
+
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+GEMINI_FLASH_MODEL = os.getenv("GEMINI_FLASH_MODEL", "gemini-2.5-flash")
+GEMINI_FLASH_LITE_MODEL = os.getenv("GEMINI_FLASH_LITE_MODEL", "gemini-2.5-flash-lite")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+
+# Jobs per AI request. Keeps prompts within per-day TOKEN caps (which bite
+# before per-day request caps on the bigger models) while still batching
+# enough to not burn the request-count cap either.
+AI_BATCH_SIZE = int(os.getenv("AI_BATCH_SIZE", "10"))
+AI_MAX_RETRIES = int(os.getenv("AI_MAX_RETRIES", "3"))
+AI_RETRY_BACKOFF_SECONDS = float(os.getenv("AI_RETRY_BACKOFF_SECONDS", "2.0"))
+
+# ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
 _LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
