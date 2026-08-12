@@ -352,7 +352,20 @@ class IndeedCollector:
         url = build_job_view_url(job_id)
         if not self._navigate(tab, url, f"detalle {job_id}", giveup):
             return None
+        self._wait_for_detail_content(tab)
         return tab.html or ""
+
+    def _wait_for_detail_content(self, tab) -> None:
+        """Give a slow-rendering detail page a bounded chance to finish
+        before reading its HTML. Without this, a real posting that's just
+        slower to render (heavier JS, or 2 tabs competing for resources)
+        reads as an empty page — no JSON-LD yet — and gets silently
+        skipped as if it never existed. Same idea as legacy's
+        `wait.ele_loaded(..., timeout=5)`, which the initial build dropped."""
+        try:
+            tab.ele("css:#jobDescriptionText", timeout=5)
+        except Exception:  # noqa: BLE001, S110 - a missing/slow element just means "read whatever's there"
+            pass
 
     def _navigate(self, tab, url: str, context: str, giveup: threading.Event) -> bool:
         """Load `url` on `tab`; on captcha, retry once after a long cooldown;

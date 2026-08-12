@@ -30,8 +30,9 @@
 | 2026-08-12 | Fases 1-4 | ~45 min | Sin diagnóstico de login (Indeed no requiere sesión) — más simple que EATP-005 |
 | 2026-08-12 | Verificación en vivo | ~15 min | Encontró y corrigió un bug real (ver notas) |
 | 2026-08-12 | Paralelismo (2 pestañas) + reverificación | ~20 min | A pedido de Kevin: la fase de detalle era muy lenta en secuencial |
+| 2026-08-12 | Fix de espera en detalle + corrida completa (9 términos) | ~20 min | Kevin reportó "tarjetas vacías"; corregido y verificado a escala real |
 
-**Total project time:** ~1.5 h (2026-08-12)
+**Total project time:** ~1.8 h (2026-08-12)
 
 ## Session notes
 Reconstruido (no portado) sobre el framework: búsqueda secuencial de una sola pestaña
@@ -62,7 +63,25 @@ término ya tardaba varios minutos; con los 9 términos de producción se habrí
 10-20+ min solo para Indeed. Se agregó un pool de 2 pestañas para la fase de detalle
 (Kevin eligió 2 de 3 opciones presentadas). **Verificación en vivo #2** con el diseño
 paralelo: 1m 8s para el mismo término, 20 vacantes reales con `days_old` correctos
-(0-22), descripciones completas, sin captcha en esta corrida (el camino de
-reintento/abandono compartido entre pestañas solo quedó probado con los tests
-scripteados con threading real, no en vivo — vale la pena vigilarlo en la primera
-corrida programada real con los 9 términos completos).
+(0-22), descripciones completas, sin captcha en esta corrida.
+
+**Fix de "tarjetas vacías":** Kevin reportó que en la fase de detalle a veces se abrían
+páginas que parecían vacías o con mensajes tipo "no se encontró". Causa real: solo se
+esperaba una pausa corta (1.5-4s) antes de leer el HTML de la página de detalle — si esa
+página en particular tardaba más en renderizar (app pesada en JS, o 2 pestañas
+compitiendo por recursos), se leía el HTML antes de que apareciera el JSON-LD o la
+descripción, y la vacante se descartaba en silencio aunque era válida. Legacy sí tenía
+esta espera explícita (`wait.ele_loaded(..., timeout=5)`) y la reconstrucción inicial la
+omitió. Corregido: `_wait_for_detail_content()` espera hasta 5s a que aparezca
+`#jobDescriptionText` antes de leer el HTML.
+
+**Verificación en vivo #3 — corrida completa con los 9 términos de producción:**
+6 minutos totales, sin ningún captcha. 55 ids únicos encontrados entre los 9 términos;
+50 con JSON-LD utilizable, 5 (~9%) siguieron viniendo vacíos incluso con la espera —
+consistente con vacantes genuinamente ya no disponibles (Indeed sirve una página de
+"ya no disponible" para links expirados), no con el bug de timing original. 45 vacantes
+reales al final, todas con descripción completa y `days_old` correcto. El camino de
+reintento/abandono compartido entre pestañas sigue sin haberse visto en vivo (no hubo
+captcha en ninguna de las 3 corridas reales) — solo está probado con los tests
+scripteados con threading real; vale la pena vigilarlo cuando ocurra de forma natural
+en una corrida programada.

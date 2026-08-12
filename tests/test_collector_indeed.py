@@ -287,6 +287,11 @@ class _ScriptedPage:
         current = self._current()
         return current[2] if current else []
 
+    def ele(self, selector: str, timeout: float | None = None):
+        # Content is already fully "rendered" in these fixtures — the real
+        # wait is what protects against a slow-loading page, not modeled here.
+        return object()
+
     def new_tab(self):
         self.new_tab_calls += 1
         return self
