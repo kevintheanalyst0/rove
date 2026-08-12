@@ -11,6 +11,7 @@ DrissionPage's `ChromiumPage`. No live network, no real browser.
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 from queue import Empty
 
@@ -241,32 +242,54 @@ class _FakeWait:
 
 
 class _ScriptedPage:
-    """One scripted (url, html, cards, title) response per `.get()` call, in order."""
+    """Maps each requested URL to a queue of canned (html, cards, title)
+    responses, popped in order per URL (so the same URL can captcha once and
+    recover on retry). URL-keyed rather than call-order-keyed because 2
+    detail tabs pull job ids off a shared queue concurrently — which tab
+    reaches `.get()` first isn't deterministic, but which URL it asks for
+    always is. Per-thread "current" state models each tab having its own
+    independent view, same as real browser tabs.
+    """
 
-    def __init__(self, responses: list[tuple[str, str, list[_FakeCard], str]]):
-        self._responses = list(responses)
-        self._current: tuple[str, str, list[_FakeCard], str] | None = None
+    def __init__(self, responses: dict[str, list[tuple[str, list[_FakeCard], str]]]):
+        self._responses = {url: list(items) for url, items in responses.items()}
+        self._lock = threading.Lock()
+        self._current_by_thread: dict[int, tuple[str, str, list, str]] = {}
         self.wait = _FakeWait()
         self.quit_called = False
+        self.new_tab_calls = 0
 
     def get(self, url: str) -> None:
-        if self._responses:
-            self._current = self._responses.pop(0)
+        with self._lock:
+            queue = self._responses.get(url)
+            html, cards, title = queue.pop(0) if queue else ("", [], "")
+        self._current_by_thread[threading.get_ident()] = (url, html, cards, title)
+
+    def _current(self):
+        return self._current_by_thread.get(threading.get_ident())
 
     @property
     def url(self) -> str:
-        return self._current[0] if self._current else ""
+        current = self._current()
+        return current[0] if current else ""
 
     @property
     def html(self) -> str:
-        return self._current[1] if self._current else ""
+        current = self._current()
+        return current[1] if current else ""
 
     @property
     def title(self) -> str:
-        return self._current[3] if self._current else ""
+        current = self._current()
+        return current[3] if current else ""
 
     def eles(self, selector: str) -> list[_FakeCard]:
-        return self._current[2] if self._current else []
+        current = self._current()
+        return current[2] if current else []
+
+    def new_tab(self):
+        self.new_tab_calls += 1
+        return self
 
     def quit(self) -> None:
         self.quit_called = True
@@ -274,6 +297,18 @@ class _ScriptedPage:
 
 def _card_for(fixture: dict) -> _FakeCard:
     return _FakeCard(_FakeLink(fixture["job_id"]))
+
+
+def _responses_for(
+    *entries: tuple[str, str, list[_FakeCard], str],
+) -> dict[str, list[tuple[str, list[_FakeCard], str]]]:
+    """Group scripted (url, html, cards, title) entries by url, preserving
+    per-url order (a url requested twice — e.g. captcha then retry — gets
+    its responses in the order given)."""
+    grouped: dict[str, list[tuple[str, list[_FakeCard], str]]] = {}
+    for url, html, cards, title in entries:
+        grouped.setdefault(url, []).append((html, cards, title))
+    return grouped
 
 
 def _detail_response(fixture: dict) -> tuple[str, str, list[_FakeCard], str]:
@@ -297,6 +332,8 @@ def _no_real_sleep(monkeypatch):
 
 
 def test_collect_yields_real_fixture_jobs_across_search_and_detail(monkeypatch):
+    # 2 fixtures + the default 2 detail workers: exercises the real parallel
+    # path (2 tabs), not just the single-tab-clamped case.
     fixtures = FIXTURES[:2]
     monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
 
@@ -306,20 +343,24 @@ def test_collect_yields_real_fixture_jobs_across_search_and_detail(monkeypatch):
         [_card_for(f) for f in fixtures],
         "",
     )
-    responses = [search_response, *[_detail_response(f) for f in fixtures]]
-    page = _ScriptedPage(responses)
+    page = _ScriptedPage(
+        _responses_for(search_response, *[_detail_response(f) for f in fixtures])
+    )
 
     collector = IndeedCollector(page_factory=lambda: page)
     jobs = list(collector.collect())
 
     assert {job.title for job in jobs} == {f["title"] for f in fixtures}
+    assert page.new_tab_calls == 1  # 2 fixtures -> 2 workers -> 1 extra tab
     assert page.quit_called is True
 
 
 def test_collect_stops_on_no_results_marker(monkeypatch):
     monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
     page = _ScriptedPage(
-        [(build_search_url("analista de datos", 0), "no matching jobs found", [], "")]
+        _responses_for(
+            (build_search_url("analista de datos", 0), "no matching jobs found", [], "")
+        )
     )
 
     collector = IndeedCollector(page_factory=lambda: page)
@@ -329,23 +370,16 @@ def test_collect_stops_on_no_results_marker(monkeypatch):
 
 
 def test_collect_retries_once_on_captcha_then_recovers(monkeypatch):
+    # A single fixture clamps detail_workers down to 1 tab — deterministic.
     fixtures = FIXTURES[:1]
     monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
 
-    captcha_response = (
-        build_search_url("analista de datos", 0),
-        "Security Check",
-        [],
-        "Security Check",
+    search_url = build_search_url("analista de datos", 0)
+    captcha_response = (search_url, "Security Check", [], "Security Check")
+    real_response = (search_url, "1 resultado", [_card_for(fixtures[0])], "")
+    page = _ScriptedPage(
+        _responses_for(captcha_response, real_response, _detail_response(fixtures[0]))
     )
-    real_response = (
-        build_search_url("analista de datos", 0),
-        "1 resultado",
-        [_card_for(fixtures[0])],
-        "",
-    )
-    responses = [captcha_response, real_response, _detail_response(fixtures[0])]
-    page = _ScriptedPage(responses)
 
     subscriber = events.bus.subscribe()
     try:
@@ -363,14 +397,10 @@ def test_collect_retries_once_on_captcha_then_recovers(monkeypatch):
 def test_collect_gives_up_cleanly_after_persistent_captcha(monkeypatch):
     monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
 
-    captcha_response = (
-        build_search_url("analista de datos", 0),
-        "Security Check",
-        [],
-        "Security Check",
-    )
+    search_url = build_search_url("analista de datos", 0)
+    captcha_response = (search_url, "Security Check", [], "Security Check")
     # Both the first attempt and the single retry hit a captcha.
-    page = _ScriptedPage([captcha_response, captcha_response])
+    page = _ScriptedPage(_responses_for(captcha_response, captcha_response))
 
     subscriber = events.bus.subscribe()
     try:
@@ -395,6 +425,9 @@ def test_collect_gives_up_cleanly_after_persistent_captcha(monkeypatch):
 def test_collect_preserves_jobs_already_yielded_when_captcha_hits_during_details(
     monkeypatch,
 ):
+    # Forced to 1 detail worker: deterministic ordering, since this test is
+    # about progress preservation, not the parallel path (already covered
+    # above).
     fixtures = FIXTURES[:2]
     monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
 
@@ -404,21 +437,19 @@ def test_collect_preserves_jobs_already_yielded_when_captcha_hits_during_details
         [_card_for(f) for f in fixtures],
         "",
     )
-    captcha_response = (
-        build_job_view_url(fixtures[1]["job_id"]),
-        "Security Check",
-        [],
-        "Security Check",
+    captcha_url = build_job_view_url(fixtures[1]["job_id"])
+    captcha_response = (captcha_url, "Security Check", [], "Security Check")
+    page = _ScriptedPage(
+        _responses_for(
+            search_response,
+            _detail_response(fixtures[0]),
+            captcha_response,
+            captcha_response,  # retry also captchas
+        )
     )
-    responses = [
-        search_response,
-        _detail_response(fixtures[0]),
-        captcha_response,
-        captcha_response,  # retry also captchas
-    ]
-    page = _ScriptedPage(responses)
 
-    collector = IndeedCollector(page_factory=lambda: page)
+    collector = IndeedCollector(page_factory=lambda: page, detail_workers=1)
     jobs = list(collector.collect())
 
     assert [job.title for job in jobs] == [fixtures[0]["title"]]
+    assert page.new_tab_calls == 0

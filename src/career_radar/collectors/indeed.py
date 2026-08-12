@@ -1,22 +1,29 @@
-"""Indeed collector — single sequential browser tab; JSON-LD parses details.
+"""Indeed collector — sequential search, 2 parallel tabs for job details.
 
 Deliberately NOT ported from `legacy/jobmatch/collectors/indeed.py` as-is
 (CLAUDE.md golden rule 12): legacy ran 2 search tabs + 3 detail tabs
 coordinated with a captcha lock/event, and blocked the whole run on
 `input()` the moment any tab hit a captcha — the exact anti-pattern
-ADR-004/R11-R12 rule out, and more account/complexity risk (P23) than a
-source `docs/governance/SEARCH-STRATEGY.md` already treats as Tier 3. It
-also scraped `hiringOrganization`/`datePublished` with regex over raw HTML
-instead of parsing the `JobPosting` JSON-LD block Indeed actually embeds.
+ADR-004/R11-R12 rule out. It also scraped `hiringOrganization`/`datePosted`
+with regex over raw HTML instead of parsing the `JobPosting` JSON-LD block
+Indeed actually embeds.
 
-Rebuilt: one sequential tab (mirrors the LinkedIn rebuild, EATP-005), real
-JSON-LD parsing via BeautifulSoup + `json.loads`, and — per Kevin's explicit
-ask — a captcha requires ZERO intervention from him: it publishes an event
-for visibility only, gets one self-retry after a long human-like cooldown
-(a captcha here reads as a rate-limit signal, not an auth wall), and if it
-still won't clear, Indeed stops cleanly for this run. Whatever was already
-collected before the captcha hit is preserved (jobs stream out via `yield`
-as they're built) — nothing is lost, nothing blocks, nothing asks.
+Rebuilt: JSON-LD parsing via BeautifulSoup + `json.loads`, and — per
+Kevin's explicit ask — a captcha requires ZERO intervention from him: it
+publishes an event for visibility only, gets one self-retry after a long
+human-like cooldown (a captcha here reads as a rate-limit signal, not an
+auth wall), and if it still won't clear, Indeed stops cleanly for this run.
+
+Search-id collection stays single-tab and sequential (cheap — a handful of
+pages per term). Detail fetching — the part that dominates total run time,
+one request per job — uses a small pool of browser tabs (2 by default,
+Kevin's call: enough to meaningfully cut run time without approaching
+legacy's 5-tab concurrency). Because Indeed's captcha is session/IP-wide,
+not per-tab, more tabs don't make captchas "block everything" any worse
+than a single tab would — captcha in any one tab sets a shared flag that
+stops every tab at once, still without asking Kevin to do anything, and
+whatever was already fetched before that point is preserved (each detail
+tab streams its own successes into a shared result queue).
 
 What's kept from legacy because it's genuine site knowledge: the search
 filter params (`fromage=14` / remote attr `DSQF7`), the pagination
@@ -30,9 +37,11 @@ from __future__ import annotations
 import json
 import random
 import re
+import threading
 import time
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from queue import Empty, Queue
 from urllib.parse import quote
 
 from bs4 import BeautifulSoup
@@ -43,6 +52,9 @@ from career_radar.collectors.parsing import clean_text
 from career_radar.models import Job
 
 SOURCE = "indeed"
+_DETAIL_WORKERS = (
+    2  # Kevin's call: fewer than legacy's 3, enough to cut run time meaningfully
+)
 
 BASE_URL = "https://mx.indeed.com/jobs"
 DETAIL_URL = "https://mx.indeed.com/viewjob"
@@ -197,51 +209,50 @@ class IndeedCollector:
 
     name = SOURCE
 
-    def __init__(self, page_factory=None) -> None:
+    def __init__(
+        self, page_factory=None, detail_workers: int = _DETAIL_WORKERS
+    ) -> None:
         self._page_factory = page_factory or (
             lambda: browser.build_page(use_profile=True)
         )
+        self._detail_workers = detail_workers
 
     def collect(self) -> Iterator[Job]:
         page = self._page_factory()
+        # Shared across the search phase and every detail tab: the moment
+        # any one of them confirms a persistent captcha, all the others stop
+        # too — Indeed's block is session/IP-wide, so there's nothing to gain
+        # from letting the rest keep hitting it.
+        giveup = threading.Event()
         try:
             ordered_ids: list[str] = []
             seen: set[str] = set()
             for term in config.SEARCH_TERMS:
-                term_ids = self._collect_term_ids(page, term)
-                if term_ids is None:
-                    # Persistent captcha, already retried once — stop
-                    # entirely rather than keep hitting a source that's
-                    # rate-limiting us term after term.
-                    return
-                for job_id in term_ids:
+                if giveup.is_set():
+                    break
+                for job_id in self._collect_term_ids(page, term, giveup):
                     if job_id not in seen:
                         seen.add(job_id)
                         ordered_ids.append(job_id)
 
-            for job_id in ordered_ids:
-                detail_html = self._fetch_detail_html(page, job_id)
-                if detail_html is None:
-                    return
-                detail = parse_detail_page(detail_html)
-                if detail is None:
-                    continue
-                job = _build_job(job_id, detail)
-                if job is not None:
-                    yield job
+            yield from self._fetch_details(page, ordered_ids, giveup)
         finally:
             page.quit()
 
-    def _collect_term_ids(self, page, term: str) -> list[str] | None:
+    def _collect_term_ids(self, page, term: str, giveup: threading.Event) -> list[str]:
         term_ids: list[str] = []
         seen_ids: set[str] = set()
         seen_page_signatures: set[tuple[str, ...]] = set()
 
         for page_number in range(1, _MAX_PAGES_PER_TERM + 1):
+            if giveup.is_set():
+                break
             start = (page_number - 1) * _PAGE_SIZE
             url = build_search_url(term, start)
-            if not self._navigate(page, url, f"búsqueda '{term}' página {page_number}"):
-                return None
+            if not self._navigate(
+                page, url, f"búsqueda '{term}' página {page_number}", giveup
+            ):
+                break
 
             html_lower = (page.html or "").lower()
             if is_search_no_results(html_lower):
@@ -283,19 +294,77 @@ class IndeedCollector:
                 ids.append(job_id)
         return ids
 
-    def _fetch_detail_html(self, page, job_id: str) -> str | None:
-        url = build_job_view_url(job_id)
-        if not self._navigate(page, url, f"detalle {job_id}"):
-            return None
-        return page.html or ""
+    def _fetch_details(
+        self, page, job_ids: list[str], giveup: threading.Event
+    ) -> Iterator[Job]:
+        """Fan out detail fetches across a small pool of browser tabs.
 
-    def _navigate(self, page, url: str, context: str) -> bool:
-        """Load `url`; on captcha, retry once after a long cooldown; on
-        persistent captcha, publish an event (visibility only — nobody is
-        asked to act) and report failure so the caller stops cleanly."""
-        page.get(url)
+        Each tab is its own thread pulling from a shared queue — one job
+        never blocks another's tab. Results collect into a shared queue and
+        are yielded once every tab has finished (or given up), so a
+        mid-phase captcha still preserves every job successfully fetched
+        before it hit.
+        """
+        if not job_ids or giveup.is_set():
+            return
+
+        worker_count = max(1, min(self._detail_workers, len(job_ids)))
+        tabs = [page] + [page.new_tab() for _ in range(worker_count - 1)]
+
+        job_queue: Queue[str] = Queue()
+        for job_id in job_ids:
+            job_queue.put(job_id)
+        results: Queue[Job] = Queue()
+
+        def worker(tab) -> None:
+            while not giveup.is_set():
+                try:
+                    job_id = job_queue.get_nowait()
+                except Empty:
+                    return
+                try:
+                    detail_html = self._fetch_detail_html(tab, job_id, giveup)
+                    if detail_html is None:
+                        continue
+                    detail = parse_detail_page(detail_html)
+                    if detail is None:
+                        continue
+                    job = _build_job(job_id, detail)
+                    if job is not None:
+                        results.put(job)
+                finally:
+                    job_queue.task_done()
+
+        threads = [threading.Thread(target=worker, args=(tab,)) for tab in tabs]
+        for thread in threads:
+            thread.start()
+            browser.human_pause(0.3, 0.8)  # stagger tab starts, not a single burst
+
+        for thread in threads:
+            thread.join()
+
+        while not results.empty():
+            yield results.get_nowait()
+
+    def _fetch_detail_html(
+        self, tab, job_id: str, giveup: threading.Event
+    ) -> str | None:
+        url = build_job_view_url(job_id)
+        if not self._navigate(tab, url, f"detalle {job_id}", giveup):
+            return None
+        return tab.html or ""
+
+    def _navigate(self, tab, url: str, context: str, giveup: threading.Event) -> bool:
+        """Load `url` on `tab`; on captcha, retry once after a long cooldown;
+        on persistent captcha, set the shared `giveup` flag (stopping every
+        other tab too) and publish an event — visibility only, nobody is
+        asked to act — then report failure so the caller moves on."""
+        if giveup.is_set():
+            return False
+
+        tab.get(url)
         browser.human_pause()
-        if not is_captcha_page(page.html or "", getattr(page, "title", "") or ""):
+        if not is_captcha_page(tab.html or "", getattr(tab, "title", "") or ""):
             return True
 
         browser.request_manual_intervention(
@@ -303,14 +372,18 @@ class IndeedCollector:
             f"Indeed mostró un captcha ({context}); se reintenta una vez tras una pausa.",
         )
         time.sleep(random.uniform(*_CAPTCHA_RETRY_WAIT_SECONDS))
+        if giveup.is_set():
+            return False
 
-        page.get(url)
+        tab.get(url)
         browser.human_pause()
-        if not is_captcha_page(page.html or "", getattr(page, "title", "") or ""):
+        if not is_captcha_page(tab.html or "", getattr(tab, "title", "") or ""):
             return True
 
-        browser.request_manual_intervention(
-            SOURCE,
-            f"Indeed sigue en captcha tras reintentar ({context}); se omite Indeed en esta corrida.",
-        )
+        if not giveup.is_set():
+            giveup.set()
+            browser.request_manual_intervention(
+                SOURCE,
+                f"Indeed sigue en captcha tras reintentar ({context}); se omite Indeed en esta corrida.",
+            )
         return False
