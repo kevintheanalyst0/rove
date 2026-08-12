@@ -1,0 +1,23 @@
+[
+    {
+        "id": "2001",
+        "title": "Data Analyst",
+        "company": "GitLab",
+        "description": "GitLab is looking for a remote Data Analyst to own reporting for our go-to-market team, build dashboards in our BI stack, and partner with stakeholders across the business to answer data questions.",
+        "location": "Remote"
+    },
+    {
+        "id": "2002",
+        "title": "Business Intelligence Analyst",
+        "company": "Stripe",
+        "description": "Join our BI team to design dashboards, maintain data models, and support finance leadership with recurring business intelligence reporting across the company.",
+        "location": "Remote - US"
+    },
+    {
+        "id": "2003",
+        "title": "Business Analyst, Operations",
+        "company": "Palantir",
+        "description": "We need a Business Analyst to gather requirements from stakeholders, document processes, and translate business needs into functional specs for our operations team.",
+        "location": "Remote"
+    }
+]

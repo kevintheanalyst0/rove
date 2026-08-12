@@ -69,6 +69,28 @@ ENGLISH_SEARCH_TERMS = [
     "analytics analyst",
 ]
 
+# Curated ATS company boards (EATP-008) — remote-friendly companies with a
+# public Greenhouse/Lever board, seeded with defaults confirmed live to have
+# open postings. v1 is a hand-maintained list; automatic discovery is
+# backlog. Grow freely — each entry is just a company's board slug.
+ATS_COMPANIES: dict[str, list[str]] = {
+    "greenhouse": [
+        "gitlab",
+        "stripe",
+        "coinbase",
+        "figma",
+        "elastic",
+        "asana",
+        "discord",
+        "webflow",
+        "mixpanel",
+        "amplitude",
+        "vercel",
+        "airtable",
+    ],
+    "lever": ["palantir", "clari"],
+}
+
 # ---------------------------------------------------------------------------
 # Browser (Chromium via DrissionPage — LinkedIn/Indeed collectors)
 # ---------------------------------------------------------------------------

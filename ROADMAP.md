@@ -51,7 +51,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-005** | LinkedIn collector (refactor + harden) | B | ✅ | 003 | Medium | ~2.5 h (2026-08-12) |
 | **EATP-006** | Indeed collector — optimize & de-captcha | B | ✅ | 003 | Medium | ~1.8 h (2026-08-12) |
 | **EATP-007** | New sources — remote-first boards | B | ✅ | 003 | Light-med | ~45 min (2026-08-12) |
-| **EATP-008** | New sources — ATS + LatAm boards | B | ⬜ | 003 | Medium | — |
+| **EATP-008** | New sources — ATS + LatAm boards | B | ✅ | 003 | Medium | ~1 h (2026-08-12) |
 | **EATP-009** | Quality gates — filters + remote hard-gate | B | ⬜ | 002 | Medium | — |
 | **EATP-010** | Dedup, content-signature cache & run history | B | ⬜ | 001, 009 | Medium | — |
 | **EATP-011** | Source health & self-check | B | ⬜ | 003–008, 010 | Light | — |
@@ -151,3 +151,8 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 - **Automatic ATS company discovery** (beyond the curated list in EATP-008).
 - **Richer notifications** (a simple A-grade alert lands in EATP-018; more is backlog).
 - **"Hide all from this company"** tracking option (beyond per-posting dismiss).
+- **Get on Board / Torre as real sources** (EATP-008 investigated, didn't ship): Get on
+  Board has no discoverable public API (client-rendered SPA, no JSON-LD/RSS found);
+  Torre's search endpoint ignores every query/pagination param sent and always returns
+  the same static ~10-result snapshot. Revisit only if a real endpoint is found —
+  don't re-attempt the same guesses.
