@@ -23,6 +23,15 @@ En ambos casos se abre una ventana negra; para apagar el servidor, cerrala (o Ct
 adentro). Si querés accesos directos en el Escritorio, clic derecho sobre cada `.bat` →
 *Enviar a* → *Escritorio (crear acceso directo)*.
 
+**Ponerles ícono a los accesos directos:** en la misma carpeta hay dos íconos ya
+armados (`Career Radar - Ejecutar busqueda.ico` y `Career Radar - Ver resultados.ico`,
+uno con ▶ verde para el que arranca la corrida, otro con ✓ verde para el que solo
+muestra resultados). Windows no deja ponerle ícono al `.bat` en sí — hay que hacerlo
+sobre el acceso directo del Escritorio:
+1. Clic derecho sobre el acceso directo → **Propiedades**.
+2. Pestaña *Acceso directo* → botón **Cambiar icono...**
+3. **Examinar** → buscá el `.ico` que corresponda (misma carpeta que el `.bat`) → Abrir → Aceptar.
+
 **La forma manual** (si el `.bat` no te funciona, o querés ver qué está pasando):
 1. Abre una terminal de Ubuntu/WSL en esta carpeta.
 2. Activa el entorno y levanta el servidor:
