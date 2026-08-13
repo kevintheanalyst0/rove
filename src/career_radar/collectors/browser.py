@@ -69,7 +69,15 @@ def build_options(*, use_profile: bool = True, headless: bool = False) -> Chromi
 
 
 def build_page(*, use_profile: bool = True, headless: bool = False) -> ChromiumPage:
-    return ChromiumPage(addr_or_opts=build_options(use_profile=use_profile, headless=headless))
+    page = ChromiumPage(addr_or_opts=build_options(use_profile=use_profile, headless=headless))
+    if not headless:
+        # Kevin's call (2026-08-13): he needs to read/solve a captcha in this
+        # window, so it must be maximized, not whatever small randomized
+        # viewport `build_options` picked for fingerprint variety. New tabs
+        # (Indeed's detail-fetch pool) share this same OS window, so this
+        # covers them too — no per-tab call needed.
+        page.set.window.max()
+    return page
 
 
 def human_pause(min_seconds: float = 1.5, max_seconds: float = 4.0) -> None:
