@@ -56,4 +56,5 @@ P16 (GitHub), R12 (minimize manual actions), final P13/P14 check, overall harden
 1 session (~2-3 h).
 
 ## Open questions for Kevin
-- GitHub: public or private, and repo name (default career-radar)? Want the daily auto-run + notification, and if so which channel (desktop / email / Telegram)?
+- ~~GitHub: public or private, and repo name (default career-radar)?~~ **Resuelto 2026-08-12: público, `career-radar`.**
+- ~~Want the daily auto-run + notification, and if so which channel?~~ **Resuelto 2026-08-12: Kevin no quiere la notificación de match — se documenta el scheduler pero no se construye ningún hook de notificación.**

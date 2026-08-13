@@ -1,45 +1,64 @@
 # Career Radar
 
-A personal, **remote-first job-discovery engine** — the rebuild of *JobMatchEngine*.
-It collects Data Analyst / BI / Business Analyst vacancies from multiple sources,
-filters them hard for genuine remote + real fit, evaluates them with AI, and shows the
-results in a clean local web UI.
+A personal, **remote-first job-discovery engine** for Kevin — the rebuild of
+*JobMatchEngine*. It collects Data Analyst / BI / Business Analyst vacancies from
+multiple sources, filters them hard for genuine remote + real fit, evaluates them with
+AI, and shows the results in a clean local web UI. No terminal, no manual triage.
 
-> **This repository is a scaffold.** The working system is built here inside Ubuntu/WSL
-> by Claude Code, **one project at a time**, following `ROADMAP.md`. When all projects
-> are done, the repo is published to GitHub (EATP-018).
+**North star: quality of matches, not volume.** A short list Kevin actually wants to
+apply to beats a long one he has to wade through.
 
-## Empezar (Kevin)
+## Cómo correrlo (Kevin)
 
-En una terminal de Ubuntu, dentro de esta carpeta, abre Claude Code y escribe:
+1. Abre una terminal de Ubuntu/WSL en esta carpeta.
+2. Activa el entorno y levanta el servidor:
+   ```bash
+   source .venv/bin/activate
+   uvicorn career_radar.web.server:app --host 127.0.0.1 --port 8000
+   ```
+3. Abre `http://127.0.0.1:8000` en el navegador.
+4. Aprieta **"Iniciar búsqueda"**. Vas a ver el spinner con el estado en vivo; cuando
+   termine, se muestra el dashboard con los resultados.
+5. Si LinkedIn o Indeed piden verificación humana durante la corrida, va a aparecer una
+   ventana de Chrome pidiéndotelo — resuélvela ahí (el sistema espera hasta 5 minutos;
+   si no llegas a tiempo, esa fuente se omite y el resto de la corrida sigue igual).
+   Si la ventana de Chrome no aparece en pantalla, probá reiniciar Ubuntu/WSL (`wsl
+   --shutdown` desde PowerShell y volver a abrir la terminal) — es un problema conocido
+   de WSLg, no del sistema.
+6. En el dashboard puedes marcar cada vacante **Apliqué** / **No me interesa** — las que
+   marques "no me interesa" no vuelven a aparecer en corridas futuras.
 
-```
-Trabajemos en EATP-001
-```
+Para cerrar el servidor, `Ctrl+C` en la terminal.
 
-Claude hará el resto. Ver `ROADMAP.md` → "Cómo usar este repo".
+### Corrida diaria automática (opcional, no activada)
+
+Ver `docs/governance/AUTOMATION.md` para la receta documentada (Task Scheduler de
+Windows + `wsl.exe`) por si en algún momento quieres activarla. Hoy queda apagada a
+propósito — cada corrida gasta cuota gratuita de IA, y una corrida automática sin
+supervisión no puede resolver un captcha de LinkedIn/Indeed si aparece.
 
 ## Repo map
 
 ```
 career-radar/
-├── CLAUDE.md              ← how Claude Code must operate (read this first)
-├── ROADMAP.md             ← the 10-project plan + status dashboard
-├── README.md              ← you are here
-├── pyproject.toml         ← package + dependency definition
-├── requirements.txt       ← pip mirror of dependencies
-├── .env.example           ← copy to .env and fill in API keys
+├── CLAUDE.md              ← how Claude Code operates in this repo
+├── ROADMAP.md              ← the 18-project build plan + status dashboard
+├── CHANGELOG.md             ← what shipped, grouped by EATP project
+├── README.md                ← you are here
+├── pyproject.toml           ← package + dependency definition
+├── requirements.txt          ← pip mirror of dependencies
+├── .env.example                ← copy to .env and fill in API keys
 ├── docs/
-│   ├── governance/        ← authoritative design docs (one file per topic)
-│   ├── adr/               ← architecture decision records
-│   └── diagnosis/         ← review of the legacy system + problem map
+│   ├── governance/          ← authoritative design docs (one file per topic)
+│   ├── adr/                 ← architecture decision records
+│   └── diagnosis/           ← review of the legacy system + problem map
 ├── projects/
-│   ├── _TEMPLATE/         ← charter + checklist templates
-│   └── EATP-001 … 018/    ← one folder per project (charter + checklist)
-├── src/career_radar/      ← the package (built by Claude Code)
-├── tests/                 ← tests + fixtures (real job records, trimmed)
-├── data/                  ← runtime data (gitignored)
-└── legacy/                ← the original JobMatchEngine, read-only reference
+│   ├── _TEMPLATE/            ← charter + checklist templates
+│   └── EATP-001 … 018/       ← one folder per project (charter + checklist)
+├── src/career_radar/         ← the package
+├── tests/                    ← tests + fixtures (real job records, trimmed)
+├── data/                     ← runtime data (gitignored)
+└── legacy/                   ← the original JobMatchEngine, read-only reference
 ```
 
 ## Design principles
@@ -51,4 +70,17 @@ career-radar/
 - **No terminal for the user.** The product is a web page with a working-spinner.
 - **Small, safe sessions.** One project per session; crash-aware; token-disciplined.
 
-See `docs/governance/ARCHITECTURE.md` for the full picture.
+See `docs/governance/ARCHITECTURE.md` for the full system design and `CHANGELOG.md` for
+what each build session shipped.
+
+## Development
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+playwright install chromium   # browser-driven collectors + UI visual checks
+pytest                          # runs offline against fixtures — no live AI calls
+```
+
+See `CLAUDE.md` for the full operating contract this project was built under, and
+`docs/governance/DEPENDENCIES.md` for what each dependency is for.

@@ -149,7 +149,8 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 - **CV tailoring / cover letters** — legacy `jobmatch/cv/` is Windows/Word-COM only; not
   urgent. Revisit post-018, redesigned cross-platform.
 - **Automatic ATS company discovery** (beyond the curated list in EATP-008).
-- **Richer notifications** (a simple A-grade alert lands in EATP-018; more is backlog).
+- **Richer notifications** (Kevin declined the simple A-grade alert planned for
+  EATP-018, 2026-08-12 — no notification channel exists; revisit only if he asks).
 - **"Hide all from this company"** tracking option (beyond per-posting dismiss).
 - **Get on Board / Torre as real sources** (EATP-008 investigated, didn't ship): Get on
   Board has no discoverable public API (client-rendered SPA, no JSON-LD/RSS found);

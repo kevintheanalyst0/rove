@@ -1,0 +1,101 @@
+# Changelog — Career Radar
+
+All notable changes to this project, grouped by build session (`EATP-00X`). Dates are
+the day the work was done; see `ROADMAP.md` for status/complexity/time per project.
+
+## [Unreleased] — EATP-018 — QA, hardening, automation & GitHub publish (2026-08-12)
+- End-to-end verification via the real web UI: 232 collected -> 48 gated -> 48
+  AI-evaluated -> 48 final. Indeed's captcha resolved manually with the Chrome window
+  visible under WSLg (a prior session had this fail; restarting Ubuntu fixed it).
+- Playwright visual verification: spinner state (dots + live status text, via a
+  fake-pipeline instance so no extra live calls were spent) and the results dashboard
+  (real data) both render correctly, no layout regressions.
+- Confirmed LinkedIn/Lever/RemoteOK returning zero results that run were real "nothing
+  matched" outcomes (verified their APIs directly), not breakage.
+- Documented (not activated) a Windows Task Scheduler + `wsl.exe` daily-run recipe —
+  `docs/governance/AUTOMATION.md`.
+- Match-notification hook: **not built** — Kevin doesn't want it (decided 2026-08-12).
+- Finalized `README.md` and this `CHANGELOG.md`.
+- Secret/`.gitignore` audit and GitHub publish: pending.
+
+## EATP-017 — Match-quality evaluation harness (2026-08-12)
+- Kevin can label shown jobs "good"/"bad" (with a reason) from the dashboard.
+- A precision report compares those labels against the AI's own grading, to answer
+  "did quality actually improve" (P22) instead of guessing.
+
+## EATP-016 — Web UI: results dashboard + job tracking (2026-08-12)
+- Results dashboard: grade, score, pros/cons, summary per job; NEW badge for postings
+  unseen in prior runs (ADR-007).
+- **Apliqué** / **No me interesa** tracking per posting; dismissed jobs are hidden from
+  future runs.
+- Visual redesign to a light "Apple + Aero" glass look (v3), with responsive-layout
+  fixes for the sidebar/card breakpoints.
+
+## EATP-015 — Web UI: backend + runner spinner (2026-08-12)
+- FastAPI backend + single-page frontend. `POST /run` starts the pipeline in a
+  background thread; Server-Sent Events stream live phase/status to the page.
+- Working-spinner + status text instead of a terminal (ADR-004) — Kevin starts a run
+  with one click ("Iniciar búsqueda") and never sees a console.
+
+## EATP-014 — Orchestrator (2026-08-12)
+- One resumable, checkpointed pipeline run wiring collect → gate → matcher pre-filter
+  → AI evaluation → persist. A crash or interruption resumes from the last checkpoint
+  instead of restarting (golden rule 3: never lose progress to an OOM/crash).
+
+## EATP-013 — Scoring & evaluation pipeline (2026-08-12)
+- Matcher pre-filter rejects clearly-bad jobs and caps how many reach the AI, to protect
+  the free AI quota and focus it on plausible matches (P10).
+- AI deep-evaluation is **id-based, not positional** (ADR-006) — fixes P17, where the
+  legacy system could mis-attribute one job's analysis to another.
+- Post-validation guards strip contradictory AI output (e.g. a "pro" that restates a
+  hard exclusion).
+
+## EATP-012 — Multi-provider AI layer (2026-08-12)
+- Groq / Gemini Flash-Lite / OpenRouter with fallback order and quota tracking
+  (ADR-003), so a single provider's tiny free tier never stalls a run.
+- Structured-output enforcement + repair for malformed AI JSON (P11).
+- Fixed a stale Gemini model id and corrected the free-tier quota numbers Kevin had
+  observed in practice, both found via a single approved live smoke test.
+
+## EATP-011 — Source health & self-check (2026-08-12)
+- Detects a source going silently empty/broken (P20) instead of it just quietly
+  yielding nothing forever.
+
+## EATP-010 — Dedup, content-signature cache & run history (2026-08-12)
+- Cross-source fuzzy dedup within a run.
+- Content-signature cache (ADR-001) so daily-reposted jobs don't reappear (P9) — cache
+  keys are content signatures, never volatile site ids.
+
+## EATP-009 — Quality gates (2026-08-12)
+- `filters.py`: title/english/junk gates + the remote hard-gate (ADR-002) — hybrid and
+  onsite jobs are rejected outright, never shown with a "kind of remote" flag (P8).
+
+## EATP-008 — ATS boards: Greenhouse + Lever (2026-08-12)
+- Investigated Get on Board and Torre as sources; neither has a usable public
+  endpoint (documented in `ROADMAP.md` backlog so it isn't re-attempted blind).
+
+## EATP-007 — Remote-first boards (2026-08-12)
+- Remotive, RemoteOK, WWR, Himalayas — broadens sourcing beyond the original 4
+  platforms (P2, P3).
+
+## EATP-006 — Indeed collector (2026-08-12)
+- Rebuilt from scratch, not ported from legacy (P5). Iterated live: fixed a wrong date
+  field (`datePosted`), parallelized detail-page fetches across 2 tabs, and — after
+  Kevin's explicit preference — switched from auto-skipping captchas to waiting for
+  Kevin to resolve them manually, since he'd rather solve it himself than have the run
+  silently under-collect.
+
+## EATP-005 — LinkedIn collector (2026-08-12)
+- Rebuilt from scratch, not ported from legacy.
+
+## EATP-004 — HTTP collectors: OCC & Computrabajo (2026-08-12)
+- Rebuilt from scratch, not ported from legacy.
+
+## EATP-003 — Collector framework (2026-08-12)
+- Shared plumbing (base contract, browser/http helpers, pacing) every collector builds
+  on.
+
+## EATP-001 / EATP-002 — Foundation & criteria (2026-08-12)
+- Config, data models, storage, event bus, candidate profile, hard filters, fit rubric.
+- Fraud-company blocklist (P25) and the legacy-evaluation rule that later became
+  CLAUDE.md golden rule 12 (judge legacy code on its merits, never port by habit).
