@@ -65,9 +65,20 @@
       catches the bug: reverted the fix locally, test failed (1 == 2), restored, green.
 
 ### Phase 6 — LinkedIn returning zero
-- [ ] Add diagnostics distinguishing block/DOM-drift from genuine zero-results
-- [ ] Root-cause (may need a live supervised run)
-- [ ] Fix
+- [x] Reviewed `legacy/jobmatch/collectors/linkedin.py` per Kevin's own recollection:
+      4 parallel tabs + global-pause coordination on rate-limit (kept OUT — the
+      current single-tab design is a deliberate account-safety improvement, not a
+      regression, per EATP-005's own docstring) + retry-once patterns worth keeping:
+      missing results panel got one retry after 10s, a 429/health-error got the
+      whole fleet paused ~40s then retried once.
+- [x] Ported the retry-once *behavior* (not the 4-tab machinery) into the current
+      single-sequential-tab `linkedin.py`: missing results panel now retries once
+      after 10s; an unhealthy/rate-limited page now retries once after 40s before
+      giving up and notifying Kevin. 2 new tests, both verified to fail without the
+      fix (reverted locally, confirmed red, restored, confirmed green).
+- [ ] Root-cause the *specific* zero seen in the EATP-018 real run — still unknown
+      which condition it actually was. Live LinkedIn-only smoke test proposed next
+      (no AI quota spent — LinkedIn collection is pure browser+HTTP).
 
 ### Phase 7 — Verify & close
 - [ ] `pytest` green

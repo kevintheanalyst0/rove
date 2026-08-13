@@ -43,6 +43,15 @@ _MAX_PAGES_PER_TERM = 5
 _LOGIN_WAIT_SECONDS = 120
 _LOGIN_POLL_SECONDS = 5
 
+# Kevin's own recollection of what legacy did (2026-08-13): a missing results
+# panel is often a transient render hiccup, not a block — retry once, short
+# wait. A 429/rate-limit marker deserves a longer, more deferential wait
+# before retrying once — legacy paused every tab and backed off ~40s; this
+# collector is already single-tab (account-safety call, EATP-005), so there's
+# no fleet to pause, just this one retry.
+_UNHEALTHY_RETRY_WAIT_SECONDS = 40
+_PANEL_RETRY_WAIT_SECONDS = 10
+
 _LOGIN_MARKERS = ("/login", "/checkpoint", "/authwall")
 
 _RECOMMENDATION_MARKERS = [
@@ -185,18 +194,26 @@ class LinkedInCollector:
 
             html_lower = (page.html or "").lower()
             if not is_page_healthy(html_lower):
-                browser.request_manual_intervention(
-                    SOURCE,
-                    f"LinkedIn parece estar limitando el ritmo (término '{term}', "
-                    f"página {page_number}); se omite el resto de este término.",
+                html_lower = self._retry_page(
+                    page, term, page_number, wait_seconds=_UNHEALTHY_RETRY_WAIT_SECONDS
                 )
-                return
+                if not is_page_healthy(html_lower):
+                    browser.request_manual_intervention(
+                        SOURCE,
+                        f"LinkedIn parece estar limitando el ritmo (término '{term}', "
+                        f"página {page_number}), incluso tras esperar; se omite el "
+                        "resto de este término.",
+                    )
+                    return
             if page_has_no_real_results(html_lower):
                 return
 
             results_panel = self._find_results_panel(page)
             if results_panel is None:
-                return
+                self._retry_page(page, term, page_number, wait_seconds=_PANEL_RETRY_WAIT_SECONDS)
+                results_panel = self._find_results_panel(page)
+                if results_panel is None:
+                    return
 
             cards = self._load_cards(results_panel)
             if not cards:
@@ -218,6 +235,17 @@ class LinkedInCollector:
                 return
 
             browser.human_pause()
+
+    def _retry_page(self, page, term: str, page_number: int, *, wait_seconds: float) -> str:
+        """Wait, then re-navigate to the same search page once — a transient
+        render hiccup or rate-limit shouldn't cost a whole term when a single
+        retry, at a respectful distance, often clears it (Kevin's own report
+        of how legacy handled this). Returns the fresh lowercased HTML."""
+        time.sleep(wait_seconds)
+        page.get(build_search_url(term, page_number))
+        page.wait.doc_loaded()
+        browser.human_pause()
+        return (page.html or "").lower()
 
     def _find_results_panel(self, page):
         for selector in ("css:div.jobs-search-results-list", "css:div.scaffold-layout__list"):

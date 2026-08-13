@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from queue import Empty
 
 import pytest
 
@@ -257,6 +258,56 @@ def test_collect_stops_and_publishes_an_event_on_an_unhealthy_page(monkeypatch):
         assert event.phase == "collect:linkedin"
     finally:
         events.bus.unsubscribe(subscriber)
+
+
+def test_collect_retries_once_on_an_unhealthy_page_then_recovers(monkeypatch):
+    # Kevin's report of legacy's behavior (2026-08-13): a 429/rate-limit
+    # marker deserves one retry after a backoff before giving up on the term.
+    fixtures = FIXTURES[:1]
+    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
+
+    cards = [_FakeCard(fixtures[0]["title"], job_id=fixtures[0]["job_id"])]
+    url = "https://www.linkedin.com/jobs/search/"
+    page = _ScriptedPage(
+        [
+            (url, "HTTP ERROR 429", None),
+            (url, "1 resultado", _FakeResultsPanel(cards)),
+        ]
+    )
+
+    subscriber = events.bus.subscribe()
+    try:
+        collector = LinkedInCollector(
+            page_factory=lambda: page, detail_fetcher=_detail_fetcher_from_fixtures(fixtures)
+        )
+        jobs = list(collector.collect())
+
+        assert [job.title for job in jobs] == [fixtures[0]["title"]]
+        with pytest.raises(Empty):  # no intervention needed — it recovered on retry
+            subscriber.get(timeout=0.2)
+    finally:
+        events.bus.unsubscribe(subscriber)
+
+
+def test_collect_retries_once_when_results_panel_is_missing_then_recovers(monkeypatch):
+    fixtures = FIXTURES[:1]
+    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
+
+    cards = [_FakeCard(fixtures[0]["title"], job_id=fixtures[0]["job_id"])]
+    url = "https://www.linkedin.com/jobs/search/"
+    page = _ScriptedPage(
+        [
+            (url, "42 resultados", None),  # healthy page, but no panel found yet
+            (url, "42 resultados", _FakeResultsPanel(cards)),
+        ]
+    )
+
+    collector = LinkedInCollector(
+        page_factory=lambda: page, detail_fetcher=_detail_fetcher_from_fixtures(fixtures)
+    )
+    jobs = list(collector.collect())
+
+    assert [job.title for job in jobs] == [fixtures[0]["title"]]
 
 
 def test_collect_gives_up_gracefully_when_login_never_resolves(monkeypatch):
