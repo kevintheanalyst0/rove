@@ -10,6 +10,14 @@ apply to beats a long one he has to wade through.
 
 ## Cómo correrlo (Kevin)
 
+**La forma fácil:** hacé doble clic en `Iniciar Career Radar.bat` (está en esta misma
+carpeta — se ve desde Windows en `\\wsl.localhost\Ubuntu-24.04\home\kevin\Projects\career-radar\`).
+Se abre una ventana negra, arranca el servidor solo y a los pocos segundos se abre el
+navegador. Para apagarlo, cerrá esa ventana negra. Si querés un acceso directo en el
+Escritorio, hacé clic derecho sobre el `.bat` → *Enviar a* → *Escritorio (crear acceso
+directo)*.
+
+**La forma manual** (si el `.bat` no te funciona, o querés ver qué está pasando):
 1. Abre una terminal de Ubuntu/WSL en esta carpeta.
 2. Activa el entorno y levanta el servidor:
    ```bash
@@ -17,15 +25,17 @@ apply to beats a long one he has to wade through.
    uvicorn career_radar.web.server:app --host 127.0.0.1 --port 8000
    ```
 3. Abre `http://127.0.0.1:8000` en el navegador.
-4. Aprieta **"Iniciar búsqueda"**. Vas a ver el spinner con el estado en vivo; cuando
+
+**Una vez adentro:**
+1. Aprieta **"Iniciar búsqueda"**. Vas a ver el spinner con el estado en vivo; cuando
    termine, se muestra el dashboard con los resultados.
-5. Si LinkedIn o Indeed piden verificación humana durante la corrida, va a aparecer una
-   ventana de Chrome pidiéndotelo — resuélvela ahí (el sistema espera hasta 5 minutos;
-   si no llegas a tiempo, esa fuente se omite y el resto de la corrida sigue igual).
-   Si la ventana de Chrome no aparece en pantalla, probá reiniciar Ubuntu/WSL (`wsl
-   --shutdown` desde PowerShell y volver a abrir la terminal) — es un problema conocido
-   de WSLg, no del sistema.
-6. En el dashboard puedes marcar cada vacante **Apliqué** / **No me interesa** — las que
+2. Si LinkedIn o Indeed piden verificación humana durante la corrida, va a aparecer una
+   ventana de Chrome pidiéndotelo, ahora siempre maximizada — resuélvela ahí (el sistema
+   espera hasta 5 minutos; si no llegas a tiempo, esa fuente se omite y el resto de la
+   corrida sigue igual). Si la ventana de Chrome no aparece en pantalla, probá reiniciar
+   Ubuntu/WSL (`wsl --shutdown` desde PowerShell y volver a abrir la terminal) — es un
+   problema conocido de WSLg, no del sistema.
+3. En el dashboard puedes marcar cada vacante **Apliqué** / **No me interesa** — las que
    marques "no me interesa" no vuelven a aparecer en corridas futuras.
 
 Para cerrar el servidor, `Ctrl+C` en la terminal.

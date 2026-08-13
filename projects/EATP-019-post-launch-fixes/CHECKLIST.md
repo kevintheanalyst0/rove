@@ -8,8 +8,11 @@
 - [x] Verify: launched a real (headful) page, confirmed `window_state == "maximized"`
 
 ### Phase 2 — Self-serve launcher (no Claude Code needed)
-- [ ] Windows-side double-click script (calls into WSL, starts the server, opens the browser)
-- [ ] Short doc note in README
+- [x] Windows-side double-click script (`Iniciar Career Radar.bat`) — reuses the
+      existing `scripts/run_web.sh` from EATP-015 (starts uvicorn, polls until ready,
+      opens the browser via `explorer.exe`) instead of duplicating that logic
+- [x] Short doc note in README (`.bat` as the primary path, manual steps kept as fallback)
+- [x] Verified end-to-end: ran `run_web.sh` directly, got HTTP 200, clean shutdown on exit
 
 ### Phase 3 — "Limpiar caché" button
 - [ ] `POST /reset` endpoint (refuses while a run is active)
