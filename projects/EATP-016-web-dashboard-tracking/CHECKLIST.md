@@ -83,3 +83,14 @@ Solo se construyó de verdad hasta que confirmó cada paso.
   filtros, modal, descartar/revertir, persistencia tras recargar, cero errores de
   consola — igual que el resto del proyecto.
 - `pytest` no se tocó (backend sin cambios en esta parte): 305/305 siguen verdes.
+
+**Bug real encontrado por Kevin tras el commit anterior:** nunca se implementaron los
+breakpoints responsivos de su especificación (§25) — en una ventana angosta, la sidebar
+de ancho fijo (272px) + el grid que no encoge por debajo de `minmax(270px, 1fr)` sumaban
+más ancho del que cabía; `overflow-x: hidden` en `body` lo ocultaba en vez de arreglarlo,
+así que se veía como tarjetas "saliéndose" de la sidebar. Agregados 3 breakpoints
+(1099px: sidebar más angosta + grid 2 columnas; 759px: sidebar pasa a sección superior de
+ancho completo, grid 1 columna; 480px: paddings más chicos). Verificado con Playwright en
+1500/1024/820/390px contra el servidor real con los datos reales de Kevin (mismos números
+que en su captura: Bajas 62, Evaluadas 47) — cero desbordamiento horizontal en ningún
+tamaño.

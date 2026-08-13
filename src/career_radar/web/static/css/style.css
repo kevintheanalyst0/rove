@@ -526,3 +526,38 @@ body[data-state="results"] #runnerCard { display: none; }
 .btn-full.ghost:hover { background: rgba(255,255,255,0.85); color: var(--text); }
 .btn-full.ghost.is-active { background: var(--green-soft); border-color: transparent; color: #0B4A30; }
 .btn-full:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+/* =========================================================================
+   Responsive (Kevin's spec §25) — the sidebar's fixed width + the grid's
+   non-shrinking minmax(270px, 1fr) columns don't fit a narrow viewport on
+   their own; below, the layout reflows instead of just spilling past the
+   edge (which is what `body`'s overflow-x: hidden was silently clipping —
+   the sidebar/card overlap Kevin saw).
+   ========================================================================= */
+
+/* Tablet: narrower sidebar, 2-column grid — still side-by-side. */
+@media (max-width: 1099px) {
+  :root { --sidebar-w: 224px; }
+  .results-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Mobile: sidebar becomes a top section (stacked, full width), 1 column. */
+@media (max-width: 759px) {
+  body[data-state="results"] { flex-direction: column; }
+  .sidebar { width: auto; margin: 20px 20px 0 20px; }
+  body[data-state="results"] main { padding: 20px; }
+  .results-grid { grid-template-columns: 1fr; }
+  .topbar { flex-direction: column; }
+  .topbar h1 { font-size: 27px; }
+  .stat-tiles { grid-template-columns: 1fr; }
+  .pc-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  body:not([data-state="results"]) { padding: 16px; }
+  #runnerCard { padding: 36px 26px; }
+  .surface { padding: 22px 18px 26px; }
+  .sidebar { padding: 16px 14px; margin: 14px 14px 0 14px; }
+  body[data-state="results"] main { padding: 14px; }
+  .modal { padding: 22px; }
+}
