@@ -23,8 +23,8 @@
 - [x] Kevin approval — público, nombre `career-radar` (2026-08-12, chat)
 - [x] init/clean — audited: `.env`/`data/` (incl. browser_profile, cookies) gitignored
       and never committed; `legacy/` has no secrets; no stray files in `git status`
-- [ ] push to GitHub
-- [ ] ROADMAP all done + notes
+- [x] push to GitHub — https://github.com/kevintheanalyst0/career-radar (public)
+- [x] ROADMAP all done + notes
 
 ## Time log
 | Session date | Phase | Elapsed | Notes |
