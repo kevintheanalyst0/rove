@@ -67,8 +67,16 @@
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html { height: 100%; }
 
+/* `min-height` only, never `height` — the results state can be taller than
+   one screen (dozens of job cards), and a fixed `height: 100%` on body
+   would cap it at the viewport height instead of growing with the content.
+   With a fixed height + `align-items: stretch`, the sidebar gets capped at
+   exactly one viewport tall too, and its own content (brand + 3 cards +
+   "Buscar de nuevo") quietly overflows past its own rounded bottom edge on
+   any laptop screen shorter than that content — exactly the bug Kevin
+   found ("la tarjeta de fuentes se sale por debajo de la barra lateral"). */
 body {
   margin: 0;
   background: var(--bg);
@@ -79,7 +87,7 @@ body {
   display: flex;
 }
 body:not([data-state="results"]) { align-items: center; justify-content: center; padding: 24px; }
-body[data-state="results"] { align-items: stretch; }
+body[data-state="results"] { align-items: flex-start; gap: 24px; padding: 36px; }
 
 a { color: inherit; }
 
@@ -115,7 +123,6 @@ a { color: inherit; }
   -webkit-backdrop-filter: blur(32px) saturate(200%);
   box-shadow: 0 24px 70px rgba(20, 20, 45, 0.10), inset 0 1px 0 rgba(255,255,255,0.92);
   padding: 22px 18px;
-  margin: 36px 0 36px 36px;
 }
 body[data-state="results"] .sidebar { display: flex; }
 
@@ -197,7 +204,6 @@ body[data-state="results"] main {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 36px 36px 36px 0;
 }
 
 #runnerCard {
@@ -543,9 +549,8 @@ body[data-state="results"] #runnerCard { display: none; }
 
 /* Mobile: sidebar becomes a top section (stacked, full width), 1 column. */
 @media (max-width: 759px) {
-  body[data-state="results"] { flex-direction: column; }
-  .sidebar { width: auto; margin: 20px 20px 0 20px; }
-  body[data-state="results"] main { padding: 20px; }
+  body[data-state="results"] { flex-direction: column; padding: 20px; gap: 20px; }
+  .sidebar { width: auto; }
   .results-grid { grid-template-columns: 1fr; }
   .topbar { flex-direction: column; }
   .topbar h1 { font-size: 27px; }
@@ -557,7 +562,7 @@ body[data-state="results"] #runnerCard { display: none; }
   body:not([data-state="results"]) { padding: 16px; }
   #runnerCard { padding: 36px 26px; }
   .surface { padding: 22px 18px 26px; }
-  .sidebar { padding: 16px 14px; margin: 14px 14px 0 14px; }
-  body[data-state="results"] main { padding: 14px; }
+  body[data-state="results"] { padding: 14px; gap: 14px; }
+  .sidebar { padding: 16px 14px; }
   .modal { padding: 22px; }
 }

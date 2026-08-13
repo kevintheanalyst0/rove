@@ -94,3 +94,18 @@ ancho completo, grid 1 columna; 480px: paddings más chicos). Verificado con Pla
 1500/1024/820/390px contra el servidor real con los datos reales de Kevin (mismos números
 que en su captura: Bajas 62, Evaluadas 47) — cero desbordamiento horizontal en ningún
 tamaño.
+
+**Segundo bug real, encontrado tras una captura más precisa de Kevin:** el fix anterior
+no era el problema completo. `html, body { height: 100%; }` + `align-items: stretch`
+capaba la sidebar a exactamente 1 pantalla de alto — en una laptop con pantalla corta,
+el contenido propio de la sidebar (marca + 3 tarjetas + "Buscar de nuevo") no cabía en
+esa altura y se desbordaba por debajo de su propio borde redondeado. Además, el margen
+derecho de la sidebar (0) y el padding izquierdo de `main` (0) sumaban cero espacio real
+entre la sidebar y las tarjetas ("está pegada", como dijo Kevin). Corregido: `body` solo
+usa `min-height: 100vh` (nunca `height`, para que pueda crecer más que una pantalla),
+`align-items: flex-start` (la sidebar toma su propia altura de contenido, no la altura
+forzada de la columna de tarjetas, que es mucho más alta), y el espacio entre sidebar y
+contenido ahora es un `gap: 24px` real en el contenedor en vez de márgenes que se
+cancelaban. Verificado midiendo posiciones reales (no solo visualmente) en 4 tamaños,
+incluyendo una laptop de pantalla corta (1366×650) — la sidebar ya contiene todo su
+contenido y el espacio entre paneles es de 24px consistentes.
