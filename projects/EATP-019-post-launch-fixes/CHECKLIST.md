@@ -55,8 +55,14 @@
       (`tests/test_browser.py`, no real Chromium needed).
 
 ### Phase 5 — Indeed: multiple captchas per run
-- [ ] Fix `_CaptchaCoordination` to reset after each resolved captcha
-- [ ] Test: two captchas in one `collect()` call both get their own wait+notification
+- [x] Fix `_CaptchaCoordination`: added `resolved()`, called once a captcha clears,
+      resetting `_deadline` to `None` so the next occurrence gets its own fresh
+      `_CAPTCHA_WAIT_SECONDS` window + its own notification instead of silently
+      reusing the first captcha's already-spent deadline
+- [x] Test: `test_collect_notifies_separately_for_a_second_captcha_later_in_the_run` —
+      two captcha episodes across two search terms, asserts exactly 2 "resuélvela"
+      notifications (not 1) and both jobs still collected. Verified the test actually
+      catches the bug: reverted the fix locally, test failed (1 == 2), restored, green.
 
 ### Phase 6 — LinkedIn returning zero
 - [ ] Add diagnostics distinguishing block/DOM-drift from genuine zero-results

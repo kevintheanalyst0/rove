@@ -215,6 +215,14 @@ class _CaptchaCoordination:
     starting its own timer, and only one `needs_intervention` event is
     published — not one per tab. `giveup` still means "stop everything": set
     once the shared deadline passes without the captcha clearing.
+
+    Kevin's experience (2026-08-13): a single run can hit more than one
+    captcha, minutes apart. `_deadline` is reset back to `None` once a
+    captcha clears (`resolved()`) specifically so the *next* occurrence gets
+    its own fresh `_CAPTCHA_WAIT_SECONDS` window and its own notification —
+    without the reset, a second captcha would silently reuse the first one's
+    already-expired deadline and Indeed would give up on itself without ever
+    telling Kevin.
     """
 
     def __init__(self) -> None:
@@ -228,6 +236,10 @@ class _CaptchaCoordination:
                 self._deadline = time.monotonic() + _CAPTCHA_WAIT_SECONDS
                 browser.request_manual_intervention(SOURCE, message)
             return self._deadline
+
+    def resolved(self) -> None:
+        with self._lock:
+            self._deadline = None
 
 
 class IndeedCollector:
@@ -434,6 +446,7 @@ class IndeedCollector:
             tab.get(url)
             browser.human_pause()
             if not is_captcha_page(tab.html or "", getattr(tab, "title", "") or ""):
+                coord.resolved()
                 return True
 
         if not coord.giveup.is_set():

@@ -445,6 +445,49 @@ def test_collect_gives_up_cleanly_after_persistent_captcha(monkeypatch):
         events.bus.unsubscribe(subscriber)
 
 
+def test_collect_notifies_separately_for_a_second_captcha_later_in_the_run(monkeypatch):
+    # Kevin's report (2026-08-13): a captcha can clear, the run continues,
+    # and a SECOND, unrelated captcha shows up minutes later — that second
+    # one must get its own fresh wait + its own "resuélvela" notification,
+    # not silently reuse the first captcha's already-spent deadline.
+    fixtures = FIXTURES[:2]
+    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos", "analista de negocios"])
+
+    search_url_1 = build_search_url("analista de datos", 0)
+    search_url_2 = build_search_url("analista de negocios", 0)
+    page = _ScriptedPage(
+        _responses_for(
+            (search_url_1, "Security Check", [], "Security Check"),
+            (search_url_1, "1 resultado", [_card_for(fixtures[0])], ""),
+            (search_url_2, "Security Check", [], "Security Check"),
+            (search_url_2, "1 resultado", [_card_for(fixtures[1])], ""),
+            _detail_response(fixtures[0]),
+            _detail_response(fixtures[1]),
+        )
+    )
+
+    subscriber = events.bus.subscribe()
+    try:
+        collector = IndeedCollector(page_factory=lambda: page, detail_workers=1)
+        jobs = list(collector.collect())
+
+        assert {job.title for job in jobs} == {f["title"] for f in fixtures}
+
+        prompts = []
+        while True:
+            try:
+                event = subscriber.get(timeout=1)
+            except Empty:
+                break
+            if "resuélvela en la ventana del navegador" in event.message:
+                prompts.append(event)
+        # One fresh notification per captcha episode — not one for the
+        # whole run. Before the fix, only the first would ever fire.
+        assert len(prompts) == 2
+    finally:
+        events.bus.unsubscribe(subscriber)
+
+
 def test_collect_preserves_jobs_already_yielded_when_captcha_hits_during_details(
     monkeypatch,
 ):
