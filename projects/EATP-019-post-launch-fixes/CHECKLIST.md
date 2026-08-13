@@ -43,6 +43,16 @@
       (browses public search results) — being signed in is optional/best-effort on
       his end, not something the code can do for him (needs his credentials). Offered
       to open the (now-maximized) browser window so he can log in whenever he wants.
+      He logged in successfully.
+- [x] **Extra, Kevin's own report mid-phase**: stray tabs (e.g. a leftover LinkedIn
+      tab) staying open during a later collector's run, across runs too. Root-caused:
+      `data/browser_profile/Default/Preferences` was stuck at `exit_type: "Crashed"`
+      because `ChromiumPage.quit()` force-kills the process right after asking it to
+      close, racing Chrome's own "clean exit" write — so Chrome's crash-recovery
+      restores old tabs on every subsequent launch. Fix: `browser.py` now deletes
+      `Default/Sessions/*` (the tab-restore snapshot only — cookies/login data
+      untouched) before every profile-based launch. 3 new unit tests
+      (`tests/test_browser.py`, no real Chromium needed).
 
 ### Phase 5 — Indeed: multiple captchas per run
 - [ ] Fix `_CaptchaCoordination` to reset after each resolved captcha

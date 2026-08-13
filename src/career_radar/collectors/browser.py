@@ -45,6 +45,30 @@ def resolve_chrome_path() -> str | None:
     return config.CHROME_BROWSER_PATH or _find_playwright_chromium()
 
 
+def _clear_session_restore_state(user_data_dir: str) -> None:
+    """Delete Chromium's tab-restore snapshot for the `Default` profile
+    (`Sessions/Session_*` and `Sessions/Tabs_*`), leaving cookies/login data
+    untouched.
+
+    `ChromiumPage.quit()` (DrissionPage) force-kills the browser process
+    right after asking it to close, which routinely wins the race against
+    Chrome finishing its own "this was a clean exit" write — every profile
+    directory this project has produced was stuck at `exit_type: "Crashed"`
+    (checked directly in `Default/Preferences`). Combined with a *shared*
+    profile across collectors (Kevin's call, so Indeed/LinkedIn logins both
+    persist), Chrome's crash-recovery then restores whatever tabs were open
+    last time on the *next* launch — Kevin observed a stray LinkedIn tab
+    still open during an Indeed run. Clearing the restore snapshot before
+    every launch means each collector always starts with a blank window,
+    regardless of how the previous one exited."""
+    sessions_dir = Path(user_data_dir) / "Default" / "Sessions"
+    if not sessions_dir.exists():
+        return
+    for entry in sessions_dir.iterdir():
+        if entry.is_file():
+            entry.unlink(missing_ok=True)
+
+
 def build_options(*, use_profile: bool = True, headless: bool = False) -> ChromiumOptions:
     """Chromium options with a randomized viewport and a resolved binary path.
 
@@ -58,6 +82,7 @@ def build_options(*, use_profile: bool = True, headless: bool = False) -> Chromi
         options.set_browser_path(chrome_path)
     if use_profile:
         options.set_user_data_path(config.CHROME_USER_DATA_DIR)
+        _clear_session_restore_state(config.CHROME_USER_DATA_DIR)
 
     width, height = random.choice(_VIEWPORTS)
     options.set_argument(f"--window-size={width},{height}")
