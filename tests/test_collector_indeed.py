@@ -327,13 +327,28 @@ def _detail_response(fixture: dict) -> tuple[str, str, list[_FakeCard], str]:
 
 
 @pytest.fixture(autouse=True)
-def _no_real_sleep(monkeypatch):
+def _fake_clock(monkeypatch):
+    """`time.sleep` advances a fake clock instead of actually sleeping, and
+    `time.monotonic` reads that same clock — so the captcha wait's real
+    deadline logic runs at full fidelity (the right number of polls, in the
+    right order) without a test ever taking wall-clock seconds. Also shrinks
+    the wait/poll constants so a "persistent captcha" test needs only a
+    couple of scripted responses, not real-sized ones (300s / 10s -> 30
+    polls' worth of fixture data)."""
+    clock = {"t": 0.0}
+
+    def fake_sleep(seconds: float) -> None:
+        clock["t"] += seconds
+
+    monkeypatch.setattr("career_radar.collectors.indeed.time.sleep", fake_sleep)
     monkeypatch.setattr(
-        "career_radar.collectors.indeed.time.sleep", lambda seconds: None
+        "career_radar.collectors.indeed.time.monotonic", lambda: clock["t"]
     )
     monkeypatch.setattr(
         "career_radar.collectors.browser.human_pause", lambda *a, **k: None
     )
+    monkeypatch.setattr("career_radar.collectors.indeed._CAPTCHA_WAIT_SECONDS", 20)
+    monkeypatch.setattr("career_radar.collectors.indeed._CAPTCHA_POLL_SECONDS", 10)
 
 
 def test_collect_yields_real_fixture_jobs_across_search_and_detail(monkeypatch):
@@ -374,13 +389,14 @@ def test_collect_stops_on_no_results_marker(monkeypatch):
     assert jobs == []
 
 
-def test_collect_retries_once_on_captcha_then_recovers(monkeypatch):
+def test_collect_waits_for_captcha_resolution_then_recovers(monkeypatch):
     # A single fixture clamps detail_workers down to 1 tab — deterministic.
     fixtures = FIXTURES[:1]
     monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
 
     search_url = build_search_url("analista de datos", 0)
     captcha_response = (search_url, "Security Check", [], "Security Check")
+    # Kevin "solves" it between the initial hit and the first poll check.
     real_response = (search_url, "1 resultado", [_card_for(fixtures[0])], "")
     page = _ScriptedPage(
         _responses_for(captcha_response, real_response, _detail_response(fixtures[0]))
@@ -395,6 +411,7 @@ def test_collect_retries_once_on_captcha_then_recovers(monkeypatch):
         event = subscriber.get(timeout=1)
         assert event.status == "needs_intervention"
         assert event.phase == "collect:indeed"
+        assert "resuélvela en la ventana del navegador" in event.message
     finally:
         events.bus.unsubscribe(subscriber)
 
@@ -404,8 +421,9 @@ def test_collect_gives_up_cleanly_after_persistent_captcha(monkeypatch):
 
     search_url = build_search_url("analista de datos", 0)
     captcha_response = (search_url, "Security Check", [], "Security Check")
-    # Both the first attempt and the single retry hit a captcha.
-    page = _ScriptedPage(_responses_for(captcha_response, captcha_response))
+    # Every attempt — the initial hit plus every poll (2, at the fixture's
+    # shrunk 20s/10s wait/poll) — keeps hitting a captcha, so it never clears.
+    page = _ScriptedPage(_responses_for(*([captcha_response] * 3)))
 
     subscriber = events.bus.subscribe()
     try:
@@ -448,8 +466,9 @@ def test_collect_preserves_jobs_already_yielded_when_captcha_hits_during_details
         _responses_for(
             search_response,
             _detail_response(fixtures[0]),
-            captcha_response,
-            captcha_response,  # retry also captchas
+            captcha_response,  # initial hit
+            captcha_response,  # poll 1
+            captcha_response,  # poll 2 — deadline passes, still captcha
         )
     )
 

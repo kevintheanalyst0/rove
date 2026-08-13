@@ -16,7 +16,9 @@
 
 ### Phase 3 — Captcha handling
 - [x] detect + event + isolate Indeed
-- [x] non-blocking pause/skip (one retry after long cooldown, then clean stop — never `input()`, never waits on Kevin)
+- [x] ~~non-blocking pause/skip (one retry after long cooldown, then clean stop)~~ **revisado
+      2026-08-12:** ahora espera a que Kevin lo resuelva manualmente (igual que LinkedIn),
+      con un plazo de 5 min antes de rendirse — ver notas de sesión
 - [x] captcha-page test (synthetic captcha response via scripted fake page; recovery path + persistent-captcha path + partial-progress-preserved path)
 
 ### Phase 4 — Close
@@ -31,8 +33,9 @@
 | 2026-08-12 | Verificación en vivo | ~15 min | Encontró y corrigió un bug real (ver notas) |
 | 2026-08-12 | Paralelismo (2 pestañas) + reverificación | ~20 min | A pedido de Kevin: la fase de detalle era muy lenta en secuencial |
 | 2026-08-12 | Fix de espera en detalle + corrida completa (9 términos) | ~20 min | Kevin reportó "tarjetas vacías"; corregido y verificado a escala real |
+| 2026-08-12 | Reapertura: captcha manual en vez de auto-skip | ~25 min | A pedido de Kevin, tras verlo en vivo durante EATP-015 — ver notas |
 
-**Total project time:** ~1.8 h (2026-08-12)
+**Total project time:** ~2.2 h (2026-08-12)
 
 ## Session notes
 Reconstruido (no portado) sobre el framework: búsqueda secuencial de una sola pestaña
@@ -85,3 +88,17 @@ reintento/abandono compartido entre pestañas sigue sin haberse visto en vivo (n
 captcha en ninguna de las 3 corridas reales) — solo está probado con los tests
 scripteados con threading real; vale la pena vigilarlo cuando ocurra de forma natural
 en una corrida programada.
+
+**Reapertura (2026-08-12) — captcha manual en vez de auto-skip:** sí ocurrió en vivo,
+durante la prueba de EATP-015 (`scripts/run_web.sh`, corrida `thorough` completa).
+Indeed topó captcha, esperó, reintentó, topó de nuevo, y se omitió para esa corrida —
+Kevin vio el tiempo de espera real y decidió que prefiere resolverlo él mismo, como ya
+funciona LinkedIn. Reemplaza el diseño original de "cero intervención" (reintento único
+tras cooldown de 30-90s, luego abandono) por el mismo patrón de LinkedIn
+(`_resolve_login_if_needed`): publica UN evento pidiendo que lo resuelva en la ventana
+del navegador, espera sondeando pasivamente (sin machacar el sitio con peticiones —
+solo re-navega para revisar) cada 10s hasta 5 minutos (Kevin eligió el plazo: propuse
+3, pidió 5). Nueva clase `_CaptchaCoordination` coordina las 2 pestañas de detalle en
+paralelo para que compartan el mismo plazo y solo se publique un aviso, no uno por
+pestaña. Tests reescritos con un reloj falso (`time.sleep`/`time.monotonic` mockeados)
+para que el camino de "captcha persistente" no tome minutos reales en correr.

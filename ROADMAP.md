@@ -146,17 +146,6 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 
 ## Backlog (not scheduled)
 
-- **Indeed captcha: manual intervention instead of auto-retry-then-skip.** Kevin watched
-  a live run (EATP-015 test, 2026-08-12): Indeed hit a captcha, waited through a cooldown,
-  retried, hit it again, and gave up on Indeed for that run — and decided he'd rather just
-  solve the captcha himself in the browser window than lose the source. Reopens an
-  EATP-006 decision (`collectors/indeed.py`'s captcha handling was deliberately
-  zero-intervention, treating a captcha as a rate-limit signal). Mirror LinkedIn's
-  pause-and-wait pattern (`browser.request_manual_intervention` +
-  `_resolve_login_if_needed`'s deadline/poll loop in `collectors/linkedin.py`) instead of
-  the current retry-once-then-giveup flow. Not done now: out of scope for EATP-015
-  (UI-only) and CLAUDE.md's one-project-per-session rule — revisit inside EATP-006.
-
 - **CV tailoring / cover letters** — legacy `jobmatch/cv/` is Windows/Word-COM only; not
   urgent. Revisit post-018, redesigned cross-platform.
 - **Automatic ATS company discovery** (beyond the curated list in EATP-008).
