@@ -41,6 +41,7 @@ def _isolated_data_dir(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "HEALTH_DIR", tmp_path / "health")
     monkeypatch.setattr(config, "AI_USAGE_FILE", tmp_path / "ai_usage.json")
     monkeypatch.setattr(config, "HISTORY_DIR", tmp_path / "history")
+    monkeypatch.setattr(config, "TRACKING_FILE", tmp_path / "tracking.jsonl")
     monkeypatch.setattr(config, "AI_BATCH_SIZE", 1)
 
 
@@ -197,6 +198,52 @@ def test_full_run_over_fixtures_yields_a_valid_run_result():
     assert not config.CHECKPOINT_FILE.exists()
     assert not config.GATED_FILE.exists()
     assert not config.AI_CHECKPOINT_FILE.exists()
+    # Never shown before -> new (EATP-016's NEW badge).
+    assert result.new_signatures == [remote_job.signature]
+
+
+def test_dismissed_job_is_excluded_from_the_run():
+    """EATP-016: a job Kevin marked 'no me interesa' on the dashboard never
+    reappears — tracking.dismissed_signatures() feeds gate() the same way
+    EATP-010's cache already does."""
+    from career_radar.tracking import store as tracking_store
+    from career_radar.tracking.store import TrackingAction
+
+    job = _job(source="occ", source_job_id="1")
+    tracking_store.record_action(job.signature, TrackingAction.DISMISSED)
+
+    registry, _collectors = _registry(occ=[job])
+    provider = ScriptedProvider({job.signature: _ai_result(job)})
+    router = _router(provider)
+
+    result = pipeline.run(
+        registry=registry, router=router, profile=PROFILE, criteria=_criteria(), resume=False
+    )
+
+    assert result.jobs == []
+    assert result.counts["gated_kept"] == 0
+
+
+def test_new_signatures_excludes_a_job_already_in_history():
+    """A job already recorded in a prior run's history must not be flagged
+    NEW again, even though it still passes the (separate) recency cache."""
+    from datetime import UTC, datetime
+
+    from career_radar.history import store as history_store
+
+    job = _job(source="occ", source_job_id="1")
+    history_store.record_run([job], datetime.now(UTC))
+
+    registry, _collectors = _registry(occ=[job])
+    provider = ScriptedProvider({job.signature: _ai_result(job)})
+    router = _router(provider)
+
+    result = pipeline.run(
+        registry=registry, router=router, profile=PROFILE, criteria=_criteria(), resume=False
+    )
+
+    assert [scored.job.signature for scored in result.jobs] == [job.signature]
+    assert result.new_signatures == []
 
 
 def test_fast_mode_never_touches_browser_sources():

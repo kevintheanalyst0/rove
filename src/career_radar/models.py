@@ -250,3 +250,8 @@ class RunResult(BaseModel):
     source_health: list[SourceHealth] = Field(default_factory=list)
     jobs: list[ScoredJob] = Field(default_factory=list)
     ai_usage: dict[str, int] = Field(default_factory=dict)
+    # Signatures unseen in any prior run's history (ADR-007) — computed once
+    # at persist time, before this run's own jobs are recorded into history
+    # (see pipeline.py's docstring note on `history_store.mark_new` ordering:
+    # computing it later would make every job "already known" against itself).
+    new_signatures: list[str] = Field(default_factory=list)

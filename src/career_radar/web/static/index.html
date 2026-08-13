@@ -51,6 +51,36 @@
         <p class="state-detail" id="doneMessage" style="color: var(--text);"></p>
       </section>
 
+      <section class="state results-state" data-state="results">
+        <header class="results-header">
+          <div class="results-title">
+            <p class="brand">Resultados</p>
+            <p class="results-meta" id="resultsMeta"></p>
+          </div>
+          <button class="btn btn-small" id="rerunBtn" type="button">Buscar de nuevo</button>
+        </header>
+
+        <div class="filters">
+          <input class="filter-input" id="searchInput" type="search" placeholder="Buscar por título o empresa…">
+          <select class="filter-select" id="gradeFilter">
+            <option value="">Todos los grados</option>
+            <option value="A+">A+</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+          </select>
+          <select class="filter-select" id="sourceFilter">
+            <option value="">Todas las fuentes</option>
+          </select>
+          <label class="filter-toggle"><input type="checkbox" id="remoteOnlyToggle" checked> Solo remoto</label>
+          <label class="filter-toggle"><input type="checkbox" id="hideDismissedToggle" checked> Ocultar descartadas</label>
+        </div>
+
+        <div class="results-grid" id="resultsGrid"></div>
+        <p class="results-empty" id="resultsEmpty" hidden>Ninguna vacante coincide con estos filtros.</p>
+      </section>
+
     </div>
   </main>
 

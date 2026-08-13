@@ -271,4 +271,29 @@ def test_gate_with_a_cache_keeps_a_signature_not_seen_before():
     result = gate([job], cache=cache)
 
     assert result.rejected == []
+
+
+def test_gate_without_dismissed_never_skips_on_kevins_actions():
+    job = _job()
+    result = gate([job])
+
+    assert result.rejected == []
+    assert result.kept[0].source_job_id == job.source_job_id
+
+
+def test_gate_skips_a_dismissed_signature():
+    job = _job()
+
+    result = gate([job], dismissed={job.signature})
+
+    assert result.kept == []
+    assert result.rejected[0][1] == "dismissed_by_kevin"
+
+
+def test_gate_keeps_a_signature_not_dismissed():
+    job = _job()
+
+    result = gate([job], dismissed={"some-other-signature"})
+
+    assert result.rejected == []
     assert result.kept[0].source_job_id == job.source_job_id

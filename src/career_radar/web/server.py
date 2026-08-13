@@ -31,6 +31,8 @@ from career_radar.events import EventBus, ProgressEvent
 from career_radar.events import bus as default_bus
 from career_radar.pipeline import run as run_pipeline
 from career_radar.storage import read_json
+from career_radar.tracking import store as tracking_store
+from career_radar.tracking.store import TrackingAction
 
 logger = get_logger(__name__)
 
@@ -50,6 +52,11 @@ class RunRequest(BaseModel):
     ai_cap: int | None = None
     recency_days: int | None = None
     resume: bool = True
+
+
+class TrackRequest(BaseModel):
+    signature: str
+    action: TrackingAction
 
 
 async def _stream_events(
@@ -128,6 +135,24 @@ def create_app(
     def get_status() -> JSONResponse:
         last = read_json(config.STATUS_FILE, default=None)
         return JSONResponse({"running": state["running"], "last": last})
+
+    @app.get("/results")
+    def get_results() -> JSONResponse:
+        """The last completed run, plus Kevin's current applied/dismissed
+        status per job — computed fresh on every call (unlike `new_signatures`
+        on the `RunResult` itself, tracking status has no ordering hazard, so
+        there's no need to freeze it at persist time)."""
+        result = read_json(config.RESULTS_FILE, default=None)
+        tracking = {
+            signature: action.value
+            for signature, action in tracking_store.latest_actions().items()
+        }
+        return JSONResponse({"result": result, "tracking": tracking})
+
+    @app.post("/track")
+    def track(request: TrackRequest) -> JSONResponse:
+        tracking_store.record_action(request.signature, request.action)
+        return JSONResponse({"status": "ok", "signature": request.signature, "action": request.action.value})
 
     @app.get("/events")
     async def stream_events(request: Request) -> StreamingResponse:

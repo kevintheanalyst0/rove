@@ -13,6 +13,8 @@
    posting seen within the configured window on a *prior* run, if a cache is
    passed in. Skipped entirely when `cache=None` (e.g. EATP-009's own tests,
    or any caller that doesn't have one yet).
+7. Kevin's dismissed signatures (EATP-016, ADR-007) — 'no me interesa' from
+   the dashboard, if a `dismissed` set is passed in. Skipped when `None`.
 
 Each rejection carries its own reason string (for run counts/debugging;
 never shown to Kevin in the UI). The matcher/AI (EATP-012/013) is out of
@@ -77,12 +79,13 @@ def gate(
     *,
     dedup: bool = True,
     cache: SignatureCache | None = None,
+    dismissed: set[str] | None = None,
 ) -> GateResult:
     """Run every job through Layer 1, then (by default) cross-source dedup,
-    then the signature cache if one is passed in. Never raises: one
-    malformed job can't take down a whole run (same discipline as
-    `collectors/base.py`'s `run_collector` — a single bad record becomes a
-    rejection, not a crash).
+    then the signature cache and Kevin's dismissed signatures if passed in.
+    Never raises: one malformed job can't take down a whole run (same
+    discipline as `collectors/base.py`'s `run_collector` — a single bad
+    record becomes a rejection, not a crash).
     """
     result = GateResult()
     for job in jobs:
@@ -108,6 +111,15 @@ def gate(
         for job in result.kept:
             if cache.seen_recently(job.signature):
                 result.rejected.append((job, "cached_recently"))
+            else:
+                still_kept.append(job)
+        result.kept = still_kept
+
+    if dismissed:
+        still_kept = []
+        for job in result.kept:
+            if job.signature in dismissed:
+                result.rejected.append((job, "dismissed_by_kevin"))
             else:
                 still_kept.append(job)
         result.kept = still_kept

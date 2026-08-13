@@ -30,6 +30,10 @@ RESULTS_FILE = DATA_DIR / "results.json"
 STATUS_FILE = DATA_DIR / "status.json"
 SIGNATURES_FILE = CACHE_DIR / "signatures.jsonl"
 
+# Kevin's applied/dismissed actions (EATP-016, ADR-007) — append-only, latest
+# action per signature wins (career_radar.tracking.store).
+TRACKING_FILE = DATA_DIR / "tracking.jsonl"
+
 # Orchestrator checkpoints (EATP-014) — let a crashed/interrupted run resume
 # without re-scraping or re-paying for AI (CLAUDE.md golden rule 3).
 CHECKPOINT_FILE = DATA_DIR / "checkpoint.json"

@@ -63,6 +63,7 @@ from career_radar.storage import (
     write_json,
     write_jsonl,
 )
+from career_radar.tracking import store as tracking_store
 
 logger = get_logger(__name__)
 
@@ -201,7 +202,7 @@ def _gate_stage(
     if recency_days is not None:
         config.MAX_DAYS_OLD = recency_days
     try:
-        gate_result = gate(all_jobs, cache=cache)
+        gate_result = gate(all_jobs, cache=cache, dismissed=tracking_store.dismissed_signatures())
     finally:
         config.MAX_DAYS_OLD = original_max_days_old
 
@@ -342,6 +343,15 @@ def _persist(
 ) -> RunResult:
     event_bus.publish("persist", "running", _PERSIST_START, "Guardando resultados...")
 
+    # Must run BEFORE record_run() below (history/store.py's docstring):
+    # once this run's own jobs are recorded, every one of them would count
+    # as "already known" against itself.
+    new_signatures = [
+        job.signature
+        for job, is_new in history_store.mark_new([scored.job for scored in ranked])
+        if is_new
+    ]
+
     for scored in ranked:
         cache.update(scored.job.signature, final_score=scored.final_score)
     cache.save()
@@ -357,6 +367,7 @@ def _persist(
         source_health=source_health,
         jobs=ranked,
         ai_usage=_ai_usage_snapshot(),
+        new_signatures=new_signatures,
     )
     write_json(config.RESULTS_FILE, result.model_dump(mode="json"))
     write_json(config.STATUS_FILE, result.model_dump(mode="json"))
