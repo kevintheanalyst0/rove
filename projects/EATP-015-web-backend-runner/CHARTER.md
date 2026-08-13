@@ -43,6 +43,11 @@ R11 (no terminal; spinner + status), R12 (one-click run).
 - SSE for live status (simple, instant, no terminal); fallback to polling status.json if needed.
 - Manual interventions (Indeed captcha / LinkedIn login) appear as calm in-page prompts, never terminal input().
 - No browser storage APIs; keep state server-side/in-memory.
+- Explicit "Iniciar" button (Kevin's call) — the page does NOT auto-start a run on load.
+- Single-page app driven by CSS/JS state views (`working` / `attention` / `error` / `done`),
+  not separate pages/navigation — so EATP-016 can add a `results` state and animate
+  `done -> results` (Kevin wants a smooth transition into the dashboard, not a hard
+  page swap/reload). See EATP-016 CHARTER.md "Key design decisions" for that half.
 
 ## Definition of Done
 - [ ] All deliverables exist and work
@@ -56,4 +61,6 @@ R11 (no terminal; spinner + status), R12 (one-click run).
 1 session (~2.5-3 h).
 
 ## Open questions for Kevin
-- Want a thin progress bar during the AI stage (it has a known total), or just the spinner + text?
+- ~~Want a thin progress bar during the AI stage?~~ **Resuelto:** sí — anillo + texto +
+  barra delgada, confirmado sobre la vista previa.
+- ~~Auto-arranque al cargar vs. botón explícito?~~ **Resuelto:** botón "Iniciar" explícito.

@@ -58,7 +58,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-012** | Multi-provider AI layer | C | ✅ | 001, 002 | Medium | ~45 min (2026-08-12) |
 | **EATP-013** | Scoring & evaluation pipeline | C | ✅ | 002, 009, 012 | Medium | ~25 min (2026-08-12) |
 | **EATP-014** | Orchestrator & resumable/memory-safe run | D | ✅ | 004–011, 013 | Medium | ~9 min (2026-08-12) |
-| **EATP-015** | Web UI — backend + runner spinner | E | ⬜ | 014 | Medium | — |
+| **EATP-015** | Web UI — backend + runner spinner | E | ✅ | 014 | Medium | ~45 min (2026-08-12) |
 | **EATP-016** | Web UI — results dashboard + job tracking | E | ⬜ | 010, 014, 015 | Medium | — |
 | **EATP-017** | Match-quality evaluation harness | F | ⬜ | 013, 014 | Light-med | — |
 | **EATP-018** | QA, hardening, automation & GitHub publish | F | ⬜ | all | Medium | — |
@@ -145,6 +145,17 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 ---
 
 ## Backlog (not scheduled)
+
+- **Indeed captcha: manual intervention instead of auto-retry-then-skip.** Kevin watched
+  a live run (EATP-015 test, 2026-08-12): Indeed hit a captcha, waited through a cooldown,
+  retried, hit it again, and gave up on Indeed for that run — and decided he'd rather just
+  solve the captcha himself in the browser window than lose the source. Reopens an
+  EATP-006 decision (`collectors/indeed.py`'s captcha handling was deliberately
+  zero-intervention, treating a captcha as a rate-limit signal). Mirror LinkedIn's
+  pause-and-wait pattern (`browser.request_manual_intervention` +
+  `_resolve_login_if_needed`'s deadline/poll loop in `collectors/linkedin.py`) instead of
+  the current retry-once-then-giveup flow. Not done now: out of scope for EATP-015
+  (UI-only) and CLAUDE.md's one-project-per-session rule — revisit inside EATP-006.
 
 - **CV tailoring / cover letters** — legacy `jobmatch/cv/` is Windows/Word-COM only; not
   urgent. Revisit post-018, redesigned cross-platform.

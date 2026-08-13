@@ -43,6 +43,12 @@ P7 UX (consistent grades), P8 UX (remote-only default), and proactive P18 (new-s
 - Remote-only filter ON by default; grades colored by the ONE mapping; empty contras render cleanly.
 - Dismissed feeds back into the pipeline's skip logic (a dismissed signature won't be shown again).
 - Keep it single-viewport-friendly and minimal per Kevin's taste; no browser storage APIs.
+- **Runner -> dashboard transition (Kevin, captured in EATP-015):** when the run finishes,
+  don't hard-swap or reload the page into the dashboard — fade/slide from the runner's
+  "Listo" state into the results grid. EATP-015 built `web/static/` as a single-page app
+  with CSS/JS-driven state views (`working` / `attention` / `error` / `done`) for exactly
+  this reason: this project adds a `results` state to that same state machine and animates
+  `done -> results`, it doesn't introduce a second page/navigation.
 
 ## Definition of Done
 - [ ] All deliverables exist and work

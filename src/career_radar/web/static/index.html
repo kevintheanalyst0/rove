@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Career Radar</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+  </div>
+
+  <main>
+    <div class="glass">
+
+      <section class="state" data-state="idle">
+        <p class="brand">Career Radar</p>
+        <p class="brand-sub">Busca y evalúa vacantes remotas por ti. Un clic y te avisa cuando esté listo.</p>
+        <button class="btn" id="startBtn" type="button">Iniciar búsqueda</button>
+      </section>
+
+      <section class="state" data-state="working">
+        <div class="cr-spinner" aria-label="Trabajando">
+          <span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <p class="cr-status" id="statusText">Iniciando…</p>
+        <div class="bar-wrap">
+          <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+          <span class="bar-pct" id="barPct">0%</span>
+        </div>
+        <div class="notice" id="noticeBanner" hidden>
+          <span class="notice-icon">&#9888;</span>
+          <p class="notice-text" id="noticeText"></p>
+        </div>
+      </section>
+
+      <section class="state" data-state="error">
+        <div class="icon-ring err">&#10005;</div>
+        <p class="state-title">Se interrumpió la corrida</p>
+        <p class="state-detail" id="errorMessage"></p>
+        <button class="btn" id="retryBtn" type="button">Reintentar</button>
+      </section>
+
+      <section class="state" data-state="done">
+        <div class="icon-ring ok">&#10003;</div>
+        <p class="state-title">Listo</p>
+        <p class="state-detail" id="doneMessage" style="color: var(--text);"></p>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
