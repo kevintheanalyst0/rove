@@ -76,9 +76,22 @@
       after 10s; an unhealthy/rate-limited page now retries once after 40s before
       giving up and notifying Kevin. 2 new tests, both verified to fail without the
       fix (reverted locally, confirmed red, restored, confirmed green).
-- [ ] Root-cause the *specific* zero seen in the EATP-018 real run — still unknown
-      which condition it actually was. Live LinkedIn-only smoke test proposed next
-      (no AI quota spent — LinkedIn collection is pure browser+HTTP).
+- [x] Root-caused via a live, AI-quota-free smoke test (real browser, Kevin's
+      profile): LinkedIn now redirects `/jobs/search/` → `/jobs/search-results/`,
+      **silently drops** our `f_WT=2`/`f_JT=F` (remote/full-time) query params and
+      substitutes unrelated ones, and renders results through a new "AI job search"
+      UI (LinkedIn's own banner: "Ahora usas la búsqueda de empleo con IA... algunos
+      filtros ya no estén disponibles"). The page genuinely has real results (saw
+      "99 resultados", real Data Analyst/BI listings, all México/remote) — this is
+      **not** a block, not a captcha, not genuinely-zero. It's that the new UI has
+      no stable scraping hooks left: no `data-occludable-job-id`, no `jobs/view`
+      hrefs, only build-hashed CSS classes (`_796307fd` etc.) that change per
+      deployment. DOM scraping this new UI reliably is a real rewrite, not a
+      selector tweak — confirmed DrissionPage has a `page.listen` network-
+      interception API that could grab the underlying API response instead of
+      scraping the DOM, but that's a different, bigger architecture than what this
+      phase scoped. **Stopped here to ask Kevin how he wants to prioritize this**
+      rather than silently starting a large rewrite.
 
 ### Phase 7 — Verify & close
 - [ ] `pytest` green
