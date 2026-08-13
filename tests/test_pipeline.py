@@ -338,3 +338,38 @@ def test_resume_false_ignores_an_existing_checkpoint_and_starts_clean():
     # resume=False discards the checkpoint, so the source is collected again.
     assert collectors["occ"].calls == 2
     assert result.status == RunStatus.SUCCESS
+
+
+def test_reset_all_run_data_wipes_derived_files_but_keeps_tracking():
+    config.RAW_DIR.mkdir(parents=True, exist_ok=True)
+    config.HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    config.HEALTH_DIR.mkdir(parents=True, exist_ok=True)
+    config.SIGNATURES_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    (config.RAW_DIR / "occ.jsonl").write_text('{"id": 1}\n')
+    (config.HISTORY_DIR / "run_1.jsonl").write_text('{"signature": "abc"}\n')
+    (config.HEALTH_DIR / "yields.jsonl").write_text('{"source": "occ"}\n')
+    config.SIGNATURES_FILE.write_text('{"signature": "abc"}\n')
+    config.RESULTS_FILE.write_text("{}")
+    config.STATUS_FILE.write_text("{}")
+    config.CHECKPOINT_FILE.write_text("{}")
+    config.GATED_FILE.write_text('{"id": 1}\n')
+    config.AI_CHECKPOINT_FILE.write_text('{"id": 1}\n')
+
+    # Not touched by reset — Kevin's own decisions, not run-derived cache.
+    config.TRACKING_FILE.write_text('{"signature": "abc", "action": "applied"}\n')
+
+    pipeline.reset_all_run_data()
+
+    assert not (config.RAW_DIR / "occ.jsonl").exists()
+    assert not (config.HISTORY_DIR / "run_1.jsonl").exists()
+    assert not (config.HEALTH_DIR / "yields.jsonl").exists()
+    assert not config.SIGNATURES_FILE.exists()
+    assert not config.RESULTS_FILE.exists()
+    assert not config.STATUS_FILE.exists()
+    assert not config.CHECKPOINT_FILE.exists()
+    assert not config.GATED_FILE.exists()
+    assert not config.AI_CHECKPOINT_FILE.exists()
+
+    assert config.TRACKING_FILE.exists()
+    assert "applied" in config.TRACKING_FILE.read_text()

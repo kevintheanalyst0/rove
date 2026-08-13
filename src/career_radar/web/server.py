@@ -31,6 +31,7 @@ from career_radar.eval import labels as eval_labels_store
 from career_radar.eval.labels import BadReason, Label
 from career_radar.events import EventBus, ProgressEvent
 from career_radar.events import bus as default_bus
+from career_radar.pipeline import reset_all_run_data
 from career_radar.pipeline import run as run_pipeline
 from career_radar.storage import read_json
 from career_radar.tracking import store as tracking_store
@@ -94,11 +95,14 @@ async def _stream_events(
 def create_app(
     event_bus: EventBus = default_bus,
     pipeline_run: Callable[..., Any] = run_pipeline,
+    reset_run_data: Callable[[], None] = reset_all_run_data,
 ) -> FastAPI:
     """App factory. Tests inject a private `event_bus` and a fake
     `pipeline_run` instead of the process-wide bus and the real pipeline, so
     a route test never triggers a live scrape/AI call (CLAUDE.md §7) and
-    never shares SSE subscribers with other tests.
+    never shares SSE subscribers with other tests. `reset_run_data` is
+    injectable the same way, so a route test never touches real files on
+    disk either.
     """
     app = FastAPI(title="Career Radar")
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -138,6 +142,19 @@ def create_app(
             state["running"] = True
         threading.Thread(target=_worker, args=(request,), daemon=True).start()
         return JSONResponse({"status": "started"}, status_code=202)
+
+    @app.post("/reset")
+    def reset_data() -> JSONResponse:
+        """"Limpiar caché" (EATP-019, Kevin's call): wipe every derived
+        run artifact for a clean test run. Refuses while a run is active —
+        same reasoning as `/run`'s re-entrancy guard, since wiping
+        `raw/*.jsonl`/checkpoints out from under an in-progress run would
+        corrupt it, not just waste time."""
+        with lock:
+            if state["running"]:
+                return JSONResponse({"status": "run_in_progress"}, status_code=409)
+        reset_run_data()
+        return JSONResponse({"status": "ok"})
 
     @app.get("/status")
     def get_status() -> JSONResponse:

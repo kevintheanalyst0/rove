@@ -249,6 +249,17 @@ body[data-state="results"] #runnerCard { display: none; }
 .pill-btn:hover { background: #fff; transform: translateY(-1px); }
 .pill-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 
+.text-btn {
+  appearance: none; cursor: pointer; background: none; border: none;
+  color: var(--text-2); font: 500 13px/1 var(--font);
+  text-decoration: underline; text-underline-offset: 3px;
+  padding: 6px 4px; margin-top: 10px;
+}
+.text-btn:hover { color: var(--text); }
+.text-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.text-btn:disabled { opacity: 0.5; cursor: default; }
+.text-btn-side { align-self: center; margin: 6px 0 2px; }
+
 /* ---- spinner: ring of 8 dots ---- */
 .cr-spinner { position: relative; width: 54px; height: 54px; }
 .cr-spinner span {

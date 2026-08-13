@@ -120,6 +120,30 @@ def _clear_run_artifacts() -> None:
         Path(path).unlink(missing_ok=True)
 
 
+def reset_all_run_data() -> None:
+    """Wipe every derived run artifact for a clean slate (EATP-019 — Kevin
+    wants this for testing: no leftover state biasing "new"/"already seen"
+    decisions on the next run).
+
+    Deliberately leaves alone:
+    - `config.TRACKING_FILE` (applied/dismissed) and `config.EVAL_DIR`
+      (Kevin's good/bad labels) — his own decisions about specific jobs, not
+      run-derived cache.
+    - `config.CHROME_USER_DATA_DIR` (browser login sessions/cookies) — Kevin
+      explicitly asked to keep those (2026-08-13).
+    """
+    _clear_run_artifacts()
+    for path in (config.RESULTS_FILE, config.STATUS_FILE, config.SIGNATURES_FILE):
+        Path(path).unlink(missing_ok=True)
+    for directory in (config.RAW_DIR, config.HISTORY_DIR, config.HEALTH_DIR):
+        directory = Path(directory)
+        if not directory.exists():
+            continue
+        for entry in directory.iterdir():
+            if entry.is_file():
+                entry.unlink(missing_ok=True)
+
+
 def _requested_sources(
     registry: CollectorRegistry, mode: str, sources: list[str] | None
 ) -> list[str]:

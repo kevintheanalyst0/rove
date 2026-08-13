@@ -22,9 +22,16 @@
       noted here for later if it becomes an actual complaint.
 
 ### Phase 3 — "Limpiar caché" button
-- [ ] `POST /reset` endpoint (refuses while a run is active)
-- [ ] UI button next to "Iniciar búsqueda"
-- [ ] Tests
+- [x] `pipeline.reset_all_run_data()` — wipes checkpoint/gated/AI-checkpoint/raw/
+      results/status/signature-cache/history/health; leaves tracking.jsonl,
+      eval/, and the browser profile alone (Kevin's call: keep Chrome session)
+- [x] `POST /reset` endpoint (409 while a run is active, mirrors `/run`'s guard)
+- [x] UI: small "Limpiar caché" link — one next to "Iniciar búsqueda" (idle state),
+      one in the sidebar under "Buscar de nuevo" (results state) since idle is only
+      ever shown before the very first run
+- [x] Tests: `pipeline.reset_all_run_data` (real files, tmp-path isolated) +
+      `/reset` route (injected fake, both the ok and 409-while-running paths)
+- [x] Verified live: confirm() dialog text correct, dismissed without wiping real data
 
 ### Phase 4 — Indeed session persistence
 - [ ] Confirm shared browser profile covers Indeed the same way it does LinkedIn

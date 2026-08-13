@@ -18,9 +18,9 @@ from career_radar.storage import write_json
 from career_radar.web.server import _stream_events, create_app
 
 
-def _make_client(pipeline_run) -> tuple[TestClient, EventBus]:
+def _make_client(pipeline_run, reset_run_data=lambda: None) -> tuple[TestClient, EventBus]:
     bus = EventBus()
-    app = create_app(event_bus=bus, pipeline_run=pipeline_run)
+    app = create_app(event_bus=bus, pipeline_run=pipeline_run, reset_run_data=reset_run_data)
     return TestClient(app), bus
 
 
@@ -61,6 +61,33 @@ def test_run_starts_background_pipeline_and_blocks_a_second_call() -> None:
     time.sleep(0.4)
     assert len(calls) == 1
     assert calls[0]["mode"] == "fast"
+
+
+def test_reset_calls_injected_reset_and_returns_ok() -> None:
+    calls: list[str] = []
+    client, _bus = _make_client(pipeline_run=lambda **_: None, reset_run_data=lambda: calls.append("reset"))
+
+    response = client.post("/reset")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    assert calls == ["reset"]
+
+
+def test_reset_refuses_while_a_run_is_in_progress() -> None:
+    calls: list[str] = []
+
+    def slow_run(**kwargs):
+        time.sleep(0.3)
+
+    client, _bus = _make_client(pipeline_run=slow_run, reset_run_data=lambda: calls.append("reset"))
+    client.post("/run", json={})
+
+    response = client.post("/reset")
+
+    assert response.status_code == 409
+    assert response.json() == {"status": "run_in_progress"}
+    assert calls == []
 
 
 def test_status_reflects_running_state_and_last_result(tmp_path, monkeypatch) -> None:

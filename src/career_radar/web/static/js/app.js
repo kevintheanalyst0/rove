@@ -46,6 +46,9 @@ const sideSources = document.getElementById("sideSources");
 const overlay = document.getElementById("overlay");
 const modalBody = document.getElementById("modalBody");
 
+const clearCacheBtn = document.getElementById("clearCacheBtn");
+const sideClearCacheBtn = document.getElementById("sideClearCacheBtn");
+
 // How long the "Listo" checkmark holds before fading into the dashboard.
 const DONE_HOLD_MS = 1100;
 
@@ -616,6 +619,35 @@ sideRerunBtn.addEventListener("click", startRun);
 sideRerunBtn.addEventListener("keydown", (event) => {
   if (event.key === "Enter" || event.key === " ") { event.preventDefault(); startRun(); }
 });
+
+// "Limpiar caché" (EATP-019, Kevin's call): wipes collected/gated/results/
+// dedup-cache/history/health data for a clean test run. Deliberately does
+// NOT touch his applied/dismissed marks, his quality labels, or the Chrome
+// login session — /reset (server.py) enforces that, this is just the UI.
+async function clearCache(button) {
+  const ok = window.confirm(
+    "¿Borrar los datos de corridas anteriores?\n\n" +
+    "Se borran las vacantes recolectadas, los resultados y el caché de " +
+    "duplicados. NO se toca tu sesión de Chrome ni las vacantes que ya " +
+    "marcaste como \"Apliqué\" / \"No me interesa\"."
+  );
+  if (!ok) return;
+
+  button.disabled = true;
+  try {
+    const res = await fetch("/reset", { method: "POST" });
+    if (res.status === 409) {
+      window.alert("Hay una corrida en curso — esperá a que termine para limpiar el caché.");
+      return;
+    }
+    window.location.reload();
+  } finally {
+    button.disabled = false;
+  }
+}
+
+clearCacheBtn.addEventListener("click", () => clearCache(clearCacheBtn));
+sideClearCacheBtn.addEventListener("click", () => clearCache(sideClearCacheBtn));
 topRerunBtn.addEventListener("click", startRun);
 
 init();
