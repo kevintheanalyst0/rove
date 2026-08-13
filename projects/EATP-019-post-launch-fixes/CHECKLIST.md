@@ -92,6 +92,33 @@
       scraping the DOM, but that's a different, bigger architecture than what this
       phase scoped. **Stopped here to ask Kevin how he wants to prioritize this**
       rather than silently starting a large rewrite.
+- [x] **Kevin's call: fix it properly, now.** Tried network-interception of the new
+      "AI search" UI's React-Server-Components action first (`page.listen` on
+      `jobSearchUpdateRequestAction`) — the endpoint exists but streams a response
+      DrissionPage couldn't reliably capture a body for; treated as a dead end rather
+      than sinking more time into it.
+      Found a much better path instead: LinkedIn's public **guest** search endpoint
+      (`jobs-guest/jobs/api/seeMoreJobPostings/search`) — the same stable, logged-out
+      surface `linkedin_api.py` already uses for job *details* — still serves classic
+      server-rendered HTML with `data-entity-urn="urn:li:jobPosting:<id>"` on every
+      card, completely unaffected by the new UI. Verified live: `f_TPR`/`f_WT`/`f_JT`/
+      `location`/`start` all still work as real filters, pagination has no overlap
+      between pages, page size is 10 (not the old UI's 25).
+      **Rewrote `linkedin.py` to be HTTP-only** (no browser at all): listing now uses
+      this guest endpoint via `collectors/http.py`'s shared client/retry/pacing
+      (same pattern as OCC/Computrabajo/Lever), detail-fetch unchanged
+      (`linkedin_api.py` was never broken). Removed from `BROWSER_SOURCES` — LinkedIn
+      no longer carries any account-ban/login-wall/captcha risk at all, and now
+      qualifies for `mode='fast'` too. Fully rewrote `tests/test_collector_linkedin.py`
+      (mocked httpx transport, same pattern as `test_collector_computrabajo.py`) and
+      fixed `test_pipeline.py::test_fast_mode_never_touches_browser_sources` (now
+      exercises `indeed`, the only remaining browser source; asserts LinkedIn *is*
+      included in fast mode). `pytest`: 326 passed.
+- [x] **Live end-to-end verification (real network, no AI, no browser)**: 3 real
+      search terms -> **138 real jobs** collected (vs. 0 before), full titles/
+      companies/real descriptions (1.4k-10.7k chars each). ~459s total for 3 terms +
+      full detail fetch of 138 jobs — detail-fetch pacing unchanged from before, not
+      a regression.
 
 ### Phase 7 — Verify & close
 - [ ] `pytest` green

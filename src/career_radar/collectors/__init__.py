@@ -21,8 +21,10 @@ from career_radar.collectors.wwr import WWRCollector
 # Sources that drive a real Chromium browser (DrissionPage) — slower, and the
 # ones carrying real account/block risk (P23). The orchestrator's 'fast' mode
 # (EATP-014) drops these; 'thorough' (the default) keeps them for full
-# coverage.
-BROWSER_SOURCES = {"linkedin", "indeed"}
+# coverage. LinkedIn moved to HTTP-only guest endpoints (EATP-019,
+# 2026-08-13) and dropped out of this set — no browser, no account risk left
+# on this source at all.
+BROWSER_SOURCES = {"indeed"}
 
 
 def build_registry() -> CollectorRegistry:

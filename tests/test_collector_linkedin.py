@@ -1,32 +1,29 @@
 """Tests for the LinkedIn collector.
 
-Split in two halves: the pure decision logic (URL building, login/
-recommendation/health detection, job construction) is tested directly with
-plain strings and real fixture data — no browser at all. `collect()`'s
-orchestration is tested against a small scripted stand-in for DrissionPage's
-`ChromiumPage`, since the collector only ever touches a handful of its
-methods (`get`, `wait.doc_loaded`, `url`, `html`, `ele`, `quit`). No live
-network, no real browser, matches `tests/fixtures/linkedin_jobs.json`.
+Rewrite (EATP-019, 2026-08-13): the collector is now HTTP-only (the guest
+search endpoint replaced the browser-driven listing phase — see
+`collectors/linkedin.py`'s module docstring for why). Search responses are
+served through a mocked httpx transport, same pattern as
+`test_collector_computrabajo.py`; `detail_fetcher` stays a plain injectable
+callable, unchanged from before, since `linkedin_api.py` (job details) was
+never touched by this rewrite.
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from queue import Empty
 
+import httpx
 import pytest
 
-from career_radar import config, events
+from career_radar import config
 from career_radar.collectors.linkedin import (
     LinkedInCollector,
     _build_job,
     build_job_view_url,
     build_search_url,
-    is_login_page,
-    is_page_healthy,
-    is_recommendation_card,
-    page_has_no_real_results,
+    extract_job_ids,
 )
 from career_radar.models import RemoteStatus
 
@@ -45,61 +42,45 @@ def _detail_from_fixture(fixture: dict) -> dict[str, str]:
     }
 
 
+def _detail_fetcher_from_fixtures(fixtures: list[dict]):
+    detail_map = {f["job_id"]: _detail_from_fixture(f) for f in fixtures}
+    return lambda ids: {jid: detail_map[jid] for jid in ids if jid in detail_map}
+
+
 # ---------------------------------------------------------------------------
 # Pure decision logic
 # ---------------------------------------------------------------------------
 
 
 def test_build_search_url_has_remote_recency_and_fulltime_filters():
-    url = build_search_url("analista de datos", page=1)
+    url = build_search_url("analista de datos", start=0)
     assert "f_WT=2" in url
     assert "f_TPR=r86400" in url
     assert "f_JT=F" in url
     assert "start=0" in url
-
-
-def test_build_search_url_paginates_by_25():
-    url = build_search_url("analista de datos", page=3)
-    assert "start=50" in url
+    assert "jobs-guest/jobs/api/seeMoreJobPostings/search" in url
 
 
 def test_build_job_view_url():
     assert build_job_view_url("123") == "https://www.linkedin.com/jobs/view/123/"
 
 
-@pytest.mark.parametrize("url", ["https://www.linkedin.com/checkpoint/x", "https://www.linkedin.com/authwall"])
-def test_is_login_page_true_for_login_markers(url):
-    assert is_login_page(url)
+def _card(job_id: str) -> str:
+    return f'<li><div data-entity-urn="urn:li:jobPosting:{job_id}"></div></li>'
 
 
-def test_is_login_page_false_for_a_normal_search_url():
-    assert not is_login_page(build_search_url("analista de datos"))
+def test_extract_job_ids_parses_ids_in_page_order():
+    html = "<html><body>" + _card("111") + _card("222") + "</body></html>"
+    assert extract_job_ids(html) == ["111", "222"]
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        "Empleos que podrían interesarte",
-        "Jobs you may be interested in",
-        "Top job picks for you",
-    ],
-)
-def test_is_recommendation_card_true_for_known_markers(text):
-    assert is_recommendation_card(text)
+def test_extract_job_ids_dedupes_within_the_page():
+    html = "<html><body>" + _card("111") + _card("111") + "</body></html>"
+    assert extract_job_ids(html) == ["111"]
 
 
-def test_is_recommendation_card_false_for_a_real_job_card():
-    assert not is_recommendation_card("Data Analyst at Acme · México (Remoto)")
-
-
-def test_page_has_no_real_results():
-    assert page_has_no_real_results("no matching jobs found for this search")
-    assert not page_has_no_real_results("42 resultados")
-
-
-def test_is_page_healthy():
-    assert is_page_healthy("42 resultados")
-    assert not is_page_healthy("http error 429 - too many requests")
+def test_extract_job_ids_empty_for_no_markers():
+    assert extract_job_ids("<html><body>no jobs here</body></html>") == []
 
 
 # ---------------------------------------------------------------------------
@@ -141,195 +122,93 @@ def test_build_job_returns_none_without_a_title():
 
 
 # ---------------------------------------------------------------------------
-# collect() orchestration — scripted fake page, no real browser
+# collect() orchestration — mocked httpx transport for search, injected fake
+# detail_fetcher (no live network at all).
 # ---------------------------------------------------------------------------
-
-
-class _FakeCard:
-    def __init__(self, text: str, job_id: str | None = None):
-        self.text = text
-        self._job_id = job_id
-
-    def attr(self, name: str) -> str | None:
-        if name in ("data-occludable-job-id", "data-job-id"):
-            return self._job_id
-        return None
-
-
-class _FakeResultsPanel:
-    def __init__(self, cards: list[_FakeCard]):
-        self._cards = cards
-
-    def eles(self, selector: str) -> list[_FakeCard]:
-        return self._cards
-
-
-class _FakeWait:
-    def doc_loaded(self) -> None:
-        pass
-
-
-class _ScriptedPage:
-    """One scripted (url, html, panel) response per `.get()` call, in order."""
-
-    def __init__(self, responses: list[tuple[str, str, _FakeResultsPanel | None]]):
-        self._responses = list(responses)
-        self._current: tuple[str, str, _FakeResultsPanel | None] | None = None
-        self.wait = _FakeWait()
-        self.quit_called = False
-
-    def get(self, url: str) -> None:
-        if self._responses:
-            self._current = self._responses.pop(0)
-
-    @property
-    def url(self) -> str:
-        return self._current[0] if self._current else ""
-
-    @property
-    def html(self) -> str:
-        return self._current[1] if self._current else ""
-
-    def ele(self, selector: str, timeout: float | None = None):
-        return self._current[2] if self._current else None
-
-    def quit(self) -> None:
-        self.quit_called = True
-
-
-def _detail_fetcher_from_fixtures(fixtures: list[dict]):
-    detail_map = {f["job_id"]: _detail_from_fixture(f) for f in fixtures}
-    return lambda ids: {jid: detail_map[jid] for jid in ids if jid in detail_map}
 
 
 @pytest.fixture(autouse=True)
 def _no_real_sleep(monkeypatch):
-    monkeypatch.setattr("career_radar.collectors.linkedin.time.sleep", lambda seconds: None)
-    monkeypatch.setattr("career_radar.collectors.browser.human_pause", lambda *a, **k: None)
+    monkeypatch.setattr("career_radar.collectors.http.time.sleep", lambda seconds: None)
+    monkeypatch.setattr("tenacity.nap.time.sleep", lambda seconds: None)
+
+
+def _search_transport(pages: dict[int, list[str]]) -> httpx.MockTransport:
+    """`pages` maps `start` -> list of job ids to render on that page."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert "jobs-guest/jobs/api/seeMoreJobPostings/search" in str(request.url)
+        start = int(request.url.params.get("start", "0"))
+        ids = pages.get(start, [])
+        html = "<html><body>" + "".join(_card(jid) for jid in ids) + "</body></html>"
+        return httpx.Response(200, text=html)
+
+    return httpx.MockTransport(handler)
 
 
 def test_collect_yields_real_fixture_jobs_from_a_single_page(monkeypatch):
     fixtures = FIXTURES[:2]
     monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
 
-    cards = [_FakeCard(f["title"], job_id=f["job_id"]) for f in fixtures]
-    page = _ScriptedPage([("https://www.linkedin.com/jobs/search/", "42 resultados", _FakeResultsPanel(cards))])
-
-    collector = LinkedInCollector(
-        page_factory=lambda: page, detail_fetcher=_detail_fetcher_from_fixtures(fixtures)
-    )
+    client = httpx.Client(transport=_search_transport({0: [f["job_id"] for f in fixtures]}))
+    collector = LinkedInCollector(client=client, detail_fetcher=_detail_fetcher_from_fixtures(fixtures))
     jobs = list(collector.collect())
 
     assert {job.title for job in jobs} == {f["title"] for f in fixtures}
-    assert page.quit_called is True
 
 
-def test_collect_stops_before_a_recommendation_card(monkeypatch):
+def test_collect_paginates_until_a_short_page(monkeypatch):
+    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
+    full_page = [str(i) for i in range(10)]  # exactly _PAGE_SIZE -> keep paginating
+    short_page = ["10", "11"]  # fewer than _PAGE_SIZE -> this is the last page
+    # Registered but must never be fetched — proves the stop condition is
+    # "page came back short", not just "the next page happened to be empty".
+    unreachable_page = ["20", "21", "22"]
+
+    client = httpx.Client(
+        transport=_search_transport({0: full_page, 10: short_page, 20: unreachable_page})
+    )
+    seen_ids = []
+    collector = LinkedInCollector(
+        client=client, detail_fetcher=lambda ids: (seen_ids.extend(ids), {})[1]
+    )
+    list(collector.collect())
+
+    assert seen_ids == full_page + short_page
+
+
+def test_collect_stops_a_term_cleanly_on_a_request_error(monkeypatch):
+    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    collector = LinkedInCollector(client=client, detail_fetcher=lambda ids: {})
+    jobs = list(collector.collect())
+
+    assert jobs == []
+
+
+def test_collect_returns_nothing_when_search_has_no_cards(monkeypatch):
+    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
+
+    client = httpx.Client(transport=_search_transport({0: []}))
+    collector = LinkedInCollector(client=client, detail_fetcher=lambda ids: {})
+    jobs = list(collector.collect())
+
+    assert jobs == []
+
+
+def test_collect_skips_a_job_whose_detail_never_came_back(monkeypatch):
     fixtures = FIXTURES[:2]
     monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
 
-    cards = [
-        _FakeCard(fixtures[0]["title"], job_id=fixtures[0]["job_id"]),
-        _FakeCard("Empleos que podrían interesarte"),
-        _FakeCard(fixtures[1]["title"], job_id=fixtures[1]["job_id"]),
-    ]
-    page = _ScriptedPage([("https://www.linkedin.com/jobs/search/", "42 resultados", _FakeResultsPanel(cards))])
-
+    client = httpx.Client(transport=_search_transport({0: [f["job_id"] for f in fixtures]}))
+    # Only the first fixture's detail resolves — the second is dropped, not crashed on.
     collector = LinkedInCollector(
-        page_factory=lambda: page, detail_fetcher=_detail_fetcher_from_fixtures(fixtures)
+        client=client, detail_fetcher=_detail_fetcher_from_fixtures(fixtures[:1])
     )
     jobs = list(collector.collect())
 
     assert [job.title for job in jobs] == [fixtures[0]["title"]]
-
-
-def test_collect_stops_and_publishes_an_event_on_an_unhealthy_page(monkeypatch):
-    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
-    page = _ScriptedPage([("https://www.linkedin.com/jobs/search/", "HTTP ERROR 429", None)])
-
-    subscriber = events.bus.subscribe()
-    try:
-        collector = LinkedInCollector(page_factory=lambda: page, detail_fetcher=lambda ids: {})
-        jobs = list(collector.collect())
-
-        assert jobs == []
-        event = subscriber.get(timeout=1)
-        assert event.status == "needs_intervention"
-        assert event.phase == "collect:linkedin"
-    finally:
-        events.bus.unsubscribe(subscriber)
-
-
-def test_collect_retries_once_on_an_unhealthy_page_then_recovers(monkeypatch):
-    # Kevin's report of legacy's behavior (2026-08-13): a 429/rate-limit
-    # marker deserves one retry after a backoff before giving up on the term.
-    fixtures = FIXTURES[:1]
-    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
-
-    cards = [_FakeCard(fixtures[0]["title"], job_id=fixtures[0]["job_id"])]
-    url = "https://www.linkedin.com/jobs/search/"
-    page = _ScriptedPage(
-        [
-            (url, "HTTP ERROR 429", None),
-            (url, "1 resultado", _FakeResultsPanel(cards)),
-        ]
-    )
-
-    subscriber = events.bus.subscribe()
-    try:
-        collector = LinkedInCollector(
-            page_factory=lambda: page, detail_fetcher=_detail_fetcher_from_fixtures(fixtures)
-        )
-        jobs = list(collector.collect())
-
-        assert [job.title for job in jobs] == [fixtures[0]["title"]]
-        with pytest.raises(Empty):  # no intervention needed — it recovered on retry
-            subscriber.get(timeout=0.2)
-    finally:
-        events.bus.unsubscribe(subscriber)
-
-
-def test_collect_retries_once_when_results_panel_is_missing_then_recovers(monkeypatch):
-    fixtures = FIXTURES[:1]
-    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
-
-    cards = [_FakeCard(fixtures[0]["title"], job_id=fixtures[0]["job_id"])]
-    url = "https://www.linkedin.com/jobs/search/"
-    page = _ScriptedPage(
-        [
-            (url, "42 resultados", None),  # healthy page, but no panel found yet
-            (url, "42 resultados", _FakeResultsPanel(cards)),
-        ]
-    )
-
-    collector = LinkedInCollector(
-        page_factory=lambda: page, detail_fetcher=_detail_fetcher_from_fixtures(fixtures)
-    )
-    jobs = list(collector.collect())
-
-    assert [job.title for job in jobs] == [fixtures[0]["title"]]
-
-
-def test_collect_gives_up_gracefully_when_login_never_resolves(monkeypatch):
-    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
-    monkeypatch.setattr("career_radar.collectors.linkedin._LOGIN_WAIT_SECONDS", 0)
-    page = _ScriptedPage([("https://www.linkedin.com/checkpoint/challenge", "", None)])
-
-    collector = LinkedInCollector(page_factory=lambda: page, detail_fetcher=lambda ids: {})
-    jobs = list(collector.collect())
-
-    assert jobs == []
-    assert page.quit_called is True
-
-
-def test_collect_calls_quit_even_when_the_first_page_has_no_results(monkeypatch):
-    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
-    page = _ScriptedPage(
-        [("https://www.linkedin.com/jobs/search/", "no matching jobs found for this search", None)]
-    )
-
-    collector = LinkedInCollector(page_factory=lambda: page, detail_fetcher=lambda ids: {})
-    jobs = list(collector.collect())
-
-    assert jobs == []
-    assert page.quit_called is True

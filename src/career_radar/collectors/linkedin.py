@@ -1,94 +1,76 @@
-"""LinkedIn collector — browser lists job ids, the guest API (linkedin_api.py)
-fetches details.
+"""LinkedIn collector — HTTP-only, both listing and detail via guest endpoints.
 
-Deliberately NOT ported from `legacy/jobmatch/collectors/linkedin.py` as-is
-(CLAUDE.md golden rule 12): legacy ran 4 browser tabs in parallel with a
-thread-coordinated global pause on rate-limiting — an aggressive pattern that
-raises account-ban risk (P23) and complexity for a source
-`docs/governance/SEARCH-STRATEGY.md` already calls "supplementary, not the
-centerpiece." Rebuilt as a single sequential browser, one term at a time:
-slower, but gentler on Kevin's real account and far simpler to reason about.
+Rewrite (EATP-019, 2026-08-13). The previous version drove a real browser
+through `https://www.linkedin.com/jobs/search/` to list job ids. That broke:
+LinkedIn shipped a new authenticated "AI job search" UI (its own banner says
+so — "algunos filtros ya no estén disponibles") that silently drops the
+`f_WT`/`f_JT` filters this collector sent, and renders results through React
+Server Components with no stable scraping hooks left (no
+`data-occludable-job-id`, no `jobs/view` hrefs, only build-hashed CSS classes
+that change per deployment). Confirmed live it wasn't a captcha, a block, or
+genuinely zero results — the page had 99 real matches, just nothing left to
+grab them by.
 
-What's kept, because it's genuinely correct site knowledge: the recommended-
-jobs card boundary, the page-health/rate-limit markers, and the search filter
-params (remote / posted ≤24h / full-time). Login/checkpoint is handled by
-publishing an event and polling with a bounded wait — never `input()`
-(ADR-004) — so a stuck login pauses only this source, not the whole run.
-
-The DOM-touching parts of `collect()` are kept as thin as possible; the
-decision logic (recommendation-card / login / health detection, URL
-building, job construction) lives in plain functions above it so it's fully
-unit-testable without a real browser.
+Fix: LinkedIn's public **guest** search endpoint
+(`jobs-guest/jobs/api/seeMoreJobPostings/search`) is unaffected — it's the
+same stable, logged-out, server-rendered surface `linkedin_api.py` already
+uses for job *details*, and it still serves classic HTML with
+`data-entity-urn="urn:li:jobPosting:<id>"` on every card. Moving the listing
+phase onto it too means this collector no longer touches a browser at all:
+no login wall, no captcha, no account-ban risk (P23) — not just a bugfix,
+strictly simpler and safer than the browser version ever was. Confirmed live
+that `f_TPR`/`f_WT`/`f_JT`/`location`/`start` all still work as filters on
+this endpoint, and that pagination (`start`) returns distinct pages with no
+overlap.
 """
 
 from __future__ import annotations
 
-import time
+import re
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 
+from httpx import Client, HTTPError
+
 from career_radar import config, criteria
-from career_radar.collectors import browser
+from career_radar.collectors.http import (
+    RetryableHTTPError,
+    build_client,
+    gentle_pause,
+    get,
+)
 from career_radar.collectors.linkedin_api import fetch_job_details
 from career_radar.collectors.parsing import clean_text, parse_days_old_es
 from career_radar.models import Job
 
 SOURCE = "linkedin"
 
-BASE_URL = "https://www.linkedin.com/jobs/search/"
+_SEARCH_URL = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
 LOCATION = "México"
-_PAGE_SIZE = 25
-_MAX_PAGES_PER_TERM = 5
-_LOGIN_WAIT_SECONDS = 120
-_LOGIN_POLL_SECONDS = 5
+# Confirmed live (2026-08-13): this endpoint returns 10 cards per page, not
+# the 25 the old browser-based `/jobs/search/` UI used.
+_PAGE_SIZE = 10
+_MAX_PAGES_PER_TERM = 10
 
-# Kevin's own recollection of what legacy did (2026-08-13): a missing results
-# panel is often a transient render hiccup, not a block — retry once, short
-# wait. A 429/rate-limit marker deserves a longer, more deferential wait
-# before retrying once — legacy paused every tab and backed off ~40s; this
-# collector is already single-tab (account-safety call, EATP-005), so there's
-# no fleet to pause, just this one retry.
-_UNHEALTHY_RETRY_WAIT_SECONDS = 40
-_PANEL_RETRY_WAIT_SECONDS = 10
+_JOB_ID_PATTERN = re.compile(r'data-entity-urn="urn:li:jobPosting:(\d+)"')
 
-_LOGIN_MARKERS = ("/login", "/checkpoint", "/authwall")
-
-_RECOMMENDATION_MARKERS = [
-    "empleos que podrían interesarte",
-    "principales empleos que te recomendamos",
-    "jobs you may be interested in",
-    "top job picks for you",
-]
-
-_NO_RESULTS_MARKERS = [
-    "no se han encontrado empleos para esta búsqueda",
-    "no matching jobs found",
-    "no jobs found for this search",
-]
-
-_UNHEALTHY_MARKERS = [
-    "http error 429",
-    "esta página no funciona",
-    "there was an error loading filters",
-    "hubo un error al cargar los filtros",
-    "error al cargar los filtros",
-    "we couldn't load search filters",
-]
+# get() exhausts its retries and reraises either of these — a request that
+# never recovers means "skip this term", not "crash the collector" (same
+# shape as OCC/Computrabajo/Lever).
+_REQUEST_ERRORS = (HTTPError, RetryableHTTPError)
 
 
 # ---------------------------------------------------------------------------
-# Pure decision logic — no browser needed, fully unit-testable.
+# Pure decision logic — no network needed, fully unit-testable.
 # ---------------------------------------------------------------------------
 
 
-def build_search_url(query: str, page: int = 1) -> str:
-    start = (page - 1) * _PAGE_SIZE
+def build_search_url(query: str, start: int = 0) -> str:
     return (
-        f"{BASE_URL}"
+        f"{_SEARCH_URL}"
         f"?keywords={quote(query)}"
         f"&location={quote(LOCATION)}"
-        f"&sortBy=DD"
         f"&f_TPR=r86400"  # posted in the last 24h
         f"&f_WT=2"  # remote
         f"&f_JT=F"  # full-time
@@ -100,22 +82,15 @@ def build_job_view_url(job_id: str) -> str:
     return f"https://www.linkedin.com/jobs/view/{job_id}/"
 
 
-def is_login_page(url: str) -> bool:
-    lowered = (url or "").lower()
-    return any(marker in lowered for marker in _LOGIN_MARKERS)
-
-
-def is_recommendation_card(card_text: str) -> bool:
-    lowered = clean_text(card_text).lower()
-    return any(marker in lowered for marker in _RECOMMENDATION_MARKERS)
-
-
-def page_has_no_real_results(html_lower: str) -> bool:
-    return any(marker in html_lower for marker in _NO_RESULTS_MARKERS)
-
-
-def is_page_healthy(html_lower: str) -> bool:
-    return not any(marker in html_lower for marker in _UNHEALTHY_MARKERS)
+def extract_job_ids(html: str) -> list[str]:
+    """Ids in page order, de-duplicated within the page."""
+    seen: set[str] = set()
+    ids: list[str] = []
+    for job_id in _JOB_ID_PATTERN.findall(html or ""):
+        if job_id not in seen:
+            seen.add(job_id)
+            ids.append(job_id)
+    return ids
 
 
 def _build_job(job_id: str, detail: dict[str, str]) -> Job | None:
@@ -148,7 +123,7 @@ def _build_job(job_id: str, detail: dict[str, str]) -> Job | None:
 
 
 # ---------------------------------------------------------------------------
-# Browser orchestration — thin; calls the pure functions above.
+# HTTP orchestration — thin; calls the pure functions above.
 # ---------------------------------------------------------------------------
 
 
@@ -157,128 +132,42 @@ class LinkedInCollector:
 
     name = SOURCE
 
-    def __init__(self, page_factory=None, detail_fetcher=fetch_job_details) -> None:
-        self._page_factory = page_factory or (lambda: browser.build_page(use_profile=True))
+    def __init__(self, client: Client | None = None, detail_fetcher=fetch_job_details) -> None:
+        self._client = client or build_client()
         self._detail_fetcher = detail_fetcher
 
     def collect(self) -> Iterator[Job]:
-        page = self._page_factory()
-        try:
-            seen: set[str] = set()
-            ordered_ids: list[str] = []
-            for term in config.SEARCH_TERMS:
-                for job_id in self._collect_term_ids(page, term):
-                    if job_id not in seen:
-                        seen.add(job_id)
-                        ordered_ids.append(job_id)
+        seen: set[str] = set()
+        ordered_ids: list[str] = []
+        for term in config.SEARCH_TERMS:
+            for job_id in self._collect_term_ids(term):
+                if job_id not in seen:
+                    seen.add(job_id)
+                    ordered_ids.append(job_id)
 
-            details = self._detail_fetcher(ordered_ids)
-            for job_id in ordered_ids:
-                detail = details.get(job_id)
-                if detail is None:
-                    continue
-                job = _build_job(job_id, detail)
-                if job is not None:
-                    yield job
-        finally:
-            page.quit()
+        details = self._detail_fetcher(ordered_ids)
+        for job_id in ordered_ids:
+            detail = details.get(job_id)
+            if detail is None:
+                continue
+            job = _build_job(job_id, detail)
+            if job is not None:
+                yield job
 
-    def _collect_term_ids(self, page, term: str) -> Iterator[str]:
-        for page_number in range(1, _MAX_PAGES_PER_TERM + 1):
-            page.get(build_search_url(term, page_number))
-            page.wait.doc_loaded()
-            browser.human_pause()
-
-            if not self._resolve_login_if_needed(page, term, page_number):
+    def _collect_term_ids(self, term: str) -> Iterator[str]:
+        for page_number in range(_MAX_PAGES_PER_TERM):
+            start = page_number * _PAGE_SIZE
+            try:
+                response = get(self._client, build_search_url(term, start))
+            except _REQUEST_ERRORS:
                 return
 
-            html_lower = (page.html or "").lower()
-            if not is_page_healthy(html_lower):
-                html_lower = self._retry_page(
-                    page, term, page_number, wait_seconds=_UNHEALTHY_RETRY_WAIT_SECONDS
-                )
-                if not is_page_healthy(html_lower):
-                    browser.request_manual_intervention(
-                        SOURCE,
-                        f"LinkedIn parece estar limitando el ritmo (término '{term}', "
-                        f"página {page_number}), incluso tras esperar; se omite el "
-                        "resto de este término.",
-                    )
-                    return
-            if page_has_no_real_results(html_lower):
+            page_ids = extract_job_ids(response.text)
+            if not page_ids:
                 return
-
-            results_panel = self._find_results_panel(page)
-            if results_panel is None:
-                self._retry_page(page, term, page_number, wait_seconds=_PANEL_RETRY_WAIT_SECONDS)
-                results_panel = self._find_results_panel(page)
-                if results_panel is None:
-                    return
-
-            cards = self._load_cards(results_panel)
-            if not cards:
-                return
-
-            page_ids: list[str] = []
-            hit_recommendations = False
-            for card in cards:
-                if is_recommendation_card(card.text):
-                    hit_recommendations = True
-                    break
-                job_id = card.attr("data-occludable-job-id") or card.attr("data-job-id")
-                if job_id and str(job_id).strip().isdigit():
-                    page_ids.append(str(job_id).strip())
 
             yield from page_ids
 
-            if hit_recommendations or len(page_ids) < _PAGE_SIZE:
+            if len(page_ids) < _PAGE_SIZE:
                 return
-
-            browser.human_pause()
-
-    def _retry_page(self, page, term: str, page_number: int, *, wait_seconds: float) -> str:
-        """Wait, then re-navigate to the same search page once — a transient
-        render hiccup or rate-limit shouldn't cost a whole term when a single
-        retry, at a respectful distance, often clears it (Kevin's own report
-        of how legacy handled this). Returns the fresh lowercased HTML."""
-        time.sleep(wait_seconds)
-        page.get(build_search_url(term, page_number))
-        page.wait.doc_loaded()
-        browser.human_pause()
-        return (page.html or "").lower()
-
-    def _find_results_panel(self, page):
-        for selector in ("css:div.jobs-search-results-list", "css:div.scaffold-layout__list"):
-            try:
-                panel = page.ele(selector, timeout=2)
-            except Exception:  # noqa: BLE001 - a missing/slow selector means "try the next one"
-                panel = None
-            if panel:
-                return panel
-        return None
-
-    def _load_cards(self, results_panel):
-        for selector in ("css:li[data-occludable-job-id]", "css:li[data-job-id]"):
-            try:
-                cards = results_panel.eles(selector)
-            except Exception:  # noqa: BLE001 - a missing selector means "try the next one"
-                cards = None
-            if cards:
-                return cards
-        return []
-
-    def _resolve_login_if_needed(self, page, term: str, page_number: int) -> bool:
-        if not is_login_page(page.url or ""):
-            return True
-
-        browser.request_manual_intervention(
-            SOURCE,
-            f"LinkedIn pide iniciar sesión (término '{term}', página {page_number}). "
-            "Resuélvelo en la ventana del navegador — la corrida espera unos minutos.",
-        )
-        deadline = time.monotonic() + _LOGIN_WAIT_SECONDS
-        while time.monotonic() < deadline:
-            time.sleep(_LOGIN_POLL_SECONDS)
-            if not is_login_page(page.url or ""):
-                return True
-        return False
+            gentle_pause()
