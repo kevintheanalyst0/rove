@@ -34,8 +34,15 @@
 - [x] Verified live: confirm() dialog text correct, dismissed without wiping real data
 
 ### Phase 4 — Indeed session persistence
-- [ ] Confirm shared browser profile covers Indeed the same way it does LinkedIn
-- [ ] Tell Kevin what (if anything) he needs to do manually
+- [x] Confirmed shared browser profile covers Indeed the same way it does LinkedIn:
+      inspected `data/browser_profile/Default/Cookies` directly — 16+ cookies already
+      persisted on `.indeed.com` across runs, same mechanism as LinkedIn's 19 on
+      `.linkedin.com`. No code change needed; `use_profile=True` already does this
+      for both collectors.
+- [x] Told Kevin: unlike LinkedIn, Indeed's collector never requires login to work
+      (browses public search results) — being signed in is optional/best-effort on
+      his end, not something the code can do for him (needs his credentials). Offered
+      to open the (now-maximized) browser window so he can log in whenever he wants.
 
 ### Phase 5 — Indeed: multiple captchas per run
 - [ ] Fix `_CaptchaCoordination` to reset after each resolved captcha
