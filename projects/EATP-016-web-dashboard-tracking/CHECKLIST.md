@@ -23,10 +23,9 @@
 |--------------|-------|---------|-------|
 | 2026-08-12 20:33 | start |  | Sesión iniciada tras confirmación de Kevin ("sigue, con el default") |
 | 2026-08-12 20:33–20:46 | Fases 1-3 | ~13 min | Backend, dashboard+tracking, verificación visual con Playwright (estático y en vivo), tests, cierre |
+| 2026-08-12 20:46–22:12 | Rediseño v2 -> v3 | ~86 min | Kevin probó la app en vivo y pidió rehacer la identidad visual por completo — ver notas |
 
-**Total project time:** ~13 min
-
-**Total project time:** _tbd_
+**Total project time:** ~99 min
 
 ## Session notes
 - Backend: `GET /results` (last `RunResult` + Kevin's applied/dismissed status per job,
@@ -49,3 +48,38 @@
   the full live flow (idle → click Iniciar → working → done → fade → results) with
   zero console errors. `main.wide` widens the glass panel only for the results state.
 - 305/305 tests pass repo-wide (11 new); `ruff check` clean on every changed file.
+
+### Rediseño visual v2 -> v3 (mismo día, tras probar en vivo)
+Kevin probó la v2 (vidrio azul oscuro) con datos reales y la comparó directamente contra
+capturas del sistema legacy: sin identidad (sin logo, sin sidebar), sin poder ver el
+detalle de una vacante (pros/contras/resumen de IA) sin salir a LinkedIn/OCC, tarjetas de
+tamaño inconsistente, y el `<select>` nativo de los filtros era ilegible sobre el vidrio
+oscuro (bug real, no solo gusto). Iteró la dirección visual con 5 vistas previas
+(Artifact) antes de tocar código real — violeta vs. azul "Aero" -> identidad + sidebar +
+modal de detalle -> corrección de bugs (blur invisible, hover no se notaba, sin
+logos) -> luego un giro completo a un tema **claro** "Apple + Aero" a partir de una
+imagen de referencia + spec escrito suyo -> tres rondas de afinado (intensidad del
+glass, logos reales, caja de resumen de IA "arcoíris") -> balance final del glass.
+Solo se construyó de verdad hasta que confirmó cada paso.
+
+**Lo que cambió de verdad (`web/static/{css,js}` reescritos, `web/static/icons/` nuevo):**
+- Paleta clara (`#F5F6F8` base) con 5 blobs pastel muy grandes y casi estáticos
+  (`filter: blur()` + `@keyframes drift` lentísimo) en vez del azul oscuro animado.
+- Sidebar real: logo (SVG "radar" inline), Estado, Resumen (número grande + 5 barras:
+  Excelentes/Buenas/Regulares/Bajas/Evaluadas — mapeo propio: A+=Excelentes, A=Buenas,
+  B=Regulares, C+D=Bajas, Evaluadas=`counts.ai_evaluated`, no es un grado), Fuentes con
+  ícono por plataforma, y "Buscar de nuevo" como tarjeta pequeña en vez de botón grande.
+- Modal de detalle por vacante (clic en la tarjeta o "Ver detalles"): 3 tarjetas de
+  puntaje (final/filtro/IA — mapea 1:1 a `final_score`/`prefilter_score`/`ai_score`),
+  caja de resumen de IA (un solo tono lavanda, no degradado), pros/contras con
+  check/X, y ahí viven "Apliqué"/"No me interesa" (ya no en la tarjeta, para que todas
+  las tarjetas midan lo mismo sin importar cuántos pros/contras tengan).
+- Dropdowns de grado/fuente reescritos como menús propios (`.dropdown-btn` +
+  `.dropdown-menu`) — nunca más el `<select>` nativo.
+- Logos reales de LinkedIn/Indeed/Greenhouse vendorizados en `web/static/icons/`
+  (Simple Icons, CC0-1.0 — verificado antes de usar). OCC/Computrabajo/otras fuentes sin
+  ícono de marca estandarizado se quedan con una inicial de color a propósito.
+- Verificado con Playwright contra un servidor real en cada ronda (no solo la maqueta):
+  filtros, modal, descartar/revertir, persistencia tras recargar, cero errores de
+  consola — igual que el resto del proyecto.
+- `pytest` no se tocó (backend sin cambios en esta parte): 305/305 siguen verdes.
