@@ -64,7 +64,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-016** | Web UI — results dashboard + job tracking | E | ✅ | 010, 014, 015 | Medium | ~13 min (2026-08-12) |
 | **EATP-017** | Match-quality evaluation harness | F | ✅ | 013, 014 | Light-med | ~35 min (2026-08-12) |
 | **EATP-018** | QA, hardening, automation & GitHub publish | F | ✅ | all | Medium | ~1h10 (2026-08-12) |
-| **EATP-019** | Post-launch fixes: captcha/browser UX, self-serve launcher, cache reset, source reliability | — | ⬜ | 018 | Medium-High | — |
+| **EATP-019** | Post-launch fixes: captcha/browser UX, self-serve launcher, cache reset, source reliability | — | ✅ | 018 | Medium-High | ~4h10 (2026-08-13) |
 
 > Fill **Status** and **Total time** as each project completes. The **Complexity** column
 > exists so no project balloons: they're all sized Medium-ish, with a couple intentionally

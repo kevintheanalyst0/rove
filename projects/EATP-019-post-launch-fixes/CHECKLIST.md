@@ -121,17 +121,36 @@
       a regression.
 
 ### Phase 7 — Verify & close
-- [ ] `pytest` green
-- [ ] Update ROADMAP status + total time
-- [ ] Write session notes below
-- [ ] Commit to git (CLAUDE.md §10)
+- [x] `pytest` green (326 passed)
+- [x] Update ROADMAP status + total time
+- [x] Write session notes below
+- [x] Commit to git (CLAUDE.md §10)
 
 ## Time log
 | Session date | Phase | Elapsed | Notes |
 |--------------|-------|---------|-------|
-|  |  |  |  |
+| 2026-08-13 | Phase 1 | ~10 min | Chrome maximized on every headful launch. |
+| 2026-08-13 | Phase 2 | ~20 min | Two `.bat` launchers (Kevin's feedback: split into two, mirroring legacy). |
+| 2026-08-13 | Phase 3 | ~35 min | `/reset` + "Limpiar caché" button, keeps browser session/tracking/eval. |
+| 2026-08-13 | Phase 4 | ~15 min | Indeed session persistence confirmed (no code change); Kevin logged in. |
+| 2026-08-13 | Phase 4 extra | ~20 min | Stray-tabs-across-runs bug found by Kevin; fixed (clear Sessions/ snapshot). |
+| 2026-08-13 | Phase 5 | ~30 min | Indeed multi-captcha bug fixed + regression test. |
+| 2026-08-13 | Phase 6 (diagnose) | ~45 min | Legacy review + retry-once port + live root-cause of LinkedIn's zero. |
+| 2026-08-13 | Phase 6 (fix) | ~75 min | RSC interception dead-end, guest-endpoint discovery, full HTTP-only rewrite, live verification (138 jobs). |
 
-**Total project time:** _tbd_
+**Total project time:** ~4h10min
 
 ## Session notes
-<3–6 lines: what was built, key decisions, anything the next project should know.>
+Six fixes/features Kevin asked for after using the published product for the first
+time, done easiest-to-hardest as he requested. Two were real bugs (Indeed's captcha
+coordinator only ever notified once per run; Chrome's crash-recovery was restoring
+stale tabs across every collector run because `quit()` races Chrome's own clean-exit
+write). One was pure usability (maximized Chrome, two single-purpose `.bat`
+launchers, a cache-reset button that deliberately leaves login/tracking/eval data
+alone). The big one: LinkedIn was returning zero because the site shipped a new
+authenticated "AI job search" UI with no stable scraping hooks — diagnosed live
+(not a captcha/block/genuine-zero), then fixed by moving the whole collector onto
+LinkedIn's public guest search endpoint (same stable surface `linkedin_api.py`
+already used for details), which also means LinkedIn no longer touches a browser at
+all — no more login wall, captcha, or account-ban risk on that source, and it now
+qualifies for `mode='fast'`. Live-verified: 138 real jobs vs. 0 before.
