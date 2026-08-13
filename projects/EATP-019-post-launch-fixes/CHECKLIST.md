@@ -8,11 +8,18 @@
 - [x] Verify: launched a real (headful) page, confirmed `window_state == "maximized"`
 
 ### Phase 2 — Self-serve launcher (no Claude Code needed)
-- [x] Windows-side double-click script (`Iniciar Career Radar.bat`) — reuses the
-      existing `scripts/run_web.sh` from EATP-015 (starts uvicorn, polls until ready,
-      opens the browser via `explorer.exe`) instead of duplicating that logic
-- [x] Short doc note in README (`.bat` as the primary path, manual steps kept as fallback)
-- [x] Verified end-to-end: ran `run_web.sh` directly, got HTTP 200, clean shutdown on exit
+- [x] Windows-side double-click scripts — **two**, mirroring legacy (Kevin's feedback):
+      `Career Radar - Ejecutar busqueda.bat` (auto-starts a full run) and
+      `Career Radar - Ver resultados.bat` (opens the dashboard only, no new run).
+      Both reuse `scripts/run_web.sh` from EATP-015; added `CAREER_RADAR_AUTOSTART=1`
+      env var to it that POSTs `/run` once the server's up, before opening the browser.
+- [x] Short doc note in README (both `.bat`s as the primary path, manual steps kept as fallback)
+- [x] Verified: autostart POST confirmed via `/status` (`running: true`); noticed
+      `run_web.sh`'s trap doesn't always kill uvicorn promptly if a browser tab is still
+      holding an open `/events` SSE connection when the window closes — pre-existing
+      EATP-015 behavior, not introduced here, not fixed (Kevin didn't ask for it and it's
+      not silent data loss, just a slower-than-instant shutdown in that specific case) —
+      noted here for later if it becomes an actual complaint.
 
 ### Phase 3 — "Limpiar caché" button
 - [ ] `POST /reset` endpoint (refuses while a run is active)

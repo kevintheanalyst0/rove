@@ -10,12 +10,18 @@ apply to beats a long one he has to wade through.
 
 ## Cómo correrlo (Kevin)
 
-**La forma fácil:** hacé doble clic en `Iniciar Career Radar.bat` (está en esta misma
-carpeta — se ve desde Windows en `\\wsl.localhost\Ubuntu-24.04\home\kevin\Projects\career-radar\`).
-Se abre una ventana negra, arranca el servidor solo y a los pocos segundos se abre el
-navegador. Para apagarlo, cerrá esa ventana negra. Si querés un acceso directo en el
-Escritorio, hacé clic derecho sobre el `.bat` → *Enviar a* → *Escritorio (crear acceso
-directo)*.
+**La forma fácil — dos accesos, como en la versión vieja** (están en esta misma carpeta,
+se ven desde Windows en
+`\\wsl.localhost\Ubuntu-24.04\home\kevin\Projects\career-radar\`):
+
+- **`Career Radar - Ejecutar busqueda.bat`** — arranca una corrida completa (recolecta,
+  filtra, evalúa con IA) y abre el navegador mostrando el progreso en vivo.
+- **`Career Radar - Ver resultados.bat`** — solo abre el dashboard con los resultados de
+  la última corrida, sin arrancar nada nuevo.
+
+En ambos casos se abre una ventana negra; para apagar el servidor, cerrala (o Ctrl+C
+adentro). Si querés accesos directos en el Escritorio, clic derecho sobre cada `.bat` →
+*Enviar a* → *Escritorio (crear acceso directo)*.
 
 **La forma manual** (si el `.bat` no te funciona, o querés ver qué está pasando):
 1. Abre una terminal de Ubuntu/WSL en esta carpeta.
