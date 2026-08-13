@@ -27,6 +27,8 @@ from pydantic import BaseModel
 
 from career_radar import config
 from career_radar.config import get_logger
+from career_radar.eval import labels as eval_labels_store
+from career_radar.eval.labels import BadReason, Label
 from career_radar.events import EventBus, ProgressEvent
 from career_radar.events import bus as default_bus
 from career_radar.pipeline import run as run_pipeline
@@ -57,6 +59,12 @@ class RunRequest(BaseModel):
 class TrackRequest(BaseModel):
     signature: str
     action: TrackingAction
+
+
+class LabelRequest(BaseModel):
+    signature: str
+    label: Label
+    reason: BadReason | None = None
 
 
 async def _stream_events(
@@ -153,6 +161,27 @@ def create_app(
     def track(request: TrackRequest) -> JSONResponse:
         tracking_store.record_action(request.signature, request.action)
         return JSONResponse({"status": "ok", "signature": request.signature, "action": request.action.value})
+
+    @app.get("/eval/labels")
+    def get_eval_labels() -> JSONResponse:
+        """Kevin's good/bad labels so far, for the match-quality harness
+        (EATP-017) — keyed by signature so the dashboard can show what's
+        already labeled without re-asking."""
+        labels = {
+            signature: entry.model_dump(mode="json")
+            for signature, entry in eval_labels_store.latest_labels().items()
+        }
+        return JSONResponse(labels)
+
+    @app.post("/eval/label")
+    def label_job(request: LabelRequest) -> JSONResponse:
+        eval_labels_store.record_label(request.signature, request.label, request.reason)
+        return JSONResponse({
+            "status": "ok",
+            "signature": request.signature,
+            "label": request.label.value,
+            "reason": request.reason.value if request.reason else None,
+        })
 
     @app.get("/events")
     async def stream_events(request: Request) -> StreamingResponse:

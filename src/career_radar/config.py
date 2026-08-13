@@ -34,6 +34,13 @@ SIGNATURES_FILE = CACHE_DIR / "signatures.jsonl"
 # action per signature wins (career_radar.tracking.store).
 TRACKING_FILE = DATA_DIR / "tracking.jsonl"
 
+# Match-quality harness (EATP-017, P22) — Kevin's good/bad labels on shown
+# jobs (career_radar.eval.labels) and the precision snapshot they're
+# compared against (career_radar.eval.report).
+EVAL_DIR = DATA_DIR / "eval"
+EVAL_LABELS_FILE = EVAL_DIR / "labels.jsonl"
+EVAL_BASELINE_FILE = EVAL_DIR / "baseline.json"
+
 # Orchestrator checkpoints (EATP-014) — let a crashed/interrupted run resume
 # without re-scraping or re-paying for AI (CLAUDE.md golden rule 3).
 CHECKPOINT_FILE = DATA_DIR / "checkpoint.json"

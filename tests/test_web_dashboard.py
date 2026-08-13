@@ -107,3 +107,59 @@ def test_track_rejects_an_invalid_action(tmp_path, monkeypatch):
 def test_track_action_enum_values_match_the_wire_strings():
     assert TrackingAction.APPLIED.value == "applied"
     assert TrackingAction.DISMISSED.value == "dismissed"
+
+
+# ---------------------------------------------------------------------------
+# Match-quality labeling (EATP-017): GET /eval/labels, POST /eval/label
+# ---------------------------------------------------------------------------
+
+
+def test_eval_labels_empty_when_nothing_labeled_yet(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "EVAL_LABELS_FILE", tmp_path / "labels.jsonl")
+
+    assert _make_client().get("/eval/labels").json() == {}
+
+
+def test_label_good_then_labels_reflects_it(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "EVAL_LABELS_FILE", tmp_path / "labels.jsonl")
+
+    client = _make_client()
+    response = client.post("/eval/label", json={"signature": "sig-1", "label": "good"})
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "signature": "sig-1", "label": "good", "reason": None}
+
+    labels = client.get("/eval/labels").json()
+    assert labels["sig-1"]["label"] == "good"
+    assert labels["sig-1"]["reason"] is None
+
+
+def test_label_bad_with_reason_is_stored(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "EVAL_LABELS_FILE", tmp_path / "labels.jsonl")
+
+    client = _make_client()
+    client.post("/eval/label", json={"signature": "sig-1", "label": "bad", "reason": "not_remote"})
+
+    labels = client.get("/eval/labels").json()
+    assert labels["sig-1"]["label"] == "bad"
+    assert labels["sig-1"]["reason"] == "not_remote"
+
+
+def test_a_later_label_overrides_an_earlier_one_for_the_same_signature(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "EVAL_LABELS_FILE", tmp_path / "labels.jsonl")
+
+    client = _make_client()
+    client.post("/eval/label", json={"signature": "sig-1", "label": "bad", "reason": "off_role"})
+    client.post("/eval/label", json={"signature": "sig-1", "label": "good"})
+
+    labels = client.get("/eval/labels").json()
+    assert labels["sig-1"]["label"] == "good"
+    assert labels["sig-1"]["reason"] is None
+
+
+def test_label_rejects_an_invalid_label(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "EVAL_LABELS_FILE", tmp_path / "labels.jsonl")
+
+    response = _make_client().post("/eval/label", json={"signature": "sig-1", "label": "maybe"})
+
+    assert response.status_code == 422

@@ -519,6 +519,22 @@ body[data-state="results"] #runnerCard { display: none; }
 .pc-col li.empty { color: var(--text-3); font-style: italic; }
 .pc-col li.empty::before { content: ""; }
 
+.eval-block { margin-bottom: 20px; }
+.eval-block > strong { display: block; font: 700 10.5px/1 var(--font); color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.eval-buttons { display: flex; gap: 10px; }
+.eval-buttons .btn-full { padding: 11px; font-size: 12.5px; }
+.eval-buttons .btn-full[data-eval-label="bad"].is-active { background: #F7D4CE; border-color: transparent; color: #7A2213; }
+.eval-reasons { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.eval-reasons[hidden] { display: none; }
+.eval-chip {
+  appearance: none; border: 1px solid var(--hairline); background: rgba(255,255,255,0.5); color: var(--text-2);
+  font: 600 11.5px/1 var(--font); padding: 7px 12px; border-radius: 999px; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.eval-chip:hover { background: rgba(255,255,255,0.85); color: var(--text); }
+.eval-chip.is-active { background: #F7D4CE; border-color: transparent; color: #7A2213; }
+.eval-chip:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
 .modal-footer { display: flex; gap: 10px; flex-wrap: wrap; }
 .btn-full {
   flex: 1 1 auto; text-align: center; text-decoration: none; appearance: none; border: none; cursor: pointer;

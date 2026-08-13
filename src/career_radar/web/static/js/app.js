@@ -72,9 +72,19 @@ const iconCache = {};
 // phase -> last intervention message still pending for that phase.
 let notices = {};
 
-// One entry per job: { scored: <ScoredJob>, isNew: bool, action: 'applied'|'dismissed'|null }
+// One entry per job: { scored, isNew, action: 'applied'|'dismissed'|null, evalLabel: {label,reason}|null }
 let allJobs = [];
 let filters = { grade: "", source: "" };
+
+// EATP-017: match-quality labeling — reason chips shown once Kevin marks a
+// job "Mala", so the FP-by-reason report (eval/report.py) can point tuning
+// at the right rubric layer (remote gate / field cap / English).
+const EVAL_REASONS = [
+  { value: "not_remote", label: "No remoto" },
+  { value: "off_role", label: "Fuera de campo" },
+  { value: "english", label: "Inglés" },
+  { value: "other", label: "Otro" },
+];
 
 function showState(name) {
   states.forEach((el) => el.classList.toggle("active", el.dataset.state === name));
@@ -411,10 +421,28 @@ function findJobEntry(signature) {
   return allJobs.find((entry) => entry.scored.job.signature === signature);
 }
 
+function renderEvalBlock(evalLabel) {
+  const label = evalLabel && evalLabel.label;
+  const reason = evalLabel && evalLabel.reason;
+  const reasonChips = EVAL_REASONS.map((r) => `
+    <button type="button" class="eval-chip${reason === r.value ? " is-active" : ""}" data-eval-reason="${r.value}">${r.label}</button>
+  `).join("");
+
+  return `
+    <div class="eval-block">
+      <strong>¿Es una buena vacante?</strong>
+      <div class="eval-buttons">
+        <button type="button" class="btn-full ghost${label === "good" ? " is-active" : ""}" data-eval-label="good">Buena</button>
+        <button type="button" class="btn-full ghost${label === "bad" ? " is-active" : ""}" data-eval-label="bad">Mala</button>
+      </div>
+      <div class="eval-reasons"${label === "bad" ? "" : " hidden"}>${reasonChips}</div>
+    </div>`;
+}
+
 function renderModal(signature) {
   const entry = findJobEntry(signature);
   if (!entry) return;
-  const { scored, action } = entry;
+  const { scored, action, evalLabel } = entry;
   const job = scored.job;
 
   const pros = (scored.pros || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
@@ -442,6 +470,7 @@ function renderModal(signature) {
       <div class="pc-col pros"><h4>Pros</h4><ul>${pros || '<li class="empty">Sin datos</li>'}</ul></div>
       <div class="pc-col cons"><h4>Contras</h4><ul>${cons || '<li class="empty">Sin contras detectadas</li>'}</ul></div>
     </div>
+    ${renderEvalBlock(evalLabel)}
     <div class="modal-footer">
       <a class="btn-full primary" href="${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer">Abrir vacante &#8594;</a>
       <button type="button" class="btn-full ghost${action === "applied" ? " is-active" : ""}" data-modal-action="applied">Apliqué</button>
@@ -475,6 +504,18 @@ modalBody.addEventListener("click", (event) => {
     trackAction(overlay.dataset.signature, actionBtn.dataset.modalAction).then(() => {
       renderModal(overlay.dataset.signature); // reflect the new state without closing
     });
+    return;
+  }
+
+  const evalLabelBtn = event.target.closest("[data-eval-label]");
+  if (evalLabelBtn) {
+    submitEvalLabel(overlay.dataset.signature, evalLabelBtn.dataset.evalLabel, null);
+    return;
+  }
+
+  const evalReasonBtn = event.target.closest("[data-eval-reason]");
+  if (evalReasonBtn) {
+    submitEvalLabel(overlay.dataset.signature, "bad", evalReasonBtn.dataset.evalReason);
   }
 });
 overlay.addEventListener("click", (event) => { if (event.target === overlay) closeModal(); });
@@ -491,9 +532,25 @@ async function trackAction(signature, action) {
   });
 }
 
+// Clicking "Mala" submits immediately (reason: null) so one click is always
+// enough to label (charter: "a dozen or two jobs is enough" — keep it
+// lightweight); picking a reason chip afterward just refines that same
+// label, it never re-asks Kevin to choose before he can mark a job bad.
+async function submitEvalLabel(signature, label, reason) {
+  const entry = findJobEntry(signature);
+  if (entry) entry.evalLabel = { label, reason }; // optimistic
+  renderModal(signature);
+  await fetch("/eval/label", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ signature, label, reason }),
+  });
+}
+
 async function loadResults() {
-  const res = await fetch("/results");
+  const [res, evalRes] = await Promise.all([fetch("/results"), fetch("/eval/labels")]);
   const data = await res.json();
+  const evalLabels = await evalRes.json();
   const result = data.result;
   const tracking = data.tracking || {};
   const newSignatures = new Set((result && result.new_signatures) || []);
@@ -502,6 +559,7 @@ async function loadResults() {
     scored,
     isNew: newSignatures.has(scored.job.signature),
     action: tracking[scored.job.signature] || null,
+    evalLabel: evalLabels[scored.job.signature] || null,
   }));
 
   populateSourceDropdown();
