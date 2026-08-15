@@ -1,104 +1,100 @@
-"""LinkedIn collector — HTTP-only, both listing and detail via guest endpoints.
+"""LinkedIn collector — real-browser listing + HTTP guest-endpoint detail-fetch.
 
-Rewrite (EATP-019, 2026-08-13). The previous version drove a real browser
-through `https://www.linkedin.com/jobs/search/` to list job ids. That broke:
-LinkedIn shipped a new authenticated "AI job search" UI (its own banner says
-so — "algunos filtros ya no estén disponibles") that silently drops the
-`f_WT`/`f_JT` filters this collector sent, and renders results through React
-Server Components with no stable scraping hooks left (no
-`data-occludable-job-id`, no `jobs/view` hrefs, only build-hashed CSS classes
-that change per deployment). Confirmed live it wasn't a captcha, a block, or
-genuinely zero results — the page had 99 real matches, just nothing left to
-grab them by.
+History, so nobody re-does this dance:
 
-Fix: LinkedIn's public **guest** search endpoint
-(`jobs-guest/jobs/api/seeMoreJobPostings/search`) is unaffected — it's the
-same stable, logged-out, server-rendered surface `linkedin_api.py` already
-uses for job *details*, and it still serves classic HTML with
-`data-entity-urn="urn:li:jobPosting:<id>"` on every card. Moving the listing
-phase onto it too means this collector no longer touches a browser at all:
-no login wall, no captcha, no account-ban risk (P23) — not just a bugfix,
-strictly simpler and safer than the browser version ever was. Confirmed live
-that `f_TPR`/`f_WT`/`f_JT`/`location`/`start` all still work as filters on
-this endpoint, and that pagination (`start`) returns distinct pages with no
-overlap.
+1. Original: drove a real browser through `https://www.linkedin.com/jobs/search/`.
+2. EATP-019 (2026-08-13): that page broke — LinkedIn had shipped a new
+   authenticated "AI job search" UI with no stable scraping hooks left (no
+   `data-occludable-job-id`, only build-hashed CSS classes). Confirmed live it
+   wasn't a captcha/block/genuinely-zero-results — moved the whole collector
+   onto the public **guest** search endpoint
+   (`jobs-guest/jobs/api/seeMoreJobPostings/search`) instead: no browser, no
+   login wall, no account-ban risk.
+3. EATP-020 (2026-08-14): found the guest endpoint's `location=` param was
+   silently ignored for remote results (real Miami/Texas/DC jobs came back);
+   fixed with a resolved `geoId`. Parallelized listing across search terms.
+4. EATP-021 (2026-08-15): tried more concurrency — live A/B proved it
+   silently drops real jobs (rate-limiting mistaken for "end of results").
+5. **EATP-022 (2026-08-15): the classic `/jobs/search/` UI is back.**
+   Kevin ran the original legacy project directly and got 28 real, fresh
+   LinkedIn jobs in ~5 minutes total (alongside 2 other sources + AI) using
+   real-browser scraping. Live-retested here with career-radar's own existing
+   isolated profile (not Kevin's personal Chrome — never needed that):
+   `/jobs/search/` no longer redirects to the broken UI, `data-occludable-job-id`
+   is back on every card. LinkedIn evidently reverted that redesign (or it was
+   a temporary experiment) sometime between 2026-08-13 and 2026-08-15 — the
+   EATP-019 finding was accurate for its moment, just went stale before
+   anyone re-checked. Bonus: the real UI's `location=México` also turned out
+   far more geo-accurate than the guest endpoint's ever was (14% U.S.-signal
+   rate in a live sample vs. 44% before EATP-020's geoId fix) — logged-in
+   session search resolves location properly where the anonymous guest
+   endpoint didn't.
 
-EATP-020: `location=México` (free text) turned out to be silently ignored for
-`f_WT=2` (remote) results — live-verified it was returning jobs based in
-Miami/Texas/Washington DC, not Mexico. Switched to `geoId=103323778`
-(LinkedIn's resolved region id for Mexico — the same id its own UI would
-resolve "México" to server-side before searching); live-verified this
-actually restricts results to real Mexico-based postings (15/15 sampled:
-Ciudad de México, Nuevo León, Querétaro, Guadalajara). Also parallelized
-listing across search terms (`_MAX_TERM_WORKERS`, mirrors the worker-pool
-`fetch_job_details` already used for detail-fetch) — pagination *within* one
-term stays sequential (page N depends on knowing page N-1 wasn't short), but
-different terms have nothing in common and don't need to wait on each other.
+   Live-verified end to end (2026-08-15, real network + real browser, both
+   headless and headful): 61-66s for 23 jobs on two runs, 164.8s for 69 jobs
+   on a third (day-to-day/hour-to-hour variance in how much LinkedIn has to
+   show) — every one of them a fraction of the guest endpoint's 534-580s.
+   Geo accuracy on the 69-job run: only 6/69 (8.7%) carried a U.S.-eligibility
+   signal in the description, and `location_raw` was overwhelmingly real
+   Mexican cities/regions (México, Ciudad de México, Guadalajara, Monterrey,
+   América Latina, ...) — better than even legacy's own 14% rate on the same
+   kind of real-browser search.
 
-Live full-run verification (all 9 `config.SEARCH_TERMS`, 2026-08-14): 534.6s
-total (listing + detail-fetch) vs. the ~459s EATP-019 Phase 6 measured for
-just 3 terms sequentially (~23 min extrapolated to 9) — a >2x speedup. Yielded
-134 jobs (down from the old free-text version's 321 on the same real run),
-overwhelmingly real Mexico locations (Ciudad de México, Monterrey,
-Guadalajara, Querétaro, Mexicali, ...) — fewer raw jobs, but that's the geo
-fix working as intended: the old 321 included jobs based in Miami/Texas/DC
-that were never actually reachable for Kevin.
+So: listing moves back to the real browser (this file). Detail-fetch stays
+exactly as EATP-019 left it — `linkedin_api.py`'s anonymous guest endpoint —
+it was never the bottleneck and carries zero account risk regardless of
+which surface lists the ids.
+
+Multi-tab search + login-wall handling ported from
+`legacy/jobmatch/collectors/linkedin.py`'s site knowledge (scrolling to load
+the lazy-loaded results panel, `start=`-based pagination), NOT its code
+as-is (CLAUDE.md golden rule 12): the blocking `input()` login flow and
+inline gate logic don't belong here — login-wall handling mirrors
+`indeed.py`'s non-blocking `_CaptchaCoordination` pattern (shared deadline
+across tabs, one event per episode, `intervention_resolved` the moment it
+clears), and every quality decision (title/English/remote) still lives
+downstream in `quality/filters.py`, never inline in the collector.
 """
 
 from __future__ import annotations
 
 import re
+import threading
+import time
 from collections.abc import Iterator
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, timedelta
+from queue import Empty, Queue
 from urllib.parse import quote
 
-from httpx import Client, HTTPError
-
 from career_radar import config, criteria
-from career_radar.collectors.http import (
-    RetryableHTTPError,
-    build_client,
-    gentle_pause,
-    get,
-)
+from career_radar.collectors import browser
 from career_radar.collectors.linkedin_api import fetch_job_details
 from career_radar.collectors.parsing import clean_text, parse_days_old_es
 from career_radar.models import Job
 
 SOURCE = "linkedin"
 
-_SEARCH_URL = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
-# LinkedIn's resolved geo id for Mexico (live-verified 2026-08-14 — see module
-# docstring). Not a free-text `location=` param: that one is silently ignored
-# for remote (`f_WT=2`) results.
-_GEO_ID = "103323778"
-# Confirmed live (2026-08-13): this endpoint returns 10 cards per page, not
-# the 25 the old browser-based `/jobs/search/` UI used.
-_PAGE_SIZE = 10
+BASE_URL = "https://www.linkedin.com/jobs/search/"
+LOCATION = "México"
+# The real UI's classic panel size (confirmed live, EATP-022) — different
+# from the guest endpoint's 10-per-page.
+_PAGE_SIZE = 25
 _MAX_PAGES_PER_TERM = 10
-# Search terms have nothing in common with each other — safe to run this many
-# at once against a public, logged-out endpoint (mirrors the detail-fetch
-# worker count in `linkedin_api.py`).
-#
-# EATP-021 (2026-08-15): tried bumping this to 5. Live A/B on the same real
-# run (back-to-back, same moment): workers=5 -> 92.2s but only 14 jobs;
-# workers=3 -> 316.5s but 42 jobs — a 3x drop in real vacancies found, not
-# just noise. `_collect_term_ids` can't tell "genuinely reached the end of
-# results" apart from "this page's request got rate-limited and gave up"
-# (`_REQUEST_ERRORS` stops the term silently either way) — more concurrent
-# terms hitting LinkedIn's guest endpoint at once means more of them get
-# rate-limited and quietly truncated. Reverted to 3 — faster isn't better if
-# it's silently losing real matches, which is exactly the P20 failure mode
-# this whole codebase tries to avoid.
-_MAX_TERM_WORKERS = 3
+# Legacy's own proven tab count for listing (its docstring: "4 pestañas en
+# paralelo"). Detail-fetch stays on the separate, cheap, anonymous HTTP path
+# (`linkedin_api.py`) so this only costs browser-tab overhead, not account risk.
+_SEARCH_WORKERS = 4
 
-_JOB_ID_PATTERN = re.compile(r'data-entity-urn="urn:li:jobPosting:(\d+)"')
+_JOB_ID_PATTERN = re.compile(r'data-occludable-job-id="(\d+)"')
+_LOGIN_URL_MARKERS = ("/login", "/checkpoint", "/authwall")
+_NO_RESULTS_MARKERS = (
+    "no se han encontrado empleos para esta búsqueda",
+    "no matching jobs found",
+    "no jobs found for this search",
+)
 
-# get() exhausts its retries and reraises either of these — a request that
-# never recovers means "skip this term", not "crash the collector" (same
-# shape as OCC/Computrabajo/Lever).
-_REQUEST_ERRORS = (HTTPError, RetryableHTTPError)
+_LOGIN_WAIT_SECONDS = 300
+_LOGIN_POLL_SECONDS = 10
 
 
 # ---------------------------------------------------------------------------
@@ -108,9 +104,9 @@ _REQUEST_ERRORS = (HTTPError, RetryableHTTPError)
 
 def build_search_url(query: str, start: int = 0) -> str:
     return (
-        f"{_SEARCH_URL}"
+        f"{BASE_URL}"
         f"?keywords={quote(query)}"
-        f"&geoId={_GEO_ID}"
+        f"&location={quote(LOCATION)}"
         f"&f_TPR=r86400"  # posted in the last 24h
         f"&f_WT=2"  # remote
         f"&f_JT=F"  # full-time
@@ -131,6 +127,16 @@ def extract_job_ids(html: str) -> list[str]:
             seen.add(job_id)
             ids.append(job_id)
     return ids
+
+
+def is_login_page(url: str) -> bool:
+    lowered = (url or "").lower()
+    return any(marker in lowered for marker in _LOGIN_URL_MARKERS)
+
+
+def page_has_no_real_results(html: str) -> bool:
+    lowered = (html or "").lower()
+    return any(marker in lowered for marker in _NO_RESULTS_MARKERS)
 
 
 def _build_job(job_id: str, detail: dict[str, str]) -> Job | None:
@@ -163,7 +169,34 @@ def _build_job(job_id: str, detail: dict[str, str]) -> Job | None:
 
 
 # ---------------------------------------------------------------------------
-# HTTP orchestration — thin; calls the pure functions above.
+# Login-wall coordination — shared across search tabs for one `collect()`
+# call, same shape as `indeed.py`'s `_CaptchaCoordination` (proven in
+# EATP-020/021: one shared deadline, one event per episode, resettable so a
+# second episode later in the same run gets its own fresh notification).
+# ---------------------------------------------------------------------------
+
+
+class _LoginCoordination:
+    def __init__(self) -> None:
+        self.giveup = threading.Event()
+        self._lock = threading.Lock()
+        self._deadline: float | None = None
+
+    def report_and_get_deadline(self, message: str) -> float:
+        with self._lock:
+            if self._deadline is None:
+                self._deadline = time.monotonic() + _LOGIN_WAIT_SECONDS
+                browser.request_manual_intervention(SOURCE, message)
+            return self._deadline
+
+    def resolved(self) -> None:
+        with self._lock:
+            self._deadline = None
+        browser.clear_manual_intervention(SOURCE)
+
+
+# ---------------------------------------------------------------------------
+# Browser orchestration
 # ---------------------------------------------------------------------------
 
 
@@ -172,24 +205,27 @@ class LinkedInCollector:
 
     name = SOURCE
 
-    def __init__(self, client: Client | None = None, detail_fetcher=fetch_job_details) -> None:
-        self._client = client or build_client()
+    def __init__(
+        self,
+        page_factory=None,
+        search_workers: int = _SEARCH_WORKERS,
+        detail_fetcher=fetch_job_details,
+    ) -> None:
+        self._page_factory = page_factory or (lambda: browser.build_page(use_profile=True))
+        self._search_workers = search_workers
         self._detail_fetcher = detail_fetcher
 
     def collect(self) -> Iterator[Job]:
-        # Terms don't depend on each other — fetch them concurrently, then
-        # merge in a fixed order (config.SEARCH_TERMS, then page order within
-        # a term) so the result is deterministic regardless of which thread
-        # finishes first.
-        ids_by_term: dict[str, list[str]] = {}
-        with ThreadPoolExecutor(max_workers=_MAX_TERM_WORKERS) as executor:
-            future_to_term = {
-                executor.submit(lambda t=term: list(self._collect_term_ids(t))): term
-                for term in config.SEARCH_TERMS
-            }
-            for future in as_completed(future_to_term):
-                ids_by_term[future_to_term[future]] = future.result()
+        page = self._page_factory()
+        coord = _LoginCoordination()
+        try:
+            ids_by_term = self._collect_all_term_ids(page, coord)
+        finally:
+            page.quit()
 
+        # Merge in a fixed order (config.SEARCH_TERMS, then page order within
+        # a term) so the result is deterministic regardless of which tab
+        # finished first.
         seen: set[str] = set()
         ordered_ids: list[str] = []
         for term in config.SEARCH_TERMS:
@@ -207,20 +243,126 @@ class LinkedInCollector:
             if job is not None:
                 yield job
 
-    def _collect_term_ids(self, term: str) -> Iterator[str]:
+    def _collect_all_term_ids(self, page, coord: _LoginCoordination) -> dict[str, list[str]]:
+        """Fan search terms out across a small pool of browser tabs — mirrors
+        `indeed.py::_fetch_details`'s worker-per-tab-pulling-a-shared-queue
+        shape, just for listing instead of detail-fetch."""
+        worker_count = max(1, min(self._search_workers, len(config.SEARCH_TERMS)))
+        tabs = [page] + [page.browser.new_tab() for _ in range(worker_count - 1)]
+
+        term_queue: Queue[str] = Queue()
+        for term in config.SEARCH_TERMS:
+            term_queue.put(term)
+        results: dict[str, list[str]] = {}
+        results_lock = threading.Lock()
+
+        def worker(tab) -> None:
+            while not coord.giveup.is_set():
+                try:
+                    term = term_queue.get_nowait()
+                except Empty:
+                    return
+                try:
+                    ids = self._collect_term_ids(tab, term, coord)
+                    with results_lock:
+                        results[term] = ids
+                finally:
+                    term_queue.task_done()
+
+        threads = [threading.Thread(target=worker, args=(tab,)) for tab in tabs]
+        for thread in threads:
+            thread.start()
+            browser.human_pause(0.3, 0.8)  # stagger tab starts, not a single burst
+        for thread in threads:
+            thread.join()
+
+        return results
+
+    def _collect_term_ids(self, tab, term: str, coord: _LoginCoordination) -> list[str]:
+        term_ids: list[str] = []
         for page_number in range(_MAX_PAGES_PER_TERM):
+            if coord.giveup.is_set():
+                break
             start = page_number * _PAGE_SIZE
-            try:
-                response = get(self._client, build_search_url(term, start))
-            except _REQUEST_ERRORS:
-                return
+            url = build_search_url(term, start)
+            if not self._navigate(tab, url, f"búsqueda '{term}' página {page_number + 1}", coord):
+                break
 
-            page_ids = extract_job_ids(response.text)
+            if page_has_no_real_results(tab.html or ""):
+                break
+
+            self._expand_results_panel(tab)
+            page_ids = extract_job_ids(tab.html or "")
             if not page_ids:
-                return
+                break
 
-            yield from page_ids
-
+            term_ids.extend(page_ids)
             if len(page_ids) < _PAGE_SIZE:
-                return
-            gentle_pause()
+                break
+            browser.human_pause()
+
+        return term_ids
+
+    def _expand_results_panel(self, tab) -> None:
+        """Scroll the lazy-loaded results panel until the card count stops
+        growing (bounded — never an infinite scroll), same technique as
+        legacy's `expand_results_panel`."""
+        previous_count = -1
+        stable_rounds = 0
+        for _ in range(8):
+            current_count = len(extract_job_ids(tab.html or ""))
+            if current_count <= previous_count:
+                stable_rounds += 1
+                if stable_rounds >= 2:
+                    break
+            else:
+                stable_rounds = 0
+            previous_count = current_count
+            try:
+                tab.scroll.down(1200)
+            except Exception:  # noqa: BLE001, S110 - a scroll failing just means "read what's there"
+                pass
+            time.sleep(0.2)
+
+    def _navigate(self, tab, url: str, context: str, coord: _LoginCoordination) -> bool:
+        if coord.giveup.is_set():
+            return False
+        tab.get(url)
+        browser.human_pause()
+        if not is_login_page(tab.url or ""):
+            return True
+        return self._wait_for_login(tab, url, context, coord)
+
+    def _wait_for_login(
+        self, tab, url: str, context: str, coord: _LoginCoordination
+    ) -> bool:
+        """Kevin's call (2026-08-12, mirrored from `indeed.py`): solve it
+        himself in the browser window rather than the run giving up
+        immediately. Publishes ONE event for the whole `collect()` call and
+        polls passively — re-navigating only to check, never hammering."""
+        deadline = coord.report_and_get_deadline(
+            f"LinkedIn pide iniciar sesión ({context}); inicia sesión en la ventana "
+            f"del navegador — la corrida espera hasta {_LOGIN_WAIT_SECONDS // 60} minutos."
+        )
+
+        while time.monotonic() < deadline:
+            if coord.giveup.is_set():
+                return False
+            time.sleep(_LOGIN_POLL_SECONDS)
+            if coord.giveup.is_set():
+                return False
+
+            tab.get(url)
+            browser.human_pause()
+            if not is_login_page(tab.url or ""):
+                coord.resolved()
+                return True
+
+        if not coord.giveup.is_set():
+            coord.giveup.set()
+            browser.request_manual_intervention(
+                SOURCE,
+                f"LinkedIn sigue pidiendo inicio de sesión tras esperar ({context}); "
+                "se omite LinkedIn en esta corrida.",
+            )
+        return False

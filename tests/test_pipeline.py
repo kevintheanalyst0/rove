@@ -247,17 +247,15 @@ def test_new_signatures_excludes_a_job_already_in_history():
 
 
 def test_fast_mode_never_touches_browser_sources():
-    # LinkedIn moved to HTTP-only guest endpoints (EATP-019, 2026-08-13) and
-    # dropped out of BROWSER_SOURCES — Indeed is the only one left that
-    # 'fast' mode should skip.
+    # LinkedIn moved back to real-browser listing in EATP-022 (2026-08-15) —
+    # both it and Indeed are in BROWSER_SOURCES, so 'fast' mode skips both;
+    # OCC (plain HTTP) is the one it should still run.
     occ_job = _job(source="occ", source_job_id="1")
     linkedin_job = _job(source="linkedin", source_job_id="2")
     indeed_job = _job(source="indeed", source_job_id="3")
     registry, collectors = _registry(occ=[occ_job], linkedin=[linkedin_job], indeed=[indeed_job])
 
-    router = _router(
-        ScriptedProvider({occ_job.signature: _ai_result(occ_job), linkedin_job.signature: _ai_result(linkedin_job)})
-    )
+    router = _router(ScriptedProvider({occ_job.signature: _ai_result(occ_job)}))
 
     result = pipeline.run(
         registry=registry, router=router, profile=PROFILE, criteria=_criteria(),
@@ -265,9 +263,9 @@ def test_fast_mode_never_touches_browser_sources():
     )
 
     assert collectors["indeed"].calls == 0
+    assert collectors["linkedin"].calls == 0
     assert collectors["occ"].calls == 1
-    assert collectors["linkedin"].calls == 1
-    assert result.counts["collected"] == 2
+    assert result.counts["collected"] == 1
 
 
 def test_ai_cap_override_defers_jobs_beyond_the_cap():

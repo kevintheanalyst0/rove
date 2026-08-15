@@ -19,22 +19,36 @@ spam — a passive re-check every `_CAPTCHA_POLL_SECONDS`) for up to
 happened. Only past that deadline — an unattended/scheduled run, say — does
 Indeed give up cleanly for this run.
 
-Search-id collection stays single-tab and sequential (cheap — a handful of
-pages per term). Detail fetching — the part that dominates total run time,
-one request per job — uses a small pool of browser tabs (2 by default,
-Kevin's call: enough to meaningfully cut run time without approaching
-legacy's 5-tab concurrency). Because Indeed's captcha is session/IP-wide,
-not per-tab, more tabs don't make captchas "block everything" any worse than
-a single tab would: captcha in any one tab starts the SAME shared wait (one
-deadline, one published event — not one per tab) that every other tab waits
-out too, and whatever was already fetched before that point is preserved
-(each detail tab streams its own successes into a shared result queue).
+EATP-022 (2026-08-15): search-id collection now fans out across 2 tabs too
+(was single-tab/sequential) — legacy's own proven search-tab count, same
+worker-per-tab-pulling-a-shared-queue shape as detail-fetch below. Detail
+fetching — one request per job — uses its own small pool of browser tabs (3,
+bumped from 2 in EATP-021, matching legacy's own detail-tab count). Because
+Indeed's captcha is session/IP-wide, not per-tab, more tabs (search or
+detail) don't make captchas "block everything" any worse than a single tab
+would: captcha in any one tab starts the SAME shared wait (one deadline, one
+published event — not one per tab) that every other tab waits out too, and
+whatever was already fetched before that point is preserved (each detail tab
+streams its own successes into a shared result queue).
 
 What's kept from legacy because it's genuine site knowledge: the search
 filter params (`fromage=14` / remote attr `DSQF7`), the pagination
 loop-detection via page-id signatures (SCRAPING-GOTCHAS.md #2 flags this as
 a general safety net worth carrying forward, not just an Indeed quirk), and
 the captcha marker strings.
+
+EATP-022 (2026-08-15): Kevin ran legacy directly and got Indeed done in ~79s
+(27 jobs) vs. our ~213-380s for a similar count — closed most of that gap
+without touching captcha handling. Two changes: (1) search-id collection now
+uses 2 tabs (above), and (2) detail-page navigation's pause shrank from the
+default 1.5-4.0s to 0.3-0.8s (`_fetch_detail_html`'s `pause_range` — search
+pages keep the longer default, they have no dedicated content-ready wait the
+way `_wait_for_detail_content`'s selector-based wait already gives detail
+pages, so shrinking search's pause risked silently under-reading a
+half-rendered results page the same way EATP-021's LinkedIn concurrency bump
+silently lost jobs). Live-verified twice, same real job set both times
+(identical 29 jobs, same titles/companies): 233.6s before the pacing change,
+102.9s after — more than 2x, with zero evidence of under-collection.
 """
 
 from __future__ import annotations
@@ -63,6 +77,10 @@ SOURCE = "indeed"
 # session/IP-wide, not per-tab (see `_CaptchaCoordination`), so more tabs
 # don't multiply captcha exposure, just how fast legitimate pages get read.
 _DETAIL_WORKERS = 3
+# EATP-022: search-id collection was single-tab/sequential — legacy ran 2
+# parallel search tabs. Same session/IP-wide captcha-risk reasoning as
+# `_DETAIL_WORKERS` applies (more tabs don't multiply exposure).
+_SEARCH_WORKERS = 2
 
 BASE_URL = "https://mx.indeed.com/jobs"
 DETAIL_URL = "https://mx.indeed.com/viewjob"
@@ -252,23 +270,27 @@ class IndeedCollector:
     name = SOURCE
 
     def __init__(
-        self, page_factory=None, detail_workers: int = _DETAIL_WORKERS
+        self,
+        page_factory=None,
+        detail_workers: int = _DETAIL_WORKERS,
+        search_workers: int = _SEARCH_WORKERS,
     ) -> None:
         self._page_factory = page_factory or (
             lambda: browser.build_page(use_profile=True)
         )
         self._detail_workers = detail_workers
+        self._search_workers = search_workers
 
     def collect(self) -> Iterator[Job]:
         page = self._page_factory()
         coord = _CaptchaCoordination()
         try:
-            ordered_ids: list[str] = []
+            ids_by_term = self._collect_all_term_ids(page, coord)
+
             seen: set[str] = set()
+            ordered_ids: list[str] = []
             for term in config.SEARCH_TERMS:
-                if coord.giveup.is_set():
-                    break
-                for job_id in self._collect_term_ids(page, term, coord):
+                for job_id in ids_by_term.get(term, []):
                     if job_id not in seen:
                         seen.add(job_id)
                         ordered_ids.append(job_id)
@@ -276,6 +298,43 @@ class IndeedCollector:
             yield from self._fetch_details(page, ordered_ids, coord)
         finally:
             page.quit()
+
+    def _collect_all_term_ids(
+        self, page, coord: _CaptchaCoordination
+    ) -> dict[str, list[str]]:
+        """Fan search terms out across a small pool of tabs — legacy's own
+        proven search-tab count (2), EATP-022. Same worker-per-tab-pulling-
+        a-shared-queue shape as `_fetch_details` below, just for listing."""
+        worker_count = max(1, min(self._search_workers, len(config.SEARCH_TERMS)))
+        tabs = [page] + [page.new_tab() for _ in range(worker_count - 1)]
+
+        term_queue: Queue[str] = Queue()
+        for term in config.SEARCH_TERMS:
+            term_queue.put(term)
+        results: dict[str, list[str]] = {}
+        results_lock = threading.Lock()
+
+        def worker(tab) -> None:
+            while not coord.giveup.is_set():
+                try:
+                    term = term_queue.get_nowait()
+                except Empty:
+                    return
+                try:
+                    ids = self._collect_term_ids(tab, term, coord)
+                    with results_lock:
+                        results[term] = ids
+                finally:
+                    term_queue.task_done()
+
+        threads = [threading.Thread(target=worker, args=(tab,)) for tab in tabs]
+        for thread in threads:
+            thread.start()
+            browser.human_pause(0.3, 0.8)  # stagger tab starts, not a single burst
+        for thread in threads:
+            thread.join()
+
+        return results
 
     def _collect_term_ids(
         self, page, term: str, coord: _CaptchaCoordination
@@ -390,7 +449,12 @@ class IndeedCollector:
         self, tab, job_id: str, coord: _CaptchaCoordination
     ) -> str | None:
         url = build_job_view_url(job_id)
-        if not self._navigate(tab, url, f"detalle {job_id}", coord):
+        # EATP-022: detail pages have a real content-ready wait right below
+        # (`_wait_for_detail_content`, selector-based, not a blind pause) —
+        # `_navigate`'s own pause can be much shorter here without losing
+        # that safety net. Search pages have no such selector wait, so they
+        # keep the longer default (see `_navigate`).
+        if not self._navigate(tab, url, f"detalle {job_id}", coord, pause_range=(0.3, 0.8)):
             return None
         self._wait_for_detail_content(tab)
         return tab.html or ""
@@ -408,16 +472,28 @@ class IndeedCollector:
             pass
 
     def _navigate(
-        self, tab, url: str, context: str, coord: _CaptchaCoordination
+        self,
+        tab,
+        url: str,
+        context: str,
+        coord: _CaptchaCoordination,
+        pause_range: tuple[float, float] = (1.5, 4.0),
     ) -> bool:
         """Load `url` on `tab`; on captcha, wait for Kevin to solve it (see
         `_wait_for_captcha_resolution`); report failure so the caller moves
-        on if it never clears."""
+        on if it never clears.
+
+        `pause_range` defaults to `browser.human_pause`'s own default —
+        search pages have no dedicated content-ready wait, so this pause is
+        what gives Indeed's results time to render before `_extract_ids`
+        reads the page. Detail fetches pass a shorter range (EATP-022):
+        `_wait_for_detail_content` already does the real, selector-based
+        wait for those."""
         if coord.giveup.is_set():
             return False
 
         tab.get(url)
-        browser.human_pause()
+        browser.human_pause(*pause_range)
         if not is_captcha_page(tab.html or "", getattr(tab, "title", "") or ""):
             return True
 

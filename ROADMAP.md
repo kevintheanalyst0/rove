@@ -67,6 +67,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-019** | Post-launch fixes: captcha/browser UX, self-serve launcher, cache reset, source reliability | — | ✅ | 018 | Medium-High | ~4h10 (2026-08-13) |
 | **EATP-020** | Match quality & source balance: launcher UX, LinkedIn geo/eligibility gate, source rebalance, LinkedIn speed | — | ✅ | 019 | Medium-High | ~2h55 (2026-08-15) |
 | **EATP-021** | Collector speed in the full pipeline + Indeed captcha/tab tradeoff | — | ✅ | 020 | Medium | ~1h05 (2026-08-15) |
+| **EATP-022** | LinkedIn & Indeed: close the speed gap with legacy (real-browser listing back for LinkedIn, tab/pacing tuning for Indeed) | — | ✅ | 021 | Medium-High | ~1h30 (2026-08-15) |
 
 > Fill **Status** and **Total time** as each project completes. The **Complexity** column
 > exists so no project balloons: they're all sized Medium-ish, with a couple intentionally

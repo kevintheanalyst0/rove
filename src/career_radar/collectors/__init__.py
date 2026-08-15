@@ -21,10 +21,14 @@ from career_radar.collectors.wwr import WWRCollector
 # Sources that drive a real Chromium browser (DrissionPage) — slower, and the
 # ones carrying real account/block risk (P23). The orchestrator's 'fast' mode
 # (EATP-014) drops these; 'thorough' (the default) keeps them for full
-# coverage. LinkedIn moved to HTTP-only guest endpoints (EATP-019,
-# 2026-08-13) and dropped out of this set — no browser, no account risk left
-# on this source at all.
-BROWSER_SOURCES = {"indeed"}
+# coverage. LinkedIn moved to HTTP-only guest endpoints in EATP-019
+# (2026-08-13) and dropped out of this set, then moved back in EATP-022
+# (2026-08-15) — the guest endpoint's listing was too rate-limited to push
+# faster and LinkedIn's classic browser UI (which broke EATP-019's original
+# version) turned out to have come back. Only *listing* touches the browser
+# again; detail-fetch (`linkedin_api.py`) stays on the anonymous guest
+# endpoint, unaffected either way.
+BROWSER_SOURCES = {"indeed", "linkedin"}
 
 
 def build_registry() -> CollectorRegistry:
