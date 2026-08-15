@@ -211,7 +211,9 @@ class LinkedInCollector:
         search_workers: int = _SEARCH_WORKERS,
         detail_fetcher=fetch_job_details,
     ) -> None:
-        self._page_factory = page_factory or (lambda: browser.build_page(use_profile=True))
+        self._page_factory = page_factory or (
+            lambda: browser.build_page(use_profile=True, start_minimized=True)
+        )
         self._search_workers = search_workers
         self._detail_fetcher = detail_fetcher
 
@@ -340,6 +342,9 @@ class LinkedInCollector:
         himself in the browser window rather than the run giving up
         immediately. Publishes ONE event for the whole `collect()` call and
         polls passively — re-navigating only to check, never hammering."""
+        # EATP-023: starts minimized — this is the one moment it actually
+        # needs his eyes, so raise it now, maximized.
+        browser.bring_to_front(tab)
         deadline = coord.report_and_get_deadline(
             f"LinkedIn pide iniciar sesión ({context}); inicia sesión en la ventana "
             f"del navegador — la corrida espera hasta {_LOGIN_WAIT_SECONDS // 60} minutos."

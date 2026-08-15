@@ -41,5 +41,10 @@ open_browser() {
 
 open_browser
 
-echo "Career Radar corriendo en $URL — cierra esta ventana para detenerlo."
+# EATP-023: no visible console to close anymore (the .vbs launcher hides
+# it) — the server watches its own SSE subscriber count and shuts itself
+# down once Kevin closes the browser tab (see server.py's tab-close
+# watcher). This echo only matters if someone's running the script directly
+# in a real terminal for debugging.
+echo "Career Radar corriendo en $URL — se apaga solo al cerrar la pestaña del navegador."
 wait "$SERVER_PID"

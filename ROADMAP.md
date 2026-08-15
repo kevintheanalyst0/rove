@@ -68,6 +68,11 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-020** | Match quality & source balance: launcher UX, LinkedIn geo/eligibility gate, source rebalance, LinkedIn speed | — | ✅ | 019 | Medium-High | ~2h55 (2026-08-15) |
 | **EATP-021** | Collector speed in the full pipeline + Indeed captcha/tab tradeoff | — | ✅ | 020 | Medium | ~1h05 (2026-08-15) |
 | **EATP-022** | LinkedIn & Indeed: close the speed gap with legacy (real-browser listing back for LinkedIn, tab/pacing tuning for Indeed) | — | ✅ | 021 | Medium-High | ~1h30 (2026-08-15) |
+| **EATP-023** | Final polish: window focus, no visible terminal, auto-shutdown on tab close | — | ✅ | 022 | Medium | ~1h55 (2026-08-15) |
+
+> **Career Radar closed out 2026-08-15** (EATP-023) — every planned project is ✅.
+> Only remaining loose end is documented on EATP-023: Kevin's own live confirmation of
+> the Windows-side launcher/window-focus behavior, which isn't testable from WSL.
 
 > Fill **Status** and **Total time** as each project completes. The **Complexity** column
 > exists so no project balloons: they're all sized Medium-ish, with a couple intentionally

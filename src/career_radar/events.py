@@ -42,6 +42,14 @@ class EventBus:
             if q in self._subscribers:
                 self._subscribers.remove(q)
 
+    def subscriber_count(self) -> int:
+        """EATP-023: lets the web server notice when the last connected
+        browser tab (its `/events` SSE connection) has gone away, so it can
+        shut itself down instead of Kevin needing a visible terminal to
+        close."""
+        with self._lock:
+            return len(self._subscribers)
+
     def publish(self, phase: str, status: str, percent: float = 0.0, message: str = "") -> None:
         event = ProgressEvent(phase=phase, status=status, percent=percent, message=message)
         with self._lock:

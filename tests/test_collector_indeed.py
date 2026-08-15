@@ -241,6 +241,19 @@ class _FakeWait:
         pass
 
 
+class _FakeWindow:
+    def max(self) -> None:
+        pass
+
+    def mini(self) -> None:
+        pass
+
+
+class _FakeSet:
+    def __init__(self) -> None:
+        self.window = _FakeWindow()
+
+
 class _ScriptedPage:
     """Maps each requested URL to a queue of canned (html, cards, title)
     responses, popped in order per URL (so the same URL can captcha once and
@@ -256,6 +269,7 @@ class _ScriptedPage:
         self._lock = threading.Lock()
         self._current_by_thread: dict[int, tuple[str, str, list, str]] = {}
         self.wait = _FakeWait()
+        self.set = _FakeSet()
         self.quit_called = False
         self.new_tab_calls = 0
 

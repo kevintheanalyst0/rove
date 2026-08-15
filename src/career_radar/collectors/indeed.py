@@ -276,7 +276,7 @@ class IndeedCollector:
         search_workers: int = _SEARCH_WORKERS,
     ) -> None:
         self._page_factory = page_factory or (
-            lambda: browser.build_page(use_profile=True)
+            lambda: browser.build_page(use_profile=True, start_minimized=True)
         )
         self._detail_workers = detail_workers
         self._search_workers = search_workers
@@ -510,6 +510,9 @@ class IndeedCollector:
         tab) and polls passively — re-navigating only to check, never
         hammering — until it clears or the shared deadline passes.
         """
+        # EATP-023: the window starts minimized (Kevin's call) — this is the
+        # one moment it actually needs his eyes, so raise it now, maximized.
+        browser.bring_to_front(tab)
         deadline = coord.report_and_get_deadline(
             f"Indeed pide verificación humana ({context}); resuélvela en la ventana "
             f"del navegador — la corrida espera hasta {_CAPTCHA_WAIT_SECONDS // 60} "

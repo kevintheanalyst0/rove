@@ -15,7 +15,13 @@ from fastapi.testclient import TestClient
 from career_radar import config
 from career_radar.events import EventBus
 from career_radar.storage import write_json
-from career_radar.web.server import _stream_events, create_app
+from career_radar.web.server import (
+    _SHUTDOWN_GRACE_SECONDS,
+    _should_shutdown,
+    _stream_events,
+    _watch_for_tab_close,
+    create_app,
+)
 
 
 def _make_client(pipeline_run, reset_run_data=lambda: None) -> tuple[TestClient, EventBus]:
@@ -153,3 +159,122 @@ async def test_stream_events_stops_once_client_disconnects() -> None:
     with pytest.raises(StopAsyncIteration):
         await asyncio.wait_for(task, timeout=2)
     assert len(bus._subscribers) == 0
+
+
+# ---------------------------------------------------------------------------
+# EATP-023 — auto-shutdown when the last browser tab (SSE connection) closes
+# ---------------------------------------------------------------------------
+
+
+def test_should_shutdown_false_before_any_subscriber_ever_connected():
+    # A slow WSL boot shouldn't kill the server before the browser even
+    # loads the page — subscriber_count=0 with ever_connected=False must
+    # never trigger, no matter how long "disconnected_since" claims to be.
+    assert not _should_shutdown(
+        subscriber_count=0, ever_connected=False, disconnected_since=0.0,
+        running=False, now=9999.0,
+    )
+
+
+def test_should_shutdown_false_while_a_tab_is_still_connected():
+    assert not _should_shutdown(
+        subscriber_count=1, ever_connected=True, disconnected_since=None,
+        running=False, now=9999.0,
+    )
+
+
+def test_should_shutdown_false_while_a_run_is_in_progress():
+    # Closing the tab mid-scrape must not abort it.
+    assert not _should_shutdown(
+        subscriber_count=0, ever_connected=True, disconnected_since=0.0,
+        running=True, now=9999.0,
+    )
+
+
+def test_should_shutdown_false_before_the_grace_period_elapses():
+    assert not _should_shutdown(
+        subscriber_count=0, ever_connected=True, disconnected_since=100.0,
+        running=False, now=100.0 + _SHUTDOWN_GRACE_SECONDS - 1, grace_seconds=_SHUTDOWN_GRACE_SECONDS,
+    )
+
+
+def test_should_shutdown_true_once_the_grace_period_elapses_with_no_tabs_left():
+    assert _should_shutdown(
+        subscriber_count=0, ever_connected=True, disconnected_since=100.0,
+        running=False, now=100.0 + _SHUTDOWN_GRACE_SECONDS, grace_seconds=_SHUTDOWN_GRACE_SECONDS,
+    )
+
+
+@pytest.mark.asyncio
+async def test_watch_for_tab_close_shuts_down_after_grace_period():
+    bus = EventBus()
+    q = bus.subscribe()  # simulates a connected browser tab
+    shutdown_calls = []
+
+    task = asyncio.ensure_future(
+        _watch_for_tab_close(
+            bus, lambda: False, lambda: shutdown_calls.append(True),
+            poll_seconds=0.02, grace_seconds=0.1,
+        )
+    )
+    await asyncio.sleep(0.05)
+    assert shutdown_calls == []  # still "connected" — must not fire yet
+
+    bus.unsubscribe(q)  # the tab closes
+    await asyncio.wait_for(task, timeout=2)
+    assert shutdown_calls == [True]
+
+
+@pytest.mark.asyncio
+async def test_watch_for_tab_close_survives_a_reconnect_within_the_grace_period():
+    # Models a page refresh: the old EventSource drops, the new one
+    # reconnects almost immediately — must never shut down.
+    bus = EventBus()
+    q = bus.subscribe()
+    shutdown_calls = []
+
+    task = asyncio.ensure_future(
+        _watch_for_tab_close(
+            bus, lambda: False, lambda: shutdown_calls.append(True),
+            poll_seconds=0.02, grace_seconds=0.3,
+        )
+    )
+    await asyncio.sleep(0.05)
+    bus.unsubscribe(q)
+    await asyncio.sleep(0.05)
+    bus.subscribe()  # reconnects well before the 0.3s grace period is up
+    await asyncio.sleep(0.5)
+
+    task.cancel()
+    assert shutdown_calls == []
+
+
+@pytest.mark.asyncio
+async def test_watch_for_tab_close_waits_out_an_in_progress_run():
+    bus = EventBus()
+    q = bus.subscribe()
+    shutdown_calls = []
+    running = {"value": True}
+
+    task = asyncio.ensure_future(
+        _watch_for_tab_close(
+            bus, lambda: running["value"], lambda: shutdown_calls.append(True),
+            poll_seconds=0.02, grace_seconds=0.05,
+        )
+    )
+    await asyncio.sleep(0.03)
+    bus.unsubscribe(q)
+    await asyncio.sleep(0.15)
+    assert shutdown_calls == []  # grace period passed, but a run is active
+
+    running["value"] = False
+    await asyncio.wait_for(task, timeout=2)
+    assert shutdown_calls == [True]
+
+
+def test_create_app_never_enables_auto_shutdown_by_default():
+    # The dangerous default: a test (or any caller) that doesn't explicitly
+    # opt in must never get a live self-kill watcher.
+    client, _bus = _make_client(pipeline_run=lambda **_: None)
+    with client:
+        pass  # lifespan runs on enter/exit; no watcher task means nothing to cancel

@@ -160,6 +160,19 @@ class _FakeScroll:
         pass
 
 
+class _FakeWindow:
+    def max(self) -> None:
+        pass
+
+    def mini(self) -> None:
+        pass
+
+
+class _FakeSet:
+    def __init__(self) -> None:
+        self.window = _FakeWindow()
+
+
 class _FakeBrowserAttr:
     """`.browser.new_tab()` — every "tab" is the same shared scripted page
     (per-thread current-state models each tab having its own independent
@@ -189,6 +202,7 @@ class _ScriptedPage:
         self._current_by_thread: dict[int, tuple[str, str]] = {}
         self.scroll = _FakeScroll()
         self.browser = _FakeBrowserAttr(self)
+        self.set = _FakeSet()
         self.quit_called = False
         self.new_tab_calls = 0
 

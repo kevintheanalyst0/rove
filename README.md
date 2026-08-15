@@ -13,16 +13,18 @@ apply to beats a long one he has to wade through.
 **La forma fácil — un acceso** (está en esta misma carpeta, se ve desde Windows en
 `\\wsl.localhost\Ubuntu-24.04\home\kevin\Projects\career-radar\`):
 
-- **`Career Radar.bat`** — abre el navegador siempre en la misma pantalla de inicio,
+- **`Career Radar.vbs`** — abre el navegador siempre en la misma pantalla de inicio,
   con tres botones: **Iniciar búsqueda**, **Limpiar caché** y **Ver dashboard de la
   última corrida** (este último solo aparece si ya hay una corrida previa). Nunca
   arranca nada por su cuenta — vos elegís qué hacer cada vez que lo abrís.
 
-Se abre una ventana negra; para apagar el servidor, cerrala (o Ctrl+C adentro). Si
-querés un acceso directo en el Escritorio, clic derecho sobre `Career Radar.bat` →
-*Enviar a* → *Escritorio (crear acceso directo)*.
+No se abre ninguna ventana de consola (EATP-023) — el servidor corre invisible y se
+apaga solo cuando cerrás la pestaña del navegador (esperá unos 20 segundos; si volvés
+a abrir la página rápido, como al refrescarla, no se apaga). Si querés un acceso
+directo en el Escritorio, clic derecho sobre `Career Radar.vbs` → *Enviar a* →
+*Escritorio (crear acceso directo)*.
 
-**La forma manual** (si el `.bat` no te funciona, o querés ver qué está pasando):
+**La forma manual** (si el `.vbs` no te funciona, o querés ver qué está pasando):
 1. Abre una terminal de Ubuntu/WSL en esta carpeta.
 2. Activa el entorno y levanta el servidor:
    ```bash
@@ -34,16 +36,19 @@ querés un acceso directo en el Escritorio, clic derecho sobre `Career Radar.bat
 **Una vez adentro:**
 1. Aprieta **"Iniciar búsqueda"**. Vas a ver el spinner con el estado en vivo; cuando
    termine, se muestra el dashboard con los resultados.
-2. Si LinkedIn o Indeed piden verificación humana durante la corrida, va a aparecer una
-   ventana de Chrome pidiéndotelo, ahora siempre maximizada — resuélvela ahí (el sistema
-   espera hasta 5 minutos; si no llegas a tiempo, esa fuente se omite y el resto de la
-   corrida sigue igual). Si la ventana de Chrome no aparece en pantalla, probá reiniciar
-   Ubuntu/WSL (`wsl --shutdown` desde PowerShell y volver a abrir la terminal) — es un
-   problema conocido de WSLg, no del sistema.
+2. Chrome corre minimizado de fondo — no lo vas a ver mientras LinkedIn/Indeed
+   recolectan normalmente. Si LinkedIn o Indeed piden verificación humana, la ventana
+   se sube sola al frente, maximizada — resuélvela ahí (el sistema espera hasta 5
+   minutos; si no llegas a tiempo, esa fuente se omite y el resto de la corrida sigue
+   igual), y una vez resuelto el aviso en el dashboard desaparece solo. Si la ventana
+   de Chrome no aparece en pantalla cuando debería, probá reiniciar Ubuntu/WSL
+   (`wsl --shutdown` desde PowerShell y volver a abrir) — es un problema conocido de
+   WSLg, no del sistema.
 3. En el dashboard puedes marcar cada vacante **Apliqué** / **No me interesa** — las que
    marques "no me interesa" no vuelven a aparecer en corridas futuras.
 
-Para cerrar el servidor, `Ctrl+C` en la terminal.
+Para apagar el servidor, simplemente cerrá la pestaña del navegador (se apaga solo a
+los ~20 segundos). Si lo corriste manualmente en una terminal, `Ctrl+C` ahí también funciona.
 
 ### Corrida diaria automática (opcional, no activada)
 

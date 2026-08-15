@@ -93,16 +93,38 @@ def build_options(*, use_profile: bool = True, headless: bool = False) -> Chromi
     return options
 
 
-def build_page(*, use_profile: bool = True, headless: bool = False) -> ChromiumPage:
+def build_page(
+    *, use_profile: bool = True, headless: bool = False, start_minimized: bool = False
+) -> ChromiumPage:
     page = ChromiumPage(addr_or_opts=build_options(use_profile=use_profile, headless=headless))
     if not headless:
-        # Kevin's call (2026-08-13): he needs to read/solve a captcha in this
-        # window, so it must be maximized, not whatever small randomized
-        # viewport `build_options` picked for fingerprint variety. New tabs
-        # (Indeed's detail-fetch pool) share this same OS window, so this
-        # covers them too — no per-tab call needed.
-        page.set.window.max()
+        if start_minimized:
+            # EATP-023 (2026-08-15, Kevin's call): a source that almost never
+            # needs him (LinkedIn) or only needs him at one specific moment
+            # (Indeed's captcha) shouldn't steal focus on every launch —
+            # start minimized, `bring_to_front()` raises it exactly when
+            # there's actually something for him to do.
+            page.set.window.mini()
+        else:
+            # Kevin's call (2026-08-13): he needs to read/solve a captcha in
+            # this window, so it must be maximized, not whatever small
+            # randomized viewport `build_options` picked for fingerprint
+            # variety. New tabs share this same OS window, so this covers
+            # them too — no per-tab call needed.
+            page.set.window.max()
     return page
+
+
+def bring_to_front(page) -> None:
+    """Raise and maximize the (possibly minimized) window — call this
+    exactly when Kevin actually needs to look at it (a captcha/login-wall),
+    never on every launch.
+
+    Always maximizes, never just "shows": EATP-019 randomized the viewport
+    size for fingerprint variety, and Kevin has hit windows too small to
+    read/click in before — a window that's finally asking for his attention
+    must never be one of those tiny ones."""
+    page.set.window.max()
 
 
 def human_pause(min_seconds: float = 1.5, max_seconds: float = 4.0) -> None:
