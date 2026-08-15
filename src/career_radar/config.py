@@ -105,7 +105,27 @@ ATS_COMPANIES: dict[str, list[str]] = {
         "amplitude",
         "vercel",
         "airtable",
+        # EATP-020: added after LinkedIn dominated 74% of the final list on a
+        # real run and lever/remoteok both yielded 0 — live-verified
+        # (2026-08-14) each of these currently has open Data/BI/Business
+        # Analyst titles on its public Greenhouse board (not just a big
+        # board with unrelated roles).
+        "instacart",
+        "affirm",
+        "brex",
+        "lyft",
+        "doximity",
+        "chime",
+        "flexport",
     ],
+    # EATP-020 (2026-08-14): tried growing this list — probed ~20 well-known
+    # remote-friendly companies (vanta, airbyte, linear, retool, posthog,
+    # notion, plaid, zapier, docusign, ramp, snowflake, ...), all 404
+    # (moved off Lever). Confirms the original docstring's finding: Lever's
+    # public-board ecosystem has genuinely shrunk, this isn't a bug to fix.
+    # Of the 2 already here, palantir has 300+ live postings but zero in the
+    # Data/BI/Business Analyst space right now, and clari's board is empty.
+    # Not worth chasing further without a new real slug to try.
     "lever": ["palantir", "clari"],
 }
 

@@ -10,27 +10,17 @@ apply to beats a long one he has to wade through.
 
 ## Cómo correrlo (Kevin)
 
-**La forma fácil — dos accesos, como en la versión vieja** (están en esta misma carpeta,
-se ven desde Windows en
+**La forma fácil — un acceso** (está en esta misma carpeta, se ve desde Windows en
 `\\wsl.localhost\Ubuntu-24.04\home\kevin\Projects\career-radar\`):
 
-- **`Career Radar - Ejecutar busqueda.bat`** — arranca una corrida completa (recolecta,
-  filtra, evalúa con IA) y abre el navegador mostrando el progreso en vivo.
-- **`Career Radar - Ver resultados.bat`** — solo abre el dashboard con los resultados de
-  la última corrida, sin arrancar nada nuevo.
+- **`Career Radar.bat`** — abre el navegador siempre en la misma pantalla de inicio,
+  con tres botones: **Iniciar búsqueda**, **Limpiar caché** y **Ver dashboard de la
+  última corrida** (este último solo aparece si ya hay una corrida previa). Nunca
+  arranca nada por su cuenta — vos elegís qué hacer cada vez que lo abrís.
 
-En ambos casos se abre una ventana negra; para apagar el servidor, cerrala (o Ctrl+C
-adentro). Si querés accesos directos en el Escritorio, clic derecho sobre cada `.bat` →
+Se abre una ventana negra; para apagar el servidor, cerrala (o Ctrl+C adentro). Si
+querés un acceso directo en el Escritorio, clic derecho sobre `Career Radar.bat` →
 *Enviar a* → *Escritorio (crear acceso directo)*.
-
-**Ponerles ícono a los accesos directos:** en la misma carpeta hay dos íconos ya
-armados (`Career Radar - Ejecutar busqueda.ico` y `Career Radar - Ver resultados.ico`,
-uno con ▶ verde para el que arranca la corrida, otro con ✓ verde para el que solo
-muestra resultados). Windows no deja ponerle ícono al `.bat` en sí — hay que hacerlo
-sobre el acceso directo del Escritorio:
-1. Clic derecho sobre el acceso directo → **Propiedades**.
-2. Pestaña *Acceso directo* → botón **Cambiar icono...**
-3. **Examinar** → buscá el `.ico` que corresponda (misma carpeta que el `.bat`) → Abrir → Aceptar.
 
 **La forma manual** (si el `.bat` no te funciona, o querés ver qué está pasando):
 1. Abre una terminal de Ubuntu/WSL en esta carpeta.

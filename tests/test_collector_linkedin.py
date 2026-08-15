@@ -61,6 +61,15 @@ def test_build_search_url_has_remote_recency_and_fulltime_filters():
     assert "jobs-guest/jobs/api/seeMoreJobPostings/search" in url
 
 
+def test_build_search_url_uses_geo_id_not_free_text_location():
+    # EATP-020: free-text `location=México` was live-verified to be silently
+    # ignored for remote (f_WT=2) results (returned Miami/Texas/DC postings);
+    # `geoId=103323778` is the resolved id that actually restricts to Mexico.
+    url = build_search_url("analista de datos", start=0)
+    assert "geoId=103323778" in url
+    assert "location=" not in url
+
+
 def test_build_job_view_url():
     assert build_job_view_url("123") == "https://www.linkedin.com/jobs/view/123/"
 
@@ -198,6 +207,30 @@ def test_collect_returns_nothing_when_search_has_no_cards(monkeypatch):
     jobs = list(collector.collect())
 
     assert jobs == []
+
+
+def test_collect_merges_multiple_terms_in_deterministic_order(monkeypatch):
+    # Terms are fetched concurrently (EATP-020) but must still merge in
+    # config.SEARCH_TERMS order — regardless of which thread finishes first.
+    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos", "analista de negocios"])
+    ids_by_term = {"analista de datos": ["1", "2"], "analista de negocios": ["3", "4"]}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        from urllib.parse import unquote
+
+        term = unquote(request.url.params.get("keywords"))
+        ids = ids_by_term[term]
+        html = "<html><body>" + "".join(_card(jid) for jid in ids) + "</body></html>"
+        return httpx.Response(200, text=html)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    seen_ids: list[str] = []
+    collector = LinkedInCollector(
+        client=client, detail_fetcher=lambda ids: (seen_ids.extend(ids), {})[1]
+    )
+    list(collector.collect())
+
+    assert seen_ids == ["1", "2", "3", "4"]
 
 
 def test_collect_skips_a_job_whose_detail_never_came_back(monkeypatch):

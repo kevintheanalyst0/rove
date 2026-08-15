@@ -24,16 +24,6 @@ for _ in $(seq 1 50); do
   sleep 0.2
 done
 
-# Two launchers, one script (Kevin's call, EATP-019 — mirrors legacy's two
-# separate .bat files): CAREER_RADAR_AUTOSTART=1 kicks off a full pipeline
-# run before opening the browser, so the page loads straight into the
-# spinner instead of Kevin having to click "Iniciar búsqueda" himself. Unset
-# (the default) just opens whatever's already there — the last results if
-# any, otherwise the idle "Iniciar búsqueda" screen — no run is started.
-if [ "${CAREER_RADAR_AUTOSTART:-0}" = "1" ]; then
-  curl -s -X POST "${URL}run" -H "Content-Type: application/json" -d '{}' >/dev/null || true
-fi
-
 open_browser() {
   if grep -qi microsoft /proc/version 2>/dev/null; then
     # WSL: no GUI browser on the Linux side — hand the URL to Windows.

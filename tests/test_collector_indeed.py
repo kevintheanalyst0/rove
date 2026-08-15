@@ -412,6 +412,14 @@ def test_collect_waits_for_captcha_resolution_then_recovers(monkeypatch):
         assert event.status == "needs_intervention"
         assert event.phase == "collect:indeed"
         assert "resuélvela en la ventana del navegador" in event.message
+
+        # EATP-020: Kevin's report — the banner stayed on screen forever
+        # after he'd already solved it. Once resolved, a paired event must
+        # arrive so the frontend can clear that specific notice immediately,
+        # not wait for a later pipeline phase.
+        resolved_event = subscriber.get(timeout=1)
+        assert resolved_event.status == "intervention_resolved"
+        assert resolved_event.phase == "collect:indeed"
     finally:
         events.bus.unsubscribe(subscriber)
 

@@ -3,7 +3,21 @@ that's exercised live, never in CI/tests, per CLAUDE.md golden rule 3/8)."""
 
 from __future__ import annotations
 
+from career_radar import events
 from career_radar.collectors import browser
+
+
+def test_clear_manual_intervention_publishes_resolved_for_the_same_phase():
+    # EATP-020: pairs with request_manual_intervention — the frontend needs
+    # a matching event on the same phase to clear a stuck "resuélvela" banner.
+    subscriber = events.bus.subscribe()
+    try:
+        browser.clear_manual_intervention("indeed")
+        event = subscriber.get(timeout=1)
+        assert event.phase == "collect:indeed"
+        assert event.status == "intervention_resolved"
+    finally:
+        events.bus.unsubscribe(subscriber)
 
 
 def test_clear_session_restore_state_deletes_session_files(tmp_path):

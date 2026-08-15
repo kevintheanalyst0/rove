@@ -447,6 +447,7 @@ class IndeedCollector:
             browser.human_pause()
             if not is_captcha_page(tab.html or "", getattr(tab, "title", "") or ""):
                 coord.resolved()
+                browser.clear_manual_intervention(SOURCE)
                 return True
 
         if not coord.giveup.is_set():

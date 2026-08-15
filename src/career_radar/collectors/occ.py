@@ -13,12 +13,29 @@ quality layer (EATP-009/010; see docs/governance/SCRAPING-GOTCHAS.md §4/§7).
 What's kept is the site knowledge: the detail JSON endpoint, its field
 mapping, and (new) real end-of-results detection instead of a fixed 2-page
 cap — adopted from Computrabajo's pagination technique.
+
+EATP-020: Kevin reported this taking ~6 min vs. legacy's ~1.5 min, despite
+both being plain HTTP with no concurrency. Root cause wasn't the site — it's
+that this version added `gentle_pause()` (politeness/anti-detection, absent
+in legacy) before *every single* detail fetch, one at a time; with 100+ jobs
+that's minutes of pure deliberate waiting. Rather than drop the pause
+(legacy's zero-pacing approach isn't something to copy back — no evidence it
+was actually safer, just faster), detail-fetching is now parallelized across
+a small worker pool (mirrors `linkedin.py`'s `_MAX_TERM_WORKERS` /
+`linkedin_api.py`'s `fetch_job_details`) — same politeness per request, far
+less total wall-clock time. OCC has no login/session to protect (unlike
+Indeed), so there's no extra account-risk tradeoff to weigh here.
+
+Live-verified (2026-08-15, all 9 `config.SEARCH_TERMS`): 79.0s for 134 jobs
+— down from the ~6 min Kevin measured before this fix, and faster than
+legacy's own ~1.5 min benchmark.
 """
 
 from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 
@@ -39,6 +56,9 @@ SOURCE = "occ"
 
 _ID_RE = re.compile(r"/empleo/oferta/(\d+)")
 _MAX_PAGES_PER_TERM = 5
+# Plain public HTTP, no login/session at stake — safe to fetch details with
+# more concurrency than Indeed's browser-tab pool.
+_DETAIL_WORKERS = 5
 # get() exhausts its retries and reraises either of these — a request that
 # never recovers means "skip this job/page", not "crash the collector".
 _REQUEST_ERRORS = (HTTPError, RetryableHTTPError)
@@ -81,6 +101,7 @@ class OCCCollector:
             gentle_pause()
 
     def _fetch_job(self, job_id: str) -> Job | None:
+        gentle_pause()
         try:
             response = get(self._client, _detail_url(job_id))
         except _REQUEST_ERRORS:
@@ -122,13 +143,20 @@ class OCCCollector:
 
     def collect(self) -> Iterator[Job]:
         seen_ids: set[str] = set()
+        ordered_ids: list[str] = []
         for term in config.SEARCH_TERMS:
             for job_id in self._job_ids_for_term(term):
-                if job_id in seen_ids:
-                    continue
-                seen_ids.add(job_id)
+                if job_id not in seen_ids:
+                    seen_ids.add(job_id)
+                    ordered_ids.append(job_id)
 
-                gentle_pause()
-                job = self._fetch_job(job_id)
+        if not ordered_ids:
+            return
+
+        worker_count = max(1, min(_DETAIL_WORKERS, len(ordered_ids)))
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            futures = [executor.submit(self._fetch_job, job_id) for job_id in ordered_ids]
+            for future in as_completed(futures):
+                job = future.result()
                 if job is not None:
                     yield job

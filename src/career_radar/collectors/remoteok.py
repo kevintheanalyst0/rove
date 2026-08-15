@@ -8,6 +8,16 @@ prefers site-native filters when they exist; this one doesn't).
 
 The first element of the response array is always a legal notice, not a job
 — skip it rather than trusting "index 0 = first result".
+
+EATP-020 (2026-08-14): investigated why this yielded 0 on a real run — not a
+block (API responded 200 with the usual ~100 entries). The "most recent 100"
+feed itself has drifted: live-sampled titles were things like "Gardener
+Handyman Driver", "Room Attendant", "Marine Painter & Blaster" — RemoteOK's
+public feed is no longer tech-only the way it may have been when this
+collector was built (EATP-007). Zero matches against `ENGLISH_SEARCH_TERMS`
+was the client-side filter working correctly on genuinely low-relevance
+input, not a bug here. Nothing to fix without a deeper rewrite (a
+better-targeted endpoint, if one exists) — not attempted this session.
 """
 
 from __future__ import annotations

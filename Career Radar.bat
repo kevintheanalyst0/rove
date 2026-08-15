@@ -1,7 +1,8 @@
 @echo off
-title Career Radar - Ver resultados
-echo Abriendo el ultimo resultado de Career Radar (no arranca una corrida nueva)...
-echo Se va a abrir tu navegador en unos segundos.
+title Career Radar
+echo Arrancando Career Radar...
+echo Se va a abrir tu navegador con la pantalla de inicio: iniciar busqueda,
+echo limpiar cache o ver el dashboard de la ultima corrida.
 echo.
 echo Para APAGAR el servidor, cerra esta ventana (o Ctrl+C aca adentro).
 echo.

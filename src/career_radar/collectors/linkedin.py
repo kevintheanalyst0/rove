@@ -22,12 +22,34 @@ strictly simpler and safer than the browser version ever was. Confirmed live
 that `f_TPR`/`f_WT`/`f_JT`/`location`/`start` all still work as filters on
 this endpoint, and that pagination (`start`) returns distinct pages with no
 overlap.
+
+EATP-020: `location=México` (free text) turned out to be silently ignored for
+`f_WT=2` (remote) results — live-verified it was returning jobs based in
+Miami/Texas/Washington DC, not Mexico. Switched to `geoId=103323778`
+(LinkedIn's resolved region id for Mexico — the same id its own UI would
+resolve "México" to server-side before searching); live-verified this
+actually restricts results to real Mexico-based postings (15/15 sampled:
+Ciudad de México, Nuevo León, Querétaro, Guadalajara). Also parallelized
+listing across search terms (`_MAX_TERM_WORKERS`, mirrors the worker-pool
+`fetch_job_details` already used for detail-fetch) — pagination *within* one
+term stays sequential (page N depends on knowing page N-1 wasn't short), but
+different terms have nothing in common and don't need to wait on each other.
+
+Live full-run verification (all 9 `config.SEARCH_TERMS`, 2026-08-14): 534.6s
+total (listing + detail-fetch) vs. the ~459s EATP-019 Phase 6 measured for
+just 3 terms sequentially (~23 min extrapolated to 9) — a >2x speedup. Yielded
+134 jobs (down from the old free-text version's 321 on the same real run),
+overwhelmingly real Mexico locations (Ciudad de México, Monterrey,
+Guadalajara, Querétaro, Mexicali, ...) — fewer raw jobs, but that's the geo
+fix working as intended: the old 321 included jobs based in Miami/Texas/DC
+that were never actually reachable for Kevin.
 """
 
 from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 
@@ -47,11 +69,18 @@ from career_radar.models import Job
 SOURCE = "linkedin"
 
 _SEARCH_URL = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
-LOCATION = "México"
+# LinkedIn's resolved geo id for Mexico (live-verified 2026-08-14 — see module
+# docstring). Not a free-text `location=` param: that one is silently ignored
+# for remote (`f_WT=2`) results.
+_GEO_ID = "103323778"
 # Confirmed live (2026-08-13): this endpoint returns 10 cards per page, not
 # the 25 the old browser-based `/jobs/search/` UI used.
 _PAGE_SIZE = 10
 _MAX_PAGES_PER_TERM = 10
+# Search terms have nothing in common with each other — safe to run this many
+# at once against a public, logged-out endpoint (mirrors the detail-fetch
+# worker count in `linkedin_api.py`).
+_MAX_TERM_WORKERS = 3
 
 _JOB_ID_PATTERN = re.compile(r'data-entity-urn="urn:li:jobPosting:(\d+)"')
 
@@ -70,7 +99,7 @@ def build_search_url(query: str, start: int = 0) -> str:
     return (
         f"{_SEARCH_URL}"
         f"?keywords={quote(query)}"
-        f"&location={quote(LOCATION)}"
+        f"&geoId={_GEO_ID}"
         f"&f_TPR=r86400"  # posted in the last 24h
         f"&f_WT=2"  # remote
         f"&f_JT=F"  # full-time
@@ -137,10 +166,23 @@ class LinkedInCollector:
         self._detail_fetcher = detail_fetcher
 
     def collect(self) -> Iterator[Job]:
+        # Terms don't depend on each other — fetch them concurrently, then
+        # merge in a fixed order (config.SEARCH_TERMS, then page order within
+        # a term) so the result is deterministic regardless of which thread
+        # finishes first.
+        ids_by_term: dict[str, list[str]] = {}
+        with ThreadPoolExecutor(max_workers=_MAX_TERM_WORKERS) as executor:
+            future_to_term = {
+                executor.submit(lambda t=term: list(self._collect_term_ids(t))): term
+                for term in config.SEARCH_TERMS
+            }
+            for future in as_completed(future_to_term):
+                ids_by_term[future_to_term[future]] = future.result()
+
         seen: set[str] = set()
         ordered_ids: list[str] = []
         for term in config.SEARCH_TERMS:
-            for job_id in self._collect_term_ids(term):
+            for job_id in ids_by_term.get(term, []):
                 if job_id not in seen:
                     seen.add(job_id)
                     ordered_ids.append(job_id)

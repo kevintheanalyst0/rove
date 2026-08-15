@@ -6,6 +6,12 @@
  * doesn't stop for those. "done" holds briefly on the checkmark, then fades
  * into "results" — one more state in this same machine, not a second page.
  *
+ * EATP-020: on load, `init()` always lands on "idle" (unless a run is
+ * genuinely in progress) instead of auto-jumping into last run's results —
+ * Kevin wants to see and choose every time, never have the launcher decide
+ * for him. "idle" shows "Ver dashboard de la última corrida" only when a
+ * previous successful run actually exists.
+ *
  * v3 (2026-08-12): Kevin sent a reference mockup + a full written spec and
  * asked for a light "Apple + Aero" glass rebuild — white-roto background,
  * large soft pastel ambient blobs, translucent panels, green as the one
@@ -18,6 +24,7 @@
 
 const states = document.querySelectorAll(".state");
 const startBtn = document.getElementById("startBtn");
+const viewLastBtn = document.getElementById("viewLastBtn");
 const retryBtn = document.getElementById("retryBtn");
 const sideRerunBtn = document.getElementById("sideRerunBtn");
 const topRerunBtn = document.getElementById("topRerunBtn");
@@ -33,7 +40,6 @@ const resultsMeta = document.getElementById("resultsMeta");
 const resultsGrid = document.getElementById("resultsGrid");
 const resultsEmpty = document.getElementById("resultsEmpty");
 const searchInput = document.getElementById("searchInput");
-const remoteOnlyToggle = document.getElementById("remoteOnlyToggle");
 const hideDismissedToggle = document.getElementById("hideDismissedToggle");
 
 const sideStatusLine = document.getElementById("sideStatusLine");
@@ -138,6 +144,16 @@ const PHASES_PAST_COLLECT = new Set(["gate", "prefilter", "ai", "persist"]);
 function handleEvent(event) {
   if (event.status === "needs_intervention") {
     notices[event.phase] = event.message;
+    renderNotices();
+    return;
+  }
+
+  // EATP-020: pairs with `needs_intervention` — published the moment the
+  // collector confirms the captcha/login block is actually gone, so the
+  // banner doesn't stay stuck until the next pipeline phase (which could be
+  // minutes away, or after Kevin's already stopped watching).
+  if (event.status === "intervention_resolved") {
+    delete notices[event.phase];
     renderNotices();
     return;
   }
@@ -293,9 +309,7 @@ function populateSourceDropdown() {
 function syncCheckbox(input) {
   input.closest(".filter-check").classList.toggle("checked", input.checked);
 }
-[remoteOnlyToggle, hideDismissedToggle].forEach((el) => {
-  el.addEventListener("change", () => syncCheckbox(el));
-});
+hideDismissedToggle.addEventListener("change", () => syncCheckbox(hideDismissedToggle));
 
 // ---- sidebar ----
 
@@ -397,14 +411,16 @@ function renderResultsMeta(result) {
 
 function applyFiltersAndRender() {
   const search = searchInput.value.trim().toLowerCase();
-  const remoteOnly = remoteOnlyToggle.checked;
   const hideDismissed = hideDismissedToggle.checked;
 
   const visible = allJobs.filter(({ scored, action }) => {
     const job = scored.job;
     if (filters.grade && scored.grade !== filters.grade) return false;
+    // D is hidden unless Kevin explicitly picks it from the grade dropdown —
+    // by definition a "bad match" grade, not worth cluttering the default
+    // view with (EATP-020, Kevin's call).
+    if (!filters.grade && scored.grade === "D") return false;
     if (filters.source && job.source !== filters.source) return false;
-    if (remoteOnly && job.remote_status !== "remote") return false;
     if (hideDismissed && action === "dismissed") return false;
     if (search && !`${job.title} ${job.company}`.toLowerCase().includes(search)) return false;
     return true;
@@ -576,7 +592,7 @@ async function revealResults() {
   transitionToState("results");
 }
 
-[searchInput, remoteOnlyToggle, hideDismissedToggle].forEach((el) => {
+[searchInput, hideDismissedToggle].forEach((el) => {
   el.addEventListener("input", applyFiltersAndRender);
   el.addEventListener("change", applyFiltersAndRender);
 });
@@ -586,7 +602,6 @@ async function revealResults() {
 // ---------------------------------------------------------------------------
 
 async function init() {
-  syncCheckbox(remoteOnlyToggle);
   syncCheckbox(hideDismissedToggle);
   connectEvents();
   try {
@@ -597,16 +612,7 @@ async function init() {
       setProgress(0, "Reanudando…");
       return;
     }
-    if (data.last && data.last.status === "success") {
-      await loadResults();
-      showState("results");
-      return;
-    }
-    if (data.last && data.last.status === "error") {
-      errorMessage.textContent = data.last.message || "Ocurrió un error inesperado.";
-      showState("error");
-      return;
-    }
+    viewLastBtn.hidden = !(data.last && data.last.status === "success");
   } catch {
     // No /status yet (first run ever) — fall through to idle.
   }
@@ -614,6 +620,7 @@ async function init() {
 }
 
 startBtn.addEventListener("click", startRun);
+viewLastBtn.addEventListener("click", revealResults);
 retryBtn.addEventListener("click", startRun);
 sideRerunBtn.addEventListener("click", startRun);
 sideRerunBtn.addEventListener("keydown", (event) => {

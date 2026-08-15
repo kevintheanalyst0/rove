@@ -122,3 +122,21 @@ def request_manual_intervention(source: str, message: str) -> None:
         status="needs_intervention",
         message=message,
     )
+
+
+def clear_manual_intervention(source: str) -> None:
+    """Pair to `request_manual_intervention`: tell the web UI the thing it
+    asked Kevin to resolve (captcha, login) is actually resolved now.
+
+    EATP-020: without this, Kevin's "resuélvela en la ventana" banner stayed
+    on screen indefinitely after he'd already solved it — the frontend only
+    ever cleared notices at the *next pipeline phase* (gate/prefilter/ai),
+    which could be minutes away or, if this was the last collector, never
+    visibly happen before he stopped watching. The caller should publish this
+    the moment it detects the block is gone, not wait for anything else.
+    """
+    bus.publish(
+        phase=f"collect:{source}",
+        status="intervention_resolved",
+        message="",
+    )
