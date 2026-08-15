@@ -13,6 +13,12 @@ Baselines are built from a small, dedicated append-only log
 `history/store.py`'s per-job run history (ADR-007, "what was shown to
 Kevin"), which tracks a different thing for a different consumer.
 
+EATP-021: each row also carries `duration_seconds` (from `CollectorResult`,
+already computed by `collectors/base.py::run_collector`) — not used for
+health classification, just so a run's per-collector timing survives past
+`checkpoint.json` (which gets deleted once a run completes successfully),
+making "was this run faster than last time" answerable after the fact.
+
 Health is informational only: a broken source is flagged, never crashes the
 run, and everything here is read-only over data the run already produces.
 """
@@ -38,6 +44,7 @@ class _YieldEntry(BaseModel):
     source: str
     yielded: int
     status: str
+    duration_seconds: float = 0.0
 
 
 def _yields_file(health_dir: str | Path | None = None) -> Path:
@@ -61,6 +68,7 @@ def record_yields(
             source=result.source,
             yielded=result.yielded,
             status=result.status.value,
+            duration_seconds=result.duration_seconds,
         )
         append_jsonl(path, entry.model_dump(mode="json"))
 

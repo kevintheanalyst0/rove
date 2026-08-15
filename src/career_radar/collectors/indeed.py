@@ -56,9 +56,13 @@ from career_radar.collectors.parsing import clean_text
 from career_radar.models import Job
 
 SOURCE = "indeed"
-_DETAIL_WORKERS = (
-    2  # Kevin's call: fewer than legacy's 3, enough to cut run time meaningfully
-)
+# EATP-021: bumped 2->3 (Kevin's call, 2026-08-15, after Indeed was confirmed
+# a real time sink and the captcha-banner UX got fixed in EATP-020) — back up
+# to legacy's own proven detail-tab count, not beyond it. Captcha risk is
+# still bounded the same way regardless of tab count: Indeed's block is
+# session/IP-wide, not per-tab (see `_CaptchaCoordination`), so more tabs
+# don't multiply captcha exposure, just how fast legitimate pages get read.
+_DETAIL_WORKERS = 3
 
 BASE_URL = "https://mx.indeed.com/jobs"
 DETAIL_URL = "https://mx.indeed.com/viewjob"

@@ -6,18 +6,29 @@ from datetime import UTC, datetime
 
 from career_radar.collectors.base import CollectorResult, CollectorStatus
 from career_radar.health.check import (
+    _yields_file,
     check_sources,
     classify_source,
     record_yields,
     yield_baseline,
 )
 from career_radar.models import SourceHealthStatus
+from career_radar.storage import read_jsonl
 
 _NOW = datetime(2026, 1, 15, tzinfo=UTC)
 
 
-def _result(source="indeed", status=CollectorStatus.OK, yielded=10, error=None) -> CollectorResult:
-    return CollectorResult(source=source, status=status, yielded=yielded, error=error, started_at=_NOW)
+def _result(
+    source="indeed", status=CollectorStatus.OK, yielded=10, error=None, duration_seconds=0.0
+) -> CollectorResult:
+    return CollectorResult(
+        source=source,
+        status=status,
+        yielded=yielded,
+        error=error,
+        started_at=_NOW,
+        duration_seconds=duration_seconds,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +94,15 @@ def test_health_report_always_carries_the_source_and_yielded_count():
 # ---------------------------------------------------------------------------
 # yield_baseline / record_yields — the rolling baseline persistence
 # ---------------------------------------------------------------------------
+
+
+def test_record_yields_persists_duration_seconds(tmp_path):
+    # EATP-021: checkpoint.json (which also has duration_seconds) gets
+    # deleted once a run completes — yields.jsonl is the lasting record.
+    record_yields([_result(duration_seconds=283.14)], run_started_at=_NOW, health_dir=tmp_path)
+
+    rows = list(read_jsonl(_yields_file(tmp_path)))
+    assert rows[0]["duration_seconds"] == 283.14
 
 
 def test_yield_baseline_is_none_with_no_history(tmp_path):

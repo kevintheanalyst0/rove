@@ -26,6 +26,11 @@ from career_radar.collectors.http import (
 )
 from career_radar.collectors.parsing import clean_text
 
+# EATP-021 (2026-08-15): tried bumping this alongside `linkedin.py`'s
+# `_MAX_TERM_WORKERS`, both to 5 — live A/B showed a 3x drop in real jobs
+# found (rate-limiting-induced silent truncation, see that file's comment
+# for the numbers). Reverted together since the two weren't tested in
+# isolation from each other; 3 is the last value confirmed safe.
 _MAX_WORKERS = 3
 # get() exhausts its retries and reraises either of these — a request that
 # never recovers means "skip this job," not "crash the collector."

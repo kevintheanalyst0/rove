@@ -80,6 +80,17 @@ _MAX_PAGES_PER_TERM = 10
 # Search terms have nothing in common with each other — safe to run this many
 # at once against a public, logged-out endpoint (mirrors the detail-fetch
 # worker count in `linkedin_api.py`).
+#
+# EATP-021 (2026-08-15): tried bumping this to 5. Live A/B on the same real
+# run (back-to-back, same moment): workers=5 -> 92.2s but only 14 jobs;
+# workers=3 -> 316.5s but 42 jobs — a 3x drop in real vacancies found, not
+# just noise. `_collect_term_ids` can't tell "genuinely reached the end of
+# results" apart from "this page's request got rate-limited and gave up"
+# (`_REQUEST_ERRORS` stops the term silently either way) — more concurrent
+# terms hitting LinkedIn's guest endpoint at once means more of them get
+# rate-limited and quietly truncated. Reverted to 3 — faster isn't better if
+# it's silently losing real matches, which is exactly the P20 failure mode
+# this whole codebase tries to avoid.
 _MAX_TERM_WORKERS = 3
 
 _JOB_ID_PATTERN = re.compile(r'data-entity-urn="urn:li:jobPosting:(\d+)"')

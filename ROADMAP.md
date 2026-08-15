@@ -66,7 +66,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-018** | QA, hardening, automation & GitHub publish | F | ✅ | all | Medium | ~1h10 (2026-08-12) |
 | **EATP-019** | Post-launch fixes: captcha/browser UX, self-serve launcher, cache reset, source reliability | — | ✅ | 018 | Medium-High | ~4h10 (2026-08-13) |
 | **EATP-020** | Match quality & source balance: launcher UX, LinkedIn geo/eligibility gate, source rebalance, LinkedIn speed | — | ✅ | 019 | Medium-High | ~2h55 (2026-08-15) |
-| **EATP-021** | Collector speed in the full pipeline + Indeed captcha/tab tradeoff | — | ⬜ | 020 | Medium | — |
+| **EATP-021** | Collector speed in the full pipeline + Indeed captcha/tab tradeoff | — | ✅ | 020 | Medium | ~1h05 (2026-08-15) |
 
 > Fill **Status** and **Total time** as each project completes. The **Complexity** column
 > exists so no project balloons: they're all sized Medium-ish, with a couple intentionally
