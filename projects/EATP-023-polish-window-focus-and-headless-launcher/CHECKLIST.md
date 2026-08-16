@@ -45,10 +45,34 @@
 - [x] `run_web.sh`: updated closing message (no more "cierra esta ventana")
 - [x] README updated (`.vbs` launcher, new shutdown behavior, minimized
       Chrome behavior)
-- [ ] **Kevin to confirm live**: double-click `Career Radar.vbs`, verify no
-      console window appears, no UNC warning, LinkedIn/Indeed stay out of
-      the way, and the server shuts down ~20s after closing the tab — none
-      of this is testable from inside WSL
+- [x] **Kevin's live test (2026-08-16)**: `.vbs` worked, no terminal, ~10.5
+      min total run — but found a real bug: `bring_to_front` only called
+      `.set.window.max()`, which resizes the *shared window* but doesn't
+      select *which tab* is showing in it. On a false-alarm captcha, the
+      window came forward but showed a blank/wrong tab (had to manually
+      maximize+click to find the real content); on the real captcha ~1 min
+      later, the window didn't come forward at all. Root-caused: DrissionPage
+      has a separate `.set.activate()` (CDP `Target.activateTarget`) that
+      actually selects the tab — `bring_to_front` never called it. Fixed:
+      `activate()` then `window.max()`. Test doubles updated (both
+      collectors' `_FakeSet`), new dedicated test in `test_browser.py`
+      asserting call order — 346 passed.
+- [ ] **Kevin to re-confirm live**: the activate-then-maximize fix should
+      show the right tab and reliably raise the window every time — couldn't
+      verify actual Windows Z-order/GUI behavior from inside WSL, only that
+      the calls happen in the right order with no exceptions
+- [x] **Indeed's false-captcha-alarm problem, tightened (best evidence, not
+      lab-confirmed)**: `is_captcha_page`'s bare `"captcha"` substring
+      matched anywhere in the *entire page HTML* — almost certainly the
+      false-alarm source (e.g. a defensive reCAPTCHA badge Indeed may embed
+      on ordinary pages). Confirmed this isn't a career-radar regression:
+      legacy had the identical bare-word check and Kevin confirmed the same
+      false-alarm behavior there. Split the check: full HTML body only
+      trusts specific phrases now ("security check", "verifica que eres
+      humano"); the page *title* (a short, curated string) still trusts a
+      bare "captcha" too. Tests updated + 2 new ones documenting the exact
+      before/after — 347 passed. **Not lab-verified against a real false
+      alarm** (can't force one) — ask Kevin to watch whether they stop.
 
 ### Phase 3 — Verify & close (career-radar as a whole)
 - [x] `pytest` green (345 passed)

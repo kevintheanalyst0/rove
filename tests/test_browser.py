@@ -20,6 +20,34 @@ def test_clear_manual_intervention_publishes_resolved_for_the_same_phase():
         events.bus.unsubscribe(subscriber)
 
 
+def test_bring_to_front_activates_the_tab_before_maximizing():
+    # EATP-023 bug (Kevin, live): calling only .set.window.max() resized the
+    # shared window but left whichever tab was already selected on screen —
+    # the captcha tab itself never became visible, reading as a blank page.
+    # .set.activate() (CDP Target.activateTarget) is what actually selects
+    # this specific tab; must run before/alongside the maximize.
+    calls = []
+
+    class _FakeWindow:
+        def max(self) -> None:
+            calls.append("max")
+
+    class _FakeSet:
+        def __init__(self) -> None:
+            self.window = _FakeWindow()
+
+        def activate(self) -> None:
+            calls.append("activate")
+
+    class _FakePage:
+        def __init__(self) -> None:
+            self.set = _FakeSet()
+
+    browser.bring_to_front(_FakePage())
+
+    assert calls == ["activate", "max"]
+
+
 def test_clear_session_restore_state_deletes_session_files(tmp_path):
     sessions_dir = tmp_path / "Default" / "Sessions"
     sessions_dir.mkdir(parents=True)

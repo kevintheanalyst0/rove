@@ -89,7 +89,20 @@ _MAX_PAGES_PER_TERM = (
     20  # safety net; fromage=14 means real listings rarely go this deep
 )
 
-_CAPTCHA_MARKERS = ("security check", "verifica que eres humano", "captcha")
+# EATP-023 (Kevin, live, 2026-08-16): a false captcha alarm popped a blank
+# window — root-caused separately (see `browser.bring_to_front`), but while
+# investigating, the bare `"captcha"` marker stood out as the likely reason
+# a *normal* page reads as a captcha in the first place: this checks the
+# entire page HTML, and a bare mention of the word (e.g. a defensive
+# reCAPTCHA badge/script Indeed may embed on ordinary pages, not just
+# challenge pages) is enough to false-trigger — legacy had this exact same
+# bare-word check and Kevin confirmed it had the same false-alarm behavior
+# there too, so this isn't a regression, just never fixed. Split the check:
+# the full HTML body only trusts specific, low-noise phrases; a bare
+# "captcha" is still trusted in the page *title* (a short, curated string —
+# far less likely to pick up incidental boilerplate than the whole body).
+_HTML_CAPTCHA_MARKERS = ("security check", "verifica que eres humano")
+_TITLE_CAPTCHA_MARKERS = ("security check", "verifica que eres humano", "captcha")
 _NO_RESULTS_MARKERS = (
     "no ha producido ningún resultado",
     "no matching jobs found",
@@ -122,8 +135,11 @@ def build_job_view_url(job_id: str) -> str:
 
 
 def is_captcha_page(html: str, title: str = "") -> bool:
-    lowered = f"{html or ''} {title or ''}".lower()
-    return any(marker in lowered for marker in _CAPTCHA_MARKERS)
+    html_lower = (html or "").lower()
+    title_lower = (title or "").lower()
+    return any(marker in html_lower for marker in _HTML_CAPTCHA_MARKERS) or any(
+        marker in title_lower for marker in _TITLE_CAPTCHA_MARKERS
+    )
 
 
 def is_search_no_results(html_lower: str) -> bool:

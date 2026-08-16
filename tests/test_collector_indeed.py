@@ -87,10 +87,8 @@ def test_build_job_view_url():
     assert build_job_view_url("abc123") == "https://mx.indeed.com/viewjob?jk=abc123"
 
 
-@pytest.mark.parametrize(
-    "html", ["Security Check", "Verifica que eres humano", "please solve this captcha"]
-)
-def test_is_captcha_page_true_for_known_markers(html):
+@pytest.mark.parametrize("html", ["Security Check", "Verifica que eres humano"])
+def test_is_captcha_page_true_for_specific_html_markers(html):
     assert is_captcha_page(html)
 
 
@@ -100,6 +98,23 @@ def test_is_captcha_page_false_for_a_normal_page():
 
 def test_is_captcha_page_checks_title_too():
     assert is_captcha_page("", title="Security Check | Indeed")
+
+
+def test_is_captcha_page_bare_captcha_word_in_title_still_counts():
+    # A short, curated string — much less likely than the full page body to
+    # pick up an incidental mention (e.g. a defensive reCAPTCHA badge).
+    assert is_captcha_page("", title="Please solve this captcha")
+
+
+def test_is_captcha_page_bare_captcha_word_in_html_body_no_longer_false_alarms():
+    # EATP-023 (Kevin, live, 2026-08-16): a bare "captcha" mention anywhere
+    # in the full page HTML (e.g. a reCAPTCHA badge Indeed embeds on
+    # ordinary, non-challenge pages) was popping false alarms. Only the
+    # specific phrases count in the body now; the title still trusts a bare
+    # "captcha" (see the test above) since it's a much lower-noise string.
+    assert not is_captcha_page(
+        "Normal listing page. This site is protected by reCAPTCHA."
+    )
 
 
 def test_is_search_no_results():
@@ -252,6 +267,9 @@ class _FakeWindow:
 class _FakeSet:
     def __init__(self) -> None:
         self.window = _FakeWindow()
+
+    def activate(self) -> None:
+        pass
 
 
 class _ScriptedPage:

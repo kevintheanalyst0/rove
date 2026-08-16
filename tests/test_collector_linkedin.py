@@ -172,6 +172,9 @@ class _FakeSet:
     def __init__(self) -> None:
         self.window = _FakeWindow()
 
+    def activate(self) -> None:
+        pass
+
 
 class _FakeBrowserAttr:
     """`.browser.new_tab()` — every "tab" is the same shared scripted page

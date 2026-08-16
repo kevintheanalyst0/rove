@@ -120,10 +120,19 @@ def bring_to_front(page) -> None:
     exactly when Kevin actually needs to look at it (a captcha/login-wall),
     never on every launch.
 
+    EATP-023 first cut only called `.set.window.max()`, which changes the
+    shared OS window's *size/state* but not *which tab is showing in it* —
+    Kevin reported the window coming forward but reading as a blank page: it
+    had raised/resized the window while a different (idle) tab across
+    Indeed's detail-fetch pool was still the one selected. `.set.activate()`
+    (CDP `Target.activateTarget`) is the actual "select this tab" call;
+    `.set.window.max()` alone was never going to show the right content.
+
     Always maximizes, never just "shows": EATP-019 randomized the viewport
     size for fingerprint variety, and Kevin has hit windows too small to
     read/click in before — a window that's finally asking for his attention
     must never be one of those tiny ones."""
+    page.set.activate()
     page.set.window.max()
 
 
