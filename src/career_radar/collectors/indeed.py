@@ -288,12 +288,23 @@ class _CaptchaCoordination:
         self._lock = threading.Lock()
         self._deadline: float | None = None
 
-    def report_and_get_deadline(self, message: str) -> float:
+    def report_and_get_deadline(self, message: str) -> tuple[float, bool]:
+        """Returns `(deadline, is_new_episode)` — `is_new_episode` tells the
+        caller whether *this* call was the one that just reported (vs. a
+        concurrent tab piling onto an already-reported episode), so only one
+        tab ever tries to `bring_to_front()` itself per episode (EATP-023,
+        Kevin's report: multiple tabs independently racing to activate/
+        maximize themselves — the block is session-wide, so several of them
+        can genuinely hit it within milliseconds of each other — produced
+        exactly the chaos he saw: the wrong tab shown, an odd fullscreen-like
+        flash, and total silence on a later episode where the "losing" tab's
+        CDP calls apparently never took effect)."""
         with self._lock:
-            if self._deadline is None:
+            is_new = self._deadline is None
+            if is_new:
                 self._deadline = time.monotonic() + _CAPTCHA_WAIT_SECONDS
                 browser.request_manual_intervention(SOURCE, message)
-            return self._deadline
+            return self._deadline, is_new
 
     def resolved(self) -> None:
         with self._lock:
@@ -546,14 +557,19 @@ class IndeedCollector:
         tab) and polls passively — re-navigating only to check, never
         hammering — until it clears or the shared deadline passes.
         """
-        # EATP-023: the window starts minimized (Kevin's call) — this is the
-        # one moment it actually needs his eyes, so raise it now, maximized.
-        browser.bring_to_front(tab)
-        deadline = coord.report_and_get_deadline(
+        deadline, is_new = coord.report_and_get_deadline(
             f"Indeed pide verificación humana ({context}); resuélvela en la ventana "
             f"del navegador — la corrida espera hasta {_CAPTCHA_WAIT_SECONDS // 60} "
             "minutos."
         )
+        if is_new:
+            # EATP-023: the window starts minimized (Kevin's call) — this is
+            # the one moment it actually needs his eyes, so raise it now,
+            # maximized. Only the tab that actually reported this episode
+            # does it — Indeed's block is session-wide, so other tabs can
+            # hit the same captcha within milliseconds and must not race
+            # each other to activate/maximize themselves.
+            browser.bring_to_front(tab)
 
         while time.monotonic() < deadline:
             if coord.giveup.is_set():

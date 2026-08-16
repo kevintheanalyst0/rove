@@ -21,6 +21,7 @@ from career_radar import config, events
 from career_radar.collectors.indeed import (
     IndeedCollector,
     _build_job,
+    _CaptchaCoordination,
     _days_old_from_iso,
     build_job_view_url,
     build_search_url,
@@ -277,8 +278,11 @@ class _FakeWait:
 
 
 class _FakeWindow:
+    def __init__(self, calls: list[str] | None = None) -> None:
+        self._calls = calls if calls is not None else []
+
     def max(self) -> None:
-        pass
+        self._calls.append("max")
 
     def mini(self) -> None:
         pass
@@ -286,10 +290,11 @@ class _FakeWindow:
 
 class _FakeSet:
     def __init__(self) -> None:
-        self.window = _FakeWindow()
+        self.bring_to_front_calls: list[str] = []
+        self.window = _FakeWindow(self.bring_to_front_calls)
 
     def activate(self) -> None:
-        pass
+        self.bring_to_front_calls.append("activate")
 
 
 class _ScriptedPage:
@@ -439,6 +444,37 @@ def test_collect_stops_on_no_results_marker(monkeypatch):
     jobs = list(collector.collect())
 
     assert jobs == []
+
+
+def test_report_and_get_deadline_reports_exactly_once_under_true_concurrency():
+    # Indeed's block is session-wide (module docstring) — multiple tabs can
+    # genuinely discover the SAME still-active captcha within the same
+    # instant. EATP-023 (Kevin, live report): before gating `bring_to_front`
+    # on this exact signal, every tab that independently discovered it
+    # raced to activate/maximize itself — exactly the chaos he saw (wrong
+    # tab shown, a fullscreen-like flash). A `Barrier` forces genuine
+    # concurrent access (unlike scripting fake responses, which just
+    # serializes onto whichever thread the GIL happens to run first).
+    coord = _CaptchaCoordination()
+    worker_count = 5
+    barrier = threading.Barrier(worker_count)
+    results: list[bool] = []
+    results_lock = threading.Lock()
+
+    def worker() -> None:
+        barrier.wait(timeout=2)
+        _, is_new = coord.report_and_get_deadline("Indeed pide verificación humana")
+        with results_lock:
+            results.append(is_new)
+
+    threads = [threading.Thread(target=worker) for _ in range(worker_count)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=2)
+
+    assert results.count(True) == 1
+    assert results.count(False) == worker_count - 1
 
 
 def test_collect_waits_for_captcha_resolution_then_recovers(monkeypatch):

@@ -182,12 +182,18 @@ class _LoginCoordination:
         self._lock = threading.Lock()
         self._deadline: float | None = None
 
-    def report_and_get_deadline(self, message: str) -> float:
+    def report_and_get_deadline(self, message: str) -> tuple[float, bool]:
+        """Returns `(deadline, is_new_episode)` — see `indeed.py`'s
+        `_CaptchaCoordination.report_and_get_deadline` for why: only the tab
+        that actually reported a new episode should `bring_to_front()`
+        itself, not every tab that independently discovers the same
+        session-wide block."""
         with self._lock:
-            if self._deadline is None:
+            is_new = self._deadline is None
+            if is_new:
                 self._deadline = time.monotonic() + _LOGIN_WAIT_SECONDS
                 browser.request_manual_intervention(SOURCE, message)
-            return self._deadline
+            return self._deadline, is_new
 
     def resolved(self) -> None:
         with self._lock:
@@ -342,13 +348,16 @@ class LinkedInCollector:
         himself in the browser window rather than the run giving up
         immediately. Publishes ONE event for the whole `collect()` call and
         polls passively — re-navigating only to check, never hammering."""
-        # EATP-023: starts minimized — this is the one moment it actually
-        # needs his eyes, so raise it now, maximized.
-        browser.bring_to_front(tab)
-        deadline = coord.report_and_get_deadline(
+        deadline, is_new = coord.report_and_get_deadline(
             f"LinkedIn pide iniciar sesión ({context}); inicia sesión en la ventana "
             f"del navegador — la corrida espera hasta {_LOGIN_WAIT_SECONDS // 60} minutos."
         )
+        if is_new:
+            # EATP-023: starts minimized — this is the one moment it
+            # actually needs his eyes, so raise it now, maximized. Only the
+            # tab that reported this episode does it (see `indeed.py`'s
+            # identical fix for why).
+            browser.bring_to_front(tab)
 
         while time.monotonic() < deadline:
             if coord.giveup.is_set():
