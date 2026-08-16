@@ -244,6 +244,13 @@ def create_app(
     def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
 
+    @app.get("/favicon.ico")
+    def favicon() -> FileResponse:
+        # Edge's --app mode (scripts/run_web.sh) reads this to pick the
+        # Windows taskbar icon — it requests /favicon.ico directly, not
+        # just the <link rel="icon"> in index.html.
+        return FileResponse(STATIC_DIR / "favicon.ico")
+
     @app.post("/run")
     def start_run(request: RunRequest) -> JSONResponse:
         with lock:

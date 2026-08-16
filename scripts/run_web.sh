@@ -27,7 +27,7 @@ done
 open_browser() {
   if grep -qi microsoft /proc/version 2>/dev/null; then
     # WSL: no GUI browser on the Linux side — hand the URL to Windows.
-    explorer.exe "$URL" >/dev/null 2>&1 && return 0
+    cmd.exe /c start "" msedge --app="$URL" >/dev/null 2>&1 && return 0
   fi
   if command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$URL" >/dev/null 2>&1 && return 0
