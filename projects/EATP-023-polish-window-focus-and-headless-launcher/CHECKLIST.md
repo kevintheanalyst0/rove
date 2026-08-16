@@ -79,12 +79,33 @@
       behavior. Now watches the same bus the real dashboard reads from and
       prints `needs_intervention`/`intervention_resolved` as plain text —
       a reliable signal even if the window-raise itself is ever flaky.
-- [ ] **Kevin to re-confirm live once more**: the race fix should mean
-      exactly one clean, correctly-targeted window raise per captcha
-      episode, and the terminal should now always say something regardless.
-      Still couldn't verify real Windows Z-order/GUI behavior from inside
-      WSL — if the window itself still misbehaves after this fix, the
-      terminal notice is now the reliable fallback either way.
+- [x] **Kevin's live re-test #2 (2026-08-16)**: terminal notice worked
+      (confirmed by his screenshot), but the window's frame appeared with
+      no content painted until he clicked it — corrected my "wrong tab"
+      theory. Added an experimental repaint nudge (`bring_to_front`:
+      maximized -> normal -> maximized) — **not verified visually**, still
+      pending. Also, real second-captcha window-raise failure reproduced —
+      traced to `bring_to_front` firing from *every* tab that independently
+      hit the same session-wide block, not just the reporting one; fixed
+      (see the `report_and_get_deadline` entry above) and verified with a
+      real `threading.Barrier` forcing true concurrency.
+- [x] **Kevin corrected the false-captcha theory entirely**: not a WSLg
+      rendering issue — proven by comparing to legacy (no WSL at all, same
+      false-alarm behavior there), where a *genuine* captcha froze every
+      tab until he pressed Enter, but a false one left everything running
+      normally. These are real detection false positives. Fixed with a
+      debounce (`_CAPTCHA_DEBOUNCE_SECONDS=3`): `_navigate` rechecks once
+      before ever reporting — `tab.html` is live (CDP), not cached, so a
+      transient state that clears on its own is caught before Kevin ever
+      hears about it. Found and fixed a real test-infra bug along the way:
+      two `monkeypatch.setattr` calls both targeting `time.sleep` (same
+      global module object via `indeed.py`/`browser.py`'s plain `import
+      time`) were silently conflicting, freezing the fake clock and
+      producing failures that looked like real regressions.
+- [ ] **Kevin to re-confirm live once more**: false alarms should stop
+      (debounce); the race fix + terminal notice should already be solid.
+      The window repaint nudge is the one remaining unverified piece —
+      still can't confirm actual Windows/WSLg rendering behavior from here.
 - [x] **Indeed's false-captcha-alarm problem, tightened (best evidence, not
       lab-confirmed)**: `is_captcha_page`'s bare `"captcha"` substring
       matched anywhere in the *entire page HTML* — almost certainly the
