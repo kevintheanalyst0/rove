@@ -41,3 +41,4 @@ htmlcov/
 Thumbs.db
 .vscode/
 .idea/
+*:Zone.Identifier
