@@ -57,10 +57,34 @@
       `activate()` then `window.max()`. Test doubles updated (both
       collectors' `_FakeSet`), new dedicated test in `test_browser.py`
       asserting call order — 346 passed.
-- [ ] **Kevin to re-confirm live**: the activate-then-maximize fix should
-      show the right tab and reliably raise the window every time — couldn't
-      verify actual Windows Z-order/GUI behavior from inside WSL, only that
-      the calls happen in the right order with no exceptions
+- [x] **Kevin's live re-test (2026-08-16, via the new `Probar Indeed.bat`)**:
+      no false alarms this run, but a real captcha showed a "New Tab" (not
+      Indeed's content) in a fullscreen-like state with no taskbar, and a
+      *second* captcha ~1 min later got zero response — no notice, no
+      window raise. Root-caused: Indeed's block is session-wide
+      (`indeed.py`'s own docstring), so multiple tabs (search + detail
+      pool) can genuinely discover the *same* still-active captcha within
+      the same instant — `bring_to_front` was called unconditionally by
+      *every* tab that detected it, not just the one that actually reported
+      the episode, so they raced to activate/maximize themselves. Fixed:
+      `report_and_get_deadline` now returns `(deadline, is_new_episode)`;
+      only the reporting tab calls `bring_to_front`. Verified with a real
+      `threading.Barrier` forcing genuine concurrent access (scripted fake
+      responses alone can't reproduce this under the GIL — an earlier
+      collector-level test attempt just serialized instead of racing).
+      Applied the same fix to `linkedin.py`'s `_LoginCoordination`.
+- [x] **`scripts/test_indeed_live.py` never subscribed to the `EventBus`** —
+      explains "la terminal nunca avisó" for the second captcha directly:
+      there was no code path to print anything for it, regardless of window
+      behavior. Now watches the same bus the real dashboard reads from and
+      prints `needs_intervention`/`intervention_resolved` as plain text —
+      a reliable signal even if the window-raise itself is ever flaky.
+- [ ] **Kevin to re-confirm live once more**: the race fix should mean
+      exactly one clean, correctly-targeted window raise per captcha
+      episode, and the terminal should now always say something regardless.
+      Still couldn't verify real Windows Z-order/GUI behavior from inside
+      WSL — if the window itself still misbehaves after this fix, the
+      terminal notice is now the reliable fallback either way.
 - [x] **Indeed's false-captcha-alarm problem, tightened (best evidence, not
       lab-confirmed)**: `is_captcha_page`'s bare `"captcha"` substring
       matched anywhere in the *entire page HTML* — almost certainly the
