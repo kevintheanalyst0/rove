@@ -287,6 +287,9 @@ class _FakeWindow:
     def mini(self) -> None:
         pass
 
+    def normal(self) -> None:
+        self._calls.append("normal")
+
 
 class _FakeSet:
     def __init__(self) -> None:
@@ -404,6 +407,14 @@ def _fake_clock(monkeypatch):
     monkeypatch.setattr(
         "career_radar.collectors.browser.human_pause", lambda *a, **k: None
     )
+    # `indeed.py` and `browser.py` both do a plain `import time` — that's
+    # the SAME module object, so patching `indeed.time.sleep` above already
+    # covers `browser.py`'s calls (including `bring_to_front`'s repaint
+    # nudge) too. A second, separate `browser.time.sleep` patch here would
+    # silently *replace* the fake-clock-advancing one above instead of
+    # adding to it (whichever `setattr` runs last wins on the shared
+    # object) — froze the fake clock at 0 and broke the deadline math in
+    # exactly the way that looked like a real regression.
     monkeypatch.setattr("career_radar.collectors.indeed._CAPTCHA_WAIT_SECONDS", 20)
     monkeypatch.setattr("career_radar.collectors.indeed._CAPTCHA_POLL_SECONDS", 10)
 

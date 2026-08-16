@@ -167,6 +167,9 @@ class _FakeWindow:
     def mini(self) -> None:
         pass
 
+    def normal(self) -> None:
+        pass
+
 
 class _FakeSet:
     def __init__(self) -> None:
@@ -269,6 +272,10 @@ def _fake_clock(monkeypatch):
     monkeypatch.setattr("career_radar.collectors.linkedin.time.sleep", fake_sleep)
     monkeypatch.setattr("career_radar.collectors.linkedin.time.monotonic", lambda: clock["t"])
     monkeypatch.setattr("career_radar.collectors.browser.human_pause", lambda *a, **k: None)
+    # `linkedin.py` and `browser.py` both do a plain `import time` — the
+    # SAME module object, so patching `linkedin.time.sleep` above already
+    # covers `browser.py`'s calls too (see `test_collector_indeed.py`'s
+    # `_fake_clock` for why a second, separate patch here would be wrong).
     monkeypatch.setattr("career_radar.collectors.linkedin._LOGIN_WAIT_SECONDS", 20)
     monkeypatch.setattr("career_radar.collectors.linkedin._LOGIN_POLL_SECONDS", 10)
 

@@ -49,6 +49,24 @@ half-rendered results page the same way EATP-021's LinkedIn concurrency bump
 silently lost jobs). Live-verified twice, same real job set both times
 (identical 29 jobs, same titles/companies): 233.6s before the pacing change,
 102.9s after — more than 2x, with zero evidence of under-collection.
+
+EATP-023 (2026-08-16, Kevin, live x2): two real bugs surfaced from watching
+actual captchas happen.
+- Indeed's block is session-wide, so multiple tabs can genuinely discover
+  the *same* still-active captcha within the same instant — `bring_to_front`
+  was called by every tab that detected it, not just the one reporting the
+  episode, so they raced to activate/maximize themselves. Fixed by gating
+  it on `report_and_get_deadline`'s new `is_new_episode` return.
+- Persistent false alarms — confirmed by Kevin as real detection false
+  positives, not a rendering artifact (his proof: in legacy, a genuine
+  captcha froze *every* tab until he pressed Enter; a "false" one there
+  left everything running normally when he checked, which our own code
+  reproduces the same way — a false marker match doesn't actually block
+  anything either). A marker match right after `human_pause()` can be a
+  transient loading state that clears within a couple seconds on its own;
+  `_navigate` now waits `_CAPTCHA_DEBOUNCE_SECONDS` and checks once more
+  before ever reporting anything — a genuine block is still there, a
+  transient one usually isn't.
 """
 
 from __future__ import annotations
@@ -133,6 +151,10 @@ _NO_RESULTS_MARKERS = (
 # it, same bounded-wait shape as LinkedIn's login flow, not a blind cooldown.
 _CAPTCHA_WAIT_SECONDS = 300
 _CAPTCHA_POLL_SECONDS = 10
+# EATP-023: before trusting a captcha marker match enough to notify Kevin,
+# wait this long and check once more — a transient loading state usually
+# clears within a few seconds; a real block doesn't.
+_CAPTCHA_DEBOUNCE_SECONDS = 3
 
 
 # ---------------------------------------------------------------------------
@@ -541,6 +563,18 @@ class IndeedCollector:
 
         tab.get(url)
         browser.human_pause(*pause_range)
+        if not is_captcha_page(tab.html or "", getattr(tab, "title", "") or ""):
+            return True
+
+        # EATP-023 (Kevin, live): confirmed these are real detection false
+        # positives, not a rendering issue — in legacy, a genuine captcha
+        # froze every tab until he pressed Enter; a "false" one left
+        # everything running normally when he checked. A marker match right
+        # after `human_pause()` can be a transient loading state, not the
+        # final page — give it a moment to settle and check again before
+        # ever telling Kevin: a real block is still there a few seconds
+        # later, a transient one has usually cleared on its own.
+        time.sleep(_CAPTCHA_DEBOUNCE_SECONDS)
         if not is_captcha_page(tab.html or "", getattr(tab, "title", "") or ""):
             return True
 

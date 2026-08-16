@@ -131,8 +131,22 @@ def bring_to_front(page) -> None:
     Always maximizes, never just "shows": EATP-019 randomized the viewport
     size for fingerprint variety, and Kevin has hit windows too small to
     read/click in before — a window that's finally asking for his attention
-    must never be one of those tiny ones."""
+    must never be one of those tiny ones.
+
+    Second round (Kevin, live, 2026-08-16): even with `.set.activate()`
+    added, the window's frame/outline appeared but its content never
+    painted — reading as empty — until he manually clicked it. That's not a
+    wrong-tab problem, it's WSLg's compositor apparently not repainting the
+    window after a state change made purely over CDP, without any real
+    input event. A genuine bounds change (maximized -> normal -> maximized,
+    not just resending "maximized") is a common nudge for exactly this class
+    of stale-render bug on remote/virtualized displays. **Experimental** —
+    this can't be verified visually from inside WSL; ask Kevin to confirm."""
     page.set.activate()
+    page.set.window.max()
+    time.sleep(0.3)
+    page.set.window.normal()
+    time.sleep(0.2)
     page.set.window.max()
 
 

@@ -20,17 +20,26 @@ def test_clear_manual_intervention_publishes_resolved_for_the_same_phase():
         events.bus.unsubscribe(subscriber)
 
 
-def test_bring_to_front_activates_the_tab_before_maximizing():
-    # EATP-023 bug (Kevin, live): calling only .set.window.max() resized the
+def test_bring_to_front_activates_then_nudges_the_window_to_repaint(monkeypatch):
+    # Round 1 (Kevin, live): calling only .set.window.max() resized the
     # shared window but left whichever tab was already selected on screen —
     # the captcha tab itself never became visible, reading as a blank page.
     # .set.activate() (CDP Target.activateTarget) is what actually selects
-    # this specific tab; must run before/alongside the maximize.
+    # this specific tab.
+    #
+    # Round 2 (Kevin, live): even with activate() added, the window's frame
+    # appeared but its content never painted until he clicked it manually —
+    # a WSLg compositor stale-render issue, not a wrong-tab one. A genuine
+    # bounds change (maximized -> normal -> maximized) is the nudge.
+    monkeypatch.setattr(browser.time, "sleep", lambda *_: None)
     calls = []
 
     class _FakeWindow:
         def max(self) -> None:
             calls.append("max")
+
+        def normal(self) -> None:
+            calls.append("normal")
 
     class _FakeSet:
         def __init__(self) -> None:
@@ -45,7 +54,7 @@ def test_bring_to_front_activates_the_tab_before_maximizing():
 
     browser.bring_to_front(_FakePage())
 
-    assert calls == ["activate", "max"]
+    assert calls == ["activate", "max", "normal", "max"]
 
 
 def test_clear_session_restore_state_deletes_session_files(tmp_path):
