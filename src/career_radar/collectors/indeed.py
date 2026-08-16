@@ -101,8 +101,28 @@ _MAX_PAGES_PER_TERM = (
 # the full HTML body only trusts specific, low-noise phrases; a bare
 # "captcha" is still trusted in the page *title* (a short, curated string —
 # far less likely to pick up incidental boilerplate than the whole body).
-_HTML_CAPTCHA_MARKERS = ("security check", "verifica que eres humano")
-_TITLE_CAPTCHA_MARKERS = ("security check", "verifica que eres humano", "captcha")
+#
+# Kevin confirmed (2026-08-16) the actual challenge is Cloudflare's own
+# interstitial, not something Indeed built — added its real, narrative copy
+# (only ever shown when it's replaced the *entire* page — never boilerplate
+# sitting quietly on a normal one, unlike a bare "captcha"/CDN mention) as
+# stronger, more specific signals alongside the originals.
+_HTML_CAPTCHA_MARKERS = (
+    "security check",
+    "verifica que eres humano",
+    "checking your browser before accessing",
+    "needs to review the security of your connection",
+    "necesita revisar la seguridad de tu conexión",
+    "cf-browser-verification",
+    "cdn-cgi/challenge-platform",
+)
+_TITLE_CAPTCHA_MARKERS = (
+    "security check",
+    "verifica que eres humano",
+    "captcha",
+    "just a moment",
+    "un momento",
+)
 _NO_RESULTS_MARKERS = (
     "no ha producido ningún resultado",
     "no matching jobs found",

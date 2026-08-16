@@ -106,6 +106,26 @@ def test_is_captcha_page_bare_captcha_word_in_title_still_counts():
     assert is_captcha_page("", title="Please solve this captcha")
 
 
+@pytest.mark.parametrize(
+    "html",
+    [
+        "www.indeed.com needs to review the security of your connection before proceeding.",
+        '<div id="cf-browser-verification">Checking your browser...</div>',
+        '<script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1"></script>',
+        "Necesita revisar la seguridad de tu conexión antes de continuar.",
+    ],
+)
+def test_is_captcha_page_true_for_real_cloudflare_interstitial_copy(html):
+    # Kevin confirmed (2026-08-16) Indeed's real challenge is Cloudflare's
+    # own interstitial — this is its actual narrative copy/markup, only
+    # ever present when it's replaced the whole page.
+    assert is_captcha_page(html)
+
+
+def test_is_captcha_page_true_for_cloudflare_title():
+    assert is_captcha_page("", title="Just a moment...")
+
+
 def test_is_captcha_page_bare_captcha_word_in_html_body_no_longer_false_alarms():
     # EATP-023 (Kevin, live, 2026-08-16): a bare "captcha" mention anywhere
     # in the full page HTML (e.g. a reCAPTCHA badge Indeed embeds on

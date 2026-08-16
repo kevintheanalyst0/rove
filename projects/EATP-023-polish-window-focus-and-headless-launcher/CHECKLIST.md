@@ -73,6 +73,14 @@
       bare "captcha" too. Tests updated + 2 new ones documenting the exact
       before/after — 347 passed. **Not lab-verified against a real false
       alarm** (can't force one) — ask Kevin to watch whether they stop.
+- [x] **Kevin confirmed the challenges are Cloudflare's own interstitial**
+      (not Indeed-branded) — added its real, specific narrative copy/markup
+      as stronger positive signals ("checking your browser before
+      accessing", "needs to review the security of your connection",
+      `cf-browser-verification`, `cdn-cgi/challenge-platform`, and "Just a
+      moment..."/"Un momento..." as title markers) — these only ever appear
+      when Cloudflare has replaced the *whole* page, unlike a bare word that
+      could sit quietly in unrelated boilerplate. 4 new tests — 352 passed.
 
 ### Phase 3 — Verify & close (career-radar as a whole)
 - [x] `pytest` green (345 passed)
