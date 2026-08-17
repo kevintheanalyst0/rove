@@ -28,8 +28,10 @@ the *process* (crash/kill), not a modeled quota pause.
 
 from __future__ import annotations
 
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
+from queue import Empty, Queue
 
 from pydantic import BaseModel, Field
 
@@ -66,6 +68,12 @@ from career_radar.storage import (
 from career_radar.tracking import store as tracking_store
 
 logger = get_logger(__name__)
+
+# EATP-024: how often `_evaluate_batch_cancellable` re-checks cancellation
+# while waiting on a live AI call — bounds Pausar/Cancelar's reaction time
+# during the AI phase to roughly this, instead of up to AI_MAX_RETRIES x
+# AI_REQUEST_TIMEOUT_SECONDS + backoff (~3 min worst case).
+_CANCEL_POLL_SECONDS = 0.5
 
 # Progress percent budget per stage — used only to give the UI (EATP-015) a
 # smoothly moving number, not a precise cost model.
@@ -299,6 +307,44 @@ def _load_ai_checkpoint() -> dict[str, ScoredJob]:
     return scored
 
 
+def _evaluate_batch_cancellable(
+    router: AiRouter, batch: list[Job], profile: Profile
+) -> list[AiResult]:
+    """Runs `router.evaluate_batch` in a background thread and returns the
+    moment it finishes OR bails out the moment cancellation is requested —
+    whichever comes first (EATP-024, Kevin: Pausar/Cancelar must react like
+    Explorer's copy-cancel, in ~5-10s, not wait out a stuck/slow AI call).
+
+    There's no safe way to force-kill a Python thread mid-HTTP-call the way
+    `browser.kill_all_browsers()` kills a real OS process — so a genuinely
+    in-flight call isn't interrupted, it's abandoned: the background thread
+    keeps running until the SDK's own timeout/retry logic gives up on its
+    own, and whatever it eventually returns is simply discarded (never
+    checkpointed, since the caller never sees it) — safe because the next
+    run just re-sends this same still-pending batch, same as resuming after
+    a crash mid-batch already works today.
+    """
+    result_queue: Queue = Queue(maxsize=1)
+
+    def _call() -> None:
+        try:
+            result_queue.put(("ok", router.evaluate_batch(batch, profile)))
+        except Exception as exc:  # noqa: BLE001 - re-raised in the caller's own thread below
+            result_queue.put(("error", exc))
+
+    threading.Thread(target=_call, daemon=True).start()
+    while True:
+        cancellation.check()
+        try:
+            kind, payload = result_queue.get(timeout=_CANCEL_POLL_SECONDS)
+            break
+        except Empty:
+            continue
+    if kind == "error":
+        raise payload
+    return payload
+
+
 def _score_stage(
     kept: list[Job],
     criteria: Criteria,
@@ -332,7 +378,7 @@ def _score_stage(
         event_bus.publish(
             "ai", "running", percent, f"Evaluando con IA: lote {index}/{len(batches)}..."
         )
-        ai_results = router.evaluate_batch(batch, profile)
+        ai_results = _evaluate_batch_cancellable(router, batch, profile)
         matched = match_ai_results(batch, ai_results)
         for job in batch:
             scored = _to_scored_job(job, outcome.scores[job.signature], matched.get(job.signature))

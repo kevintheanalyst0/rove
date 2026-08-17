@@ -21,7 +21,7 @@ from datetime import UTC, date, datetime
 from bs4 import BeautifulSoup
 from httpx import Client, HTTPError
 
-from career_radar import config, criteria
+from career_radar import cancellation, config, criteria
 from career_radar.collectors.http import (
     RetryableHTTPError,
     build_client,
@@ -110,8 +110,11 @@ class HimalayasCollector:
         )
 
     def collect(self) -> Iterator[Job]:
+        # EATP-024: see greenhouse.py's identical comment — pagination needs
+        # its own cancellation check.
         seen_ids: set[str] = set()
         for page in range(_MAX_PAGES):
+            cancellation.check()
             raws = self._fetch_page(page * _PAGE_SIZE)
             if not raws:
                 break

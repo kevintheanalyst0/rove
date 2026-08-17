@@ -14,7 +14,8 @@ from pathlib import Path
 import httpx
 import pytest
 
-from career_radar import config
+from career_radar import cancellation, config
+from career_radar.collectors import occ as occ_mod
 from career_radar.collectors.occ import OCCCollector
 from career_radar.models import RemoteStatus
 
@@ -94,6 +95,39 @@ def test_collect_fetches_each_id_once_across_search_terms(monkeypatch):
 
     # Same two ids surface under both terms; each is only fetched once.
     assert len(jobs) == 2
+
+
+def test_collect_stops_detail_fetching_once_cancellation_is_requested(monkeypatch):
+    # EATP-024: the detail-fetch phase uses a ThreadPoolExecutor — a plain
+    # `with` block blocks on __exit__ until every outstanding future
+    # finishes, which would defeat a fast Pausar/Cancelar with many jobs in
+    # flight. `_DETAIL_WORKERS` forced to 1 for a deterministic ordering.
+    monkeypatch.setattr(occ_mod, "_DETAIL_WORKERS", 1)
+    fixtures = FIXTURES[:3]
+    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
+    by_id = {_numeric_id(f): f for f in fixtures}
+    ids = list(by_id)
+    fetched: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "occ.com.mx/empleos/de-" in url:
+            page = int(request.url.params.get("page", "1"))
+            return httpx.Response(200, text=_search_html(ids if page == 1 else []))
+        if "oferta.occ.com.mx/offer/" in url:
+            job_id = url.split("/offer/")[1].split("/")[0]
+            fetched.append(job_id)
+            cancellation.request()
+            fixture = by_id.get(job_id)
+            return httpx.Response(200, json=_detail_json(fixture))
+        return httpx.Response(404)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(cancellation.RunCancelled):
+        list(OCCCollector(client=client).collect())
+
+    assert len(fetched) < len(fixtures)
 
 
 def test_absolute_excluded_company_is_filtered_out(monkeypatch):

@@ -42,7 +42,7 @@ from urllib.parse import quote
 from bs4 import BeautifulSoup
 from httpx import Client, HTTPError
 
-from career_radar import config, criteria
+from career_radar import cancellation, config, criteria
 from career_radar.collectors.http import (
     RetryableHTTPError,
     build_client,
@@ -86,6 +86,7 @@ class OCCCollector:
         """Paginate until a page brings no new ids — no fixed page cap."""
         seen: set[str] = set()
         for page in range(1, _MAX_PAGES_PER_TERM + 1):
+            cancellation.check()
             try:
                 response = get(self._client, _search_url(term, page))
             except _REQUEST_ERRORS:
@@ -142,9 +143,12 @@ class OCCCollector:
         )
 
     def collect(self) -> Iterator[Job]:
+        # EATP-024: see greenhouse.py's identical comment — per-term
+        # cancellation check for the id-listing phase below.
         seen_ids: set[str] = set()
         ordered_ids: list[str] = []
         for term in config.SEARCH_TERMS:
+            cancellation.check()
             for job_id in self._job_ids_for_term(term):
                 if job_id not in seen_ids:
                     seen_ids.add(job_id)
@@ -153,10 +157,23 @@ class OCCCollector:
         if not ordered_ids:
             return
 
+        # Detail-fetch phase: a plain `with ThreadPoolExecutor(...)` would
+        # block on __exit__ waiting for every outstanding future regardless
+        # of us bailing out of the `as_completed` loop early — defeating a
+        # fast cancel with 100+ jobs in flight. Managed manually instead:
+        # `shutdown(wait=False, cancel_futures=True)` drops anything not yet
+        # started and returns immediately; futures already mid-request just
+        # finish in the background and their results are discarded.
         worker_count = max(1, min(_DETAIL_WORKERS, len(ordered_ids)))
-        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        executor = ThreadPoolExecutor(max_workers=worker_count)
+        try:
             futures = [executor.submit(self._fetch_job, job_id) for job_id in ordered_ids]
             for future in as_completed(futures):
+                if cancellation.is_requested():
+                    break
                 job = future.result()
                 if job is not None:
                     yield job
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+        cancellation.check()

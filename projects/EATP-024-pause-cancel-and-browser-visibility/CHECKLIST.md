@@ -14,6 +14,25 @@
 - [x] Fix attempt — **still needs Kevin's live confirmation**
 - [x] Tests (whatever is unit-testable — the GUI/WSLg part itself never is)
 
+### Phase 1b — Real-run report: Pausar/Cancelar still didn't stop the run
+- [x] Live-checked Kevin's actual running server (same machine) via `/status` + checkpoint —
+      confirmed collect ran through every remaining source and into AI scoring untouched
+- [x] Found the real gap: `pipeline.py` only checks cancellation *between* whole sources;
+      every HTTP collector's own loop (companies/pages/terms) had zero check of its own,
+      and `run_collector()`'s broad `except Exception` doesn't stop that from working
+      correctly one iteration later — but a single source can take 1-2 min uninterrupted
+- [x] Added `cancellation.check()` inside the collect loops of greenhouse, lever,
+      computrabajo (page + card level), himalayas, remotive, occ (both id-listing and,
+      for the `ThreadPoolExecutor` detail-fetch phase, a manual non-blocking
+      `shutdown(wait=False, cancel_futures=True)` instead of the `with` block's default
+      blocking wait)
+- [x] Found and fixed the bigger gap: the AI-evaluation phase had no way to abandon a
+      slow/hung call at all — added `_evaluate_batch_cancellable` (pipeline.py), running
+      each AI batch in a background thread and polling every 0.5s, so Pausar/Cancelar
+      no longer waits out AI_MAX_RETRIES x AI_REQUEST_TIMEOUT_SECONDS (~3 min worst case)
+- [x] Tests: cancellation-mid-loop tests for greenhouse/lever/occ, plus a genuinely
+      hung-forever AI provider test proving cancellation lands in well under 3s
+
 ### Phase 3 — Verify & close
 - [x] `pytest` green
 - [x] Update ROADMAP status + total time
@@ -25,12 +44,15 @@
 |--------------|-------|---------|-------|
 | 2026-08-16 | Fase 1 | ~15 min | Pausar/Cancelar: race-condition fix + nuevo botón, backend+frontend, 7 tests nuevos. |
 | 2026-08-16 | Fase 2 | ~20 min | Diagnóstico en vivo con captura de logs de Chrome en el WSLg real de Kevin (no simulado) — confirmé `GPU.ContextLost` real y su desaparición con `--disable-gpu-compositing`. |
-| 2026-08-16 | Fase 3 | ~5 min | Cierre: pytest verde, ROADMAP, commit. |
+| 2026-08-16 | Fase 1b | ~25 min | Kevin reportó en vivo que ni Pausar ni Cancelar frenaban una corrida real — encontré que los collectors HTTP no tenían ningún chequeo de cancelación dentro de su propio loop, y que la fase de IA no tenía forma de abandonar una llamada lenta/colgada. Arreglado en ambos frentes, con tests. |
+| 2026-08-16 | Fase 3 | ~10 min | Cierre: pytest verde, ROADMAP, commit. |
 
-**Total project time:** ~40 min
+**Total project time:** ~1h10min
 
 ## Session notes
-**Pausar**: causa raíz encontrada por inspección de código, no reproducible literalmente sin el navegador real de Kevin — una condición de carrera: al hacer clic, el mensaje "Cancelando…" se mostraba, pero eventos normales de progreso que el pipeline sigue publicando mientras se detiene (hasta ~3 min en el peor caso) lo sobreescribían en 1-2 segundos, dando la sensación de que no pasó nada. Fix: una bandera `cancelling` en el frontend que congela el mensaje hasta que la corrida realmente termina.
+**Pausar (primera vuelta)**: causa raíz encontrada por inspección de código — una condición de carrera de frontend: al hacer clic, el mensaje "Cancelando…" se mostraba, pero eventos normales de progreso lo sobreescribían en 1-2 segundos. Fix: bandera `cancelling` que congela el mensaje.
+
+**Pausar/Cancelar (segunda vuelta, en vivo)**: ese fix no era suficiente — Kevin probó con una corrida real y ni Pausar ni Cancelar frenaban nada; revisé su servidor real (corriendo en esta misma máquina) y confirmé que la corrida siguió de largo por todas las fuentes restantes sin detenerse. Causa raíz real: `pipeline.py` solo revisa cancelación *entre* fuentes completas — ningún collector HTTP (greenhouse, lever, computrabajo, occ, himalayas, remotive) revisaba nada dentro de su propio loop de páginas/empresas/términos, así que un clic podía quedar "atrapado" hasta que toda esa fuente terminara (1-2 min). Peor aún: la fase de evaluación con IA no tenía ninguna forma de abandonar una llamada lenta o colgada — ahí sí podía tardar hasta ~3 min real. Arreglé ambos: chequeos de cancelación dentro de cada collector HTTP, y una nueva `_evaluate_batch_cancellable` en `pipeline.py` que corre cada lote de IA en un hilo aparte y lo abandona (no lo espera) en cuanto se pide cancelar — verificado con un test que cuelga la IA para siempre y confirma que igual cancela en menos de 3 segundos.
 
 **Cancelar**: nuevo botón, sin confirmación (decisión de Kevin). Reusa el mismo mecanismo de `/cancel`, con un flag `discard` nuevo en `cancellation.py` que, al capturarse `RunCancelled` en `pipeline.py`, además borra el checkpoint — así "Iniciar" arranca limpio en vez de retomar.
 

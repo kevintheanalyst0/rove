@@ -22,7 +22,7 @@ from urllib.parse import quote
 from bs4 import BeautifulSoup
 from httpx import Client, HTTPError
 
-from career_radar import config, criteria
+from career_radar import cancellation, config, criteria
 from career_radar.collectors.http import (
     RetryableHTTPError,
     build_client,
@@ -72,9 +72,13 @@ class ComputrabajoCollector:
             return ""
 
     def collect(self) -> Iterator[Job]:
+        # EATP-024: see greenhouse.py's identical comment — per-page (and,
+        # below, per-card, since each card is its own description fetch)
+        # cancellation checks.
         seen_ids: set[str] = set()
         for term in config.SEARCH_TERMS:
             for page in range(1, _MAX_PAGES_PER_TERM + 1):
+                cancellation.check()
                 try:
                     response = get(self._client, _search_url(term, page))
                 except _REQUEST_ERRORS:
@@ -90,6 +94,7 @@ class ComputrabajoCollector:
                     break
 
                 for card in cards:
+                    cancellation.check()
                     title_element = card.select_one("a.js-o-link.fc_base")
                     if not title_element:
                         continue

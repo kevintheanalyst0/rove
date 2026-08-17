@@ -6,6 +6,8 @@ scripted `Provider`; collectors are always fakes. Never a live call/scrape
 from __future__ import annotations
 
 import json
+import threading
+import time
 from collections.abc import Iterator
 
 import pytest
@@ -401,6 +403,52 @@ class DiscardingCollector(FakeCollector):
         self.calls += 1
         cancellation.request(discard=True)
         yield from self._jobs
+
+
+class HangingProvider(Provider):
+    """Never returns on its own — models a genuinely stuck/hung AI call
+    (EATP-024, Kevin's live report: Pausar/Cancelar must react in ~5-10s,
+    not wait out a call that may never come back)."""
+
+    def __init__(self) -> None:
+        self.id = "hanging"
+        self.released = threading.Event()
+
+    def evaluate_batch(self, jobs: list[Job], profile) -> list[AiResult]:
+        self.released.wait()
+        return []
+
+
+def test_cancellation_during_a_hung_ai_call_does_not_wait_for_it(monkeypatch):
+    monkeypatch.setattr(pipeline, "_CANCEL_POLL_SECONDS", 0.05)  # keep the test fast
+    jobs = [_job(source="occ", source_job_id="1")]
+    registry, _collectors = _registry(occ=jobs)
+    provider = HangingProvider()
+    outcome = {}
+
+    def _run() -> None:
+        try:
+            pipeline.run(registry=registry, router=_router(provider), profile=PROFILE, criteria=_criteria())
+        except cancellation.RunCancelled:
+            outcome["cancelled"] = True
+
+    thread = threading.Thread(target=_run, daemon=True)
+    start = time.monotonic()
+    thread.start()
+    time.sleep(0.2)  # let the pipeline actually reach the hung AI call
+    cancellation.request()
+    thread.join(timeout=5)
+    elapsed = time.monotonic() - start
+
+    try:
+        assert not thread.is_alive()
+        assert outcome.get("cancelled") is True
+        # Well under the old ~3 min worst case (AI_MAX_RETRIES x
+        # AI_REQUEST_TIMEOUT_SECONDS + backoff) — bounded by
+        # `_CANCEL_POLL_SECONDS` now instead.
+        assert elapsed < 3
+    finally:
+        provider.released.set()  # let the abandoned background thread finish cleanly
 
 
 def test_discard_cancellation_wipes_the_checkpoint():

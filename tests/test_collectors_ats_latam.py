@@ -21,7 +21,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from career_radar import config
+from career_radar import cancellation, config
 from career_radar.collectors.base import Collector, CollectorRegistry, CollectorStatus
 from career_radar.collectors.greenhouse import GreenhouseCollector
 from career_radar.collectors.lever import LeverCollector
@@ -109,6 +109,28 @@ def test_greenhouse_iterates_every_curated_company(monkeypatch):
     assert {job.title for job in jobs} == {FIXTURES[0]["title"], FIXTURES[1]["title"]}
 
 
+def test_greenhouse_stops_at_the_next_company_once_cancellation_is_requested(monkeypatch):
+    # EATP-024: pipeline.py only checks cancellation *between* whole
+    # sources — a curated company list needs its own check so Pausar/
+    # Cancelar doesn't have to wait out this entire source first.
+    monkeypatch.setattr(config, "ATS_COMPANIES", {"greenhouse": ["gitlab", "stripe"], "lever": []})
+    fetched: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        company = str(request.url).split("/boards/")[1].split("/jobs")[0]
+        fetched.append(company)
+        if company == "gitlab":
+            cancellation.request()
+        return httpx.Response(200, json=_greenhouse_payload(FIXTURES[:1]))
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(cancellation.RunCancelled):
+        list(GreenhouseCollector(client=client).collect())
+
+    assert fetched == ["gitlab"]  # stripe never fetched
+
+
 def test_greenhouse_filters_out_postings_that_do_not_match_any_search_term(monkeypatch):
     monkeypatch.setattr(config, "ATS_COMPANIES", {"greenhouse": ["gitlab"], "lever": []})
     client = httpx.Client(
@@ -173,6 +195,25 @@ def test_lever_parses_real_fixture_jobs_into_new_job_shape(monkeypatch):
         assert job.company == "Palantir"
         assert job.remote_status == RemoteStatus.UNKNOWN
         assert job.url.startswith("https://jobs.lever.co/")
+
+
+def test_lever_stops_at_the_next_company_once_cancellation_is_requested(monkeypatch):
+    monkeypatch.setattr(config, "ATS_COMPANIES", {"greenhouse": [], "lever": ["palantir", "figma"]})
+    fetched: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        company = str(request.url).split("/postings/")[1].split("?")[0]
+        fetched.append(company)
+        if company == "palantir":
+            cancellation.request()
+        return httpx.Response(200, json=_lever_payload(FIXTURES[:1]))
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(cancellation.RunCancelled):
+        list(LeverCollector(client=client).collect())
+
+    assert fetched == ["palantir"]
 
 
 def test_lever_filters_out_postings_that_do_not_match_any_search_term(monkeypatch):

@@ -23,7 +23,7 @@ from datetime import UTC, date, datetime
 from bs4 import BeautifulSoup
 from httpx import Client, HTTPError
 
-from career_radar import config, criteria
+from career_radar import cancellation, config, criteria
 from career_radar.collectors.http import (
     RetryableHTTPError,
     build_client,
@@ -104,7 +104,14 @@ class GreenhouseCollector:
         )
 
     def collect(self) -> Iterator[Job]:
+        # EATP-024: pipeline.py only checks cancellation *between* whole
+        # sources — a curated company list with no check of its own meant
+        # "Pausar"/"Cancelar" couldn't take effect until this entire source
+        # finished (Kevin, live: clicked Pausar during greenhouse, it kept
+        # going through every remaining source anyway). Checking here bounds
+        # the wait to roughly one company's fetch instead.
         for company in config.ATS_COMPANIES.get("greenhouse", []):
+            cancellation.check()
             for raw in self._fetch_company(company):
                 job = self._to_job(raw, company)
                 if job is not None:

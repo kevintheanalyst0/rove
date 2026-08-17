@@ -15,7 +15,7 @@ from datetime import UTC, date, datetime
 from bs4 import BeautifulSoup
 from httpx import Client, HTTPError
 
-from career_radar import config, criteria
+from career_radar import cancellation, config, criteria
 from career_radar.collectors.http import (
     RetryableHTTPError,
     build_client,
@@ -89,8 +89,11 @@ class RemotiveCollector:
         )
 
     def collect(self) -> Iterator[Job]:
+        # EATP-024: see greenhouse.py's identical comment — per-term
+        # fetching needs its own cancellation check.
         seen_ids: set[str] = set()
         for term in config.ENGLISH_SEARCH_TERMS:
+            cancellation.check()
             for raw in self._fetch_term(term):
                 job_id = str(raw.get("id", ""))
                 if not job_id or job_id in seen_ids:

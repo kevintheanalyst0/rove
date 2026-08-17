@@ -22,7 +22,7 @@ from datetime import UTC, date, datetime
 
 from httpx import Client, HTTPError
 
-from career_radar import config, criteria
+from career_radar import cancellation, config, criteria
 from career_radar.collectors.http import (
     RetryableHTTPError,
     build_client,
@@ -104,7 +104,11 @@ class LeverCollector:
         )
 
     def collect(self) -> Iterator[Job]:
+        # EATP-024: see greenhouse.py's identical comment — a curated
+        # company list needs its own cancellation check, pipeline.py's
+        # between-source check alone isn't granular enough.
         for company in config.ATS_COMPANIES.get("lever", []):
+            cancellation.check()
             for raw in self._fetch_company(company):
                 job = self._to_job(raw, company)
                 if job is not None:
