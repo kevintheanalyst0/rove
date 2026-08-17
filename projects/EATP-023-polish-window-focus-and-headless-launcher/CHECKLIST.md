@@ -274,6 +274,29 @@
       moment..."/"Un momento..." as title markers) — these only ever appear
       when Cloudflare has replaced the *whole* page, unlike a bare word that
       could sit quietly in unrelated boilerplate. 4 new tests — 352 passed.
+- [x] **Indeed's start-minimized + bring_to_front reverted entirely
+      (2026-08-16, Kevin's call, live: "Dios mío amigo, no puedo abrir
+      Chrome")**: after every round above, the window-raise mechanism still
+      didn't work reliably for a real captcha — the underlying WSLg-forwarded
+      Win32 window just never came forward/repainted dependably, regardless
+      of how many more CDP calls or (this session's) Windows-side
+      `powershell.exe` calls got layered on top of it. Kevin asked to drop
+      the whole thing for Indeed and go back to pre-EATP-023 behavior: the
+      window opens maximized and stays visible for the entire run, so he
+      just watches it and solves a captcha himself the moment it appears —
+      no raise/focus logic needed at all, since it's already in front of
+      him. `IndeedCollector`'s `_page_factory` no longer passes
+      `start_minimized=True`; `_wait_for_captcha_resolution` no longer calls
+      `browser.bring_to_front`. The `needs_intervention`/
+      `intervention_resolved` notice banner in the web UI (unrelated,
+      EATP-020) is untouched — Kevin explicitly wants that kept. Asked
+      whether to revert LinkedIn too (it got the same start_minimized
+      treatment in Phase 1): **Kevin's call — LinkedIn stays as-is**,
+      minimized-until-login-wall. `browser.bring_to_front`/
+      `_force_windows_foreground`/`_is_wsl` are NOT dead code — still used
+      by `linkedin.py`. 380 passed (unchanged from before this revert — no
+      test asserted on the removed calls, since they only checked the
+      needs_intervention/intervention_resolved event pair, which stayed).
 
 ### Phase 3 — Verify & close (career-radar as a whole)
 - [x] `pytest` green (345 passed)

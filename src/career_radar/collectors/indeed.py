@@ -67,6 +67,15 @@ actual captchas happen.
   `_navigate` now waits `_CAPTCHA_DEBOUNCE_SECONDS` and checks once more
   before ever reporting anything — a genuine block is still there, a
   transient one usually isn't.
+
+EATP-023, reverted (2026-08-16, Kevin, live): the "start minimized,
+`bring_to_front()` only on captcha" behavior above never worked reliably in
+practice across several live rounds (WSLg wouldn't reliably raise/repaint
+the window) and Kevin asked to drop it entirely — back to the pre-EATP-023
+behavior this collector had all along: the window opens maximized and stays
+visible for the whole run, so he can just watch it and solve a captcha the
+moment it appears, no window-raising logic needed at all. The `needs_intervention`/
+`intervention_resolved` notice banner in the web UI (unrelated — EATP-020) stays.
 """
 
 from __future__ import annotations
@@ -344,9 +353,7 @@ class IndeedCollector:
         detail_workers: int = _DETAIL_WORKERS,
         search_workers: int = _SEARCH_WORKERS,
     ) -> None:
-        self._page_factory = page_factory or (
-            lambda: browser.build_page(use_profile=True, start_minimized=True)
-        )
+        self._page_factory = page_factory or (lambda: browser.build_page(use_profile=True))
         self._detail_workers = detail_workers
         self._search_workers = search_workers
 
@@ -593,19 +600,11 @@ class IndeedCollector:
         tab) and polls passively — re-navigating only to check, never
         hammering — until it clears or the shared deadline passes.
         """
-        deadline, is_new = coord.report_and_get_deadline(
+        deadline, _is_new = coord.report_and_get_deadline(
             f"Indeed pide verificación humana ({context}); resuélvela en la ventana "
             f"del navegador — la corrida espera hasta {_CAPTCHA_WAIT_SECONDS // 60} "
             "minutos."
         )
-        if is_new:
-            # EATP-023: the window starts minimized (Kevin's call) — this is
-            # the one moment it actually needs his eyes, so raise it now,
-            # maximized. Only the tab that actually reported this episode
-            # does it — Indeed's block is session-wide, so other tabs can
-            # hit the same captcha within milliseconds and must not race
-            # each other to activate/maximize themselves.
-            browser.bring_to_front(tab)
 
         while time.monotonic() < deadline:
             if coord.giveup.is_set():
