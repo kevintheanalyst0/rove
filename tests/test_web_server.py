@@ -12,7 +12,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from career_radar import config
+from career_radar import cancellation, config
 from career_radar.events import EventBus
 from career_radar.storage import write_json
 from career_radar.web.server import (
@@ -69,6 +69,44 @@ def test_run_starts_background_pipeline_and_blocks_a_second_call() -> None:
     assert calls[0]["mode"] == "fast"
 
 
+def test_run_passes_resume_false_through_for_a_clean_run() -> None:
+    # Kevin's request (2026-08-16): "Empezar de nuevo" must actually discard
+    # the checkpoint, not silently resume it like every prior "Iniciar" did.
+    calls: list[dict] = []
+    client, _bus = _make_client(pipeline_run=lambda **kwargs: calls.append(kwargs))
+
+    response = client.post("/run", json={"resume": False})
+
+    assert response.status_code == 202
+    time.sleep(0.1)
+    assert calls[0]["resume"] is False
+
+
+def test_cancel_refuses_when_no_run_is_in_progress() -> None:
+    client, _bus = _make_client(pipeline_run=lambda **_: None)
+
+    response = client.post("/cancel")
+
+    assert response.status_code == 409
+    assert response.json() == {"status": "not_running"}
+    assert cancellation.is_requested() is False
+
+
+def test_cancel_requests_cancellation_while_a_run_is_in_progress() -> None:
+    def slow_run(**kwargs):
+        time.sleep(0.3)
+
+    client, _bus = _make_client(pipeline_run=slow_run)
+    client.post("/run", json={})
+
+    response = client.post("/cancel")
+
+    assert response.status_code == 202
+    assert response.json() == {"status": "cancelling"}
+    assert cancellation.is_requested() is True
+    time.sleep(0.4)  # let the background thread finish so it doesn't leak
+
+
 def test_reset_calls_injected_reset_and_returns_ok() -> None:
     calls: list[str] = []
     client, _bus = _make_client(pipeline_run=lambda **_: None, reset_run_data=lambda: calls.append("reset"))
@@ -98,15 +136,26 @@ def test_reset_refuses_while_a_run_is_in_progress() -> None:
 
 def test_status_reflects_running_state_and_last_result(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(config, "STATUS_FILE", tmp_path / "status.json")
+    monkeypatch.setattr(config, "CHECKPOINT_FILE", tmp_path / "checkpoint.json")
 
     client, _bus = _make_client(pipeline_run=lambda **_: None)
     empty = client.get("/status").json()
-    assert empty == {"running": False, "last": None}
+    assert empty == {"running": False, "last": None, "has_checkpoint": False}
 
     write_json(config.STATUS_FILE, {"status": "success", "message": "3 vacantes encontradas"})
     populated = client.get("/status").json()
     assert populated["running"] is False
     assert populated["last"]["message"] == "3 vacantes encontradas"
+
+
+def test_status_has_checkpoint_true_when_a_checkpoint_file_exists(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(config, "STATUS_FILE", tmp_path / "status.json")
+    monkeypatch.setattr(config, "CHECKPOINT_FILE", tmp_path / "checkpoint.json")
+    write_json(config.CHECKPOINT_FILE, {"mode": "thorough"})
+
+    client, _bus = _make_client(pipeline_run=lambda **_: None)
+
+    assert client.get("/status").json()["has_checkpoint"] is True
 
 
 @pytest.mark.asyncio

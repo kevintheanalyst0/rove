@@ -353,6 +353,7 @@ class IndeedCollector:
     def collect(self) -> Iterator[Job]:
         page = self._page_factory()
         coord = _CaptchaCoordination()
+        browser.start_cancellation_watcher(coord.giveup)
         try:
             ids_by_term = self._collect_all_term_ids(page, coord)
 
@@ -367,6 +368,7 @@ class IndeedCollector:
             yield from self._fetch_details(page, ordered_ids, coord)
         finally:
             page.quit()
+            browser.forget_page(page)
 
     def _collect_all_term_ids(
         self, page, coord: _CaptchaCoordination

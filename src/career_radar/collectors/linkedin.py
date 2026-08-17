@@ -226,10 +226,12 @@ class LinkedInCollector:
     def collect(self) -> Iterator[Job]:
         page = self._page_factory()
         coord = _LoginCoordination()
+        browser.start_cancellation_watcher(coord.giveup)
         try:
             ids_by_term = self._collect_all_term_ids(page, coord)
         finally:
             page.quit()
+            browser.forget_page(page)
 
         # Merge in a fixed order (config.SEARCH_TERMS, then page order within
         # a term) so the result is deterministic regardless of which tab

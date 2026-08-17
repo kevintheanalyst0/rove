@@ -5,11 +5,12 @@ scripted `Provider`; collectors are always fakes. Never a live call/scrape
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 
 import pytest
 
-from career_radar import config, pipeline
+from career_radar import cancellation, config, pipeline
 from career_radar.ai.base import AiResult, Provider
 from career_radar.ai.router import AiRouter
 from career_radar.ai.usage import UsageTracker
@@ -343,6 +344,105 @@ def test_resume_false_ignores_an_existing_checkpoint_and_starts_clean():
     # resume=False discards the checkpoint, so the source is collected again.
     assert collectors["occ"].calls == 2
     assert result.status == RunStatus.SUCCESS
+
+
+# ---------------------------------------------------------------------------
+# Cancellation (the "Cancelar" button)
+# ---------------------------------------------------------------------------
+
+
+class CancellingCollector(Collector):
+    """Simulates the "Cancelar" button being clicked while this source is
+    still being scraped — collect() itself requests cancellation, mirroring
+    what `browser.start_cancellation_watcher` does to a collector's own
+    `giveup` switch in the real browser-driven collectors."""
+
+    def __init__(self, name: str, jobs: list[Job]) -> None:
+        self.name = name
+        self._jobs = jobs
+        self.calls = 0
+
+    def collect(self) -> Iterator[Job]:
+        self.calls += 1
+        cancellation.request()
+        yield from self._jobs
+
+
+def test_cancellation_during_collect_stops_before_the_next_source():
+    jobs_a = [_job(source="occ", source_job_id="1")]
+    jobs_b = [_job(source="remotive", source_job_id="2")]
+    registry = CollectorRegistry()
+    registry.register("occ", lambda: CancellingCollector("occ", jobs_a))
+    remotive_collector = FakeCollector("remotive", jobs_b)
+    registry.register("remotive", lambda: remotive_collector)
+
+    with pytest.raises(cancellation.RunCancelled):
+        pipeline.run(
+            registry=registry,
+            router=_router(ScriptedProvider({})),
+            profile=PROFILE,
+            criteria=_criteria(),
+        )
+
+    # "occ" sorts before "remotive" (_requested_sources sorts) — the
+    # stage-boundary check catches cancellation before remotive ever runs.
+    assert remotive_collector.calls == 0
+    assert config.raw_source_file("occ").exists()
+    status = json.loads(config.STATUS_FILE.read_bytes())
+    assert status["status"] == "paused"
+    assert status["message"] == "Corrida cancelada."
+
+
+class CancellingProvider(Provider):
+    """Same shape as `CrashingProvider`, but requests cancellation instead
+    of raising — models the AI-scoring phase getting cancelled mid-run."""
+
+    def __init__(self, results_by_signature: dict[str, AiResult], *, cancel_on_call: int) -> None:
+        self.id = "cancelling"
+        self._by_sig = results_by_signature
+        self._cancel_on_call = cancel_on_call
+        self.calls = 0
+
+    def evaluate_batch(self, jobs: list[Job], profile) -> list[AiResult]:
+        self.calls += 1
+        if self.calls == self._cancel_on_call:
+            cancellation.request()
+        return [self._by_sig[job.signature] for job in jobs if job.signature in self._by_sig]
+
+
+def test_cancellation_during_ai_scoring_stops_before_the_next_batch():
+    jobs = [_job(source="occ", source_job_id=str(i)) for i in range(1, 4)]
+    registry, collectors = _registry(occ=jobs)
+    results_by_sig = {job.signature: _ai_result(job) for job in jobs}
+    provider = CancellingProvider(results_by_sig, cancel_on_call=2)
+
+    with pytest.raises(cancellation.RunCancelled):
+        pipeline.run(registry=registry, router=_router(provider), profile=PROFILE, criteria=_criteria())
+
+    assert collectors["occ"].calls == 1
+    assert provider.calls == 2  # the third job's batch never sent
+    status = json.loads(config.STATUS_FILE.read_bytes())
+    assert status["status"] == "paused"
+
+
+def test_resume_after_cancellation_reuses_checkpointed_progress():
+    jobs = [_job(source="occ", source_job_id=str(i)) for i in range(1, 4)]
+    registry, collectors = _registry(occ=jobs)
+    results_by_sig = {job.signature: _ai_result(job) for job in jobs}
+    cancelling_provider = CancellingProvider(results_by_sig, cancel_on_call=2)
+
+    with pytest.raises(cancellation.RunCancelled):
+        pipeline.run(
+            registry=registry, router=_router(cancelling_provider), profile=PROFILE, criteria=_criteria()
+        )
+    assert collectors["occ"].calls == 1
+
+    working_router = _router(ScriptedProvider(results_by_sig))
+    result = pipeline.run(registry=registry, router=working_router, profile=PROFILE, criteria=_criteria())
+
+    assert collectors["occ"].calls == 1  # never re-scraped
+    assert result.status == RunStatus.SUCCESS
+    assert {scored.job.signature for scored in result.jobs} == {job.signature for job in jobs}
 
 
 def test_reset_all_run_data_wipes_derived_files_but_keeps_tracking():

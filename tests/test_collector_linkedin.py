@@ -211,6 +211,7 @@ class _ScriptedPage:
         self.set = _FakeSet()
         self.quit_called = False
         self.new_tab_calls = 0
+        self.process_id = 999002  # mirrors real ChromiumPage.process_id (browser.forget_page)
 
     def get(self, url: str) -> None:
         with self._lock:

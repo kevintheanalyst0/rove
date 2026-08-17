@@ -166,3 +166,44 @@ def test_gemini_daily_quota_error_raises_quota_exceeded():
 
     with pytest.raises(QuotaExceededError):
         provider.evaluate_batch([_job()], PROFILE)
+
+
+# ---------------------------------------------------------------------------
+# Request timeout wiring (2026-08-16, Kevin's live report: a hung AI call
+# blocked a run for way longer than "Cancelar" should ever have to wait for
+# — neither SDK was given an explicit timeout before this). These construct
+# the real client (unlike every test above, which injects a fake `_client`
+# directly) specifically to catch a regression in that wiring.
+# ---------------------------------------------------------------------------
+
+
+def test_groq_get_client_passes_the_configured_request_timeout(monkeypatch):
+    monkeypatch.setattr(config, "AI_REQUEST_TIMEOUT_SECONDS", 42.0)
+    captured: dict = {}
+
+    class _FakeOpenAI:
+        def __init__(self, **kwargs) -> None:
+            captured.update(kwargs)
+
+    monkeypatch.setattr("openai.OpenAI", _FakeOpenAI)
+    provider = GroqProvider(api_key="fake-key")
+
+    provider._get_client()
+
+    assert captured["timeout"] == 42.0
+
+
+def test_gemini_get_client_passes_the_configured_request_timeout_in_ms(monkeypatch):
+    monkeypatch.setattr(config, "AI_REQUEST_TIMEOUT_SECONDS", 42.0)
+    captured: dict = {}
+
+    class _FakeGenaiClient:
+        def __init__(self, **kwargs) -> None:
+            captured.update(kwargs)
+
+    monkeypatch.setattr("google.genai.Client", _FakeGenaiClient)
+    provider = GeminiProvider("gemini_flash", "gemini-2.5-flash", api_key="fake-key")
+
+    provider._get_client()
+
+    assert captured["http_options"].timeout == 42000

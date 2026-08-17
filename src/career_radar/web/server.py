@@ -44,7 +44,8 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from career_radar import config
+from career_radar import cancellation, config
+from career_radar.collectors import browser
 from career_radar.config import get_logger
 from career_radar.eval import labels as eval_labels_store
 from career_radar.eval.labels import BadReason, Label
@@ -231,6 +232,10 @@ def create_app(
                 recency_days=request.recency_days,
                 resume=request.resume,
             )
+        except cancellation.RunCancelled:
+            # Kevin's own "Cancelar" click — pipeline.run() already logged
+            # and published this plainly; no traceback needed here.
+            pass
         except BaseException:
             # pipeline.run() already logs and publishes an "error" event on
             # the bus; this background thread has no caller left to reraise
@@ -260,6 +265,31 @@ def create_app(
         threading.Thread(target=_worker, args=(request,), daemon=True).start()
         return JSONResponse({"status": "started"}, status_code=202)
 
+    @app.post("/cancel")
+    def cancel_run() -> JSONResponse:
+        """Kevin's "Cancelar" button — no run to cancel is a 409, not a
+        silent no-op, so the UI never shows "cancelling" for nothing.
+
+        Two-pronged, since a collector can be stuck two different ways:
+        `cancellation.request()` is the cooperative path (picked up between
+        loop iterations / at stage boundaries, including a captcha/login
+        wait's own poll loop); `browser.kill_all_browsers()` is the safety
+        net for a call that's actually blocked *inside* a single CDP
+        operation, which no amount of checking a flag between iterations can
+        interrupt — killing the browser process makes that call fail fast
+        instead of hanging forever (the real scenario that prompted this
+        button, 2026-08-16: a crashed/ghost Chrome window with nothing
+        listening behind it, and no way to stop the run short of killing the
+        whole server).
+        """
+        with lock:
+            if not state["running"]:
+                return JSONResponse({"status": "not_running"}, status_code=409)
+        cancellation.request()
+        browser.kill_all_browsers()
+        event_bus.publish("cancel", "running", 0.0, "Cancelando la corrida...")
+        return JSONResponse({"status": "cancelling"}, status_code=202)
+
     @app.post("/reset")
     def reset_data() -> JSONResponse:
         """"Limpiar caché" (EATP-019, Kevin's call): wipe every derived
@@ -275,8 +305,18 @@ def create_app(
 
     @app.get("/status")
     def get_status() -> JSONResponse:
+        """`has_checkpoint` (Kevin's request, 2026-08-16: after cancelling —
+        or any interrupted run — "Iniciar" always silently resumed, with no
+        way to choose a clean run instead) tells the UI whether there's
+        anything to offer resuming *or* discarding in the first place."""
         last = read_json(config.STATUS_FILE, default=None)
-        return JSONResponse({"running": state["running"], "last": last})
+        return JSONResponse(
+            {
+                "running": state["running"],
+                "last": last,
+                "has_checkpoint": config.CHECKPOINT_FILE.exists(),
+            }
+        )
 
     @app.get("/results")
     def get_results() -> JSONResponse:

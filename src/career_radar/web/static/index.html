@@ -6,6 +6,7 @@
   <title>Career Radar</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/static/manifest.json">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -86,6 +87,7 @@
         </div>
         <p class="runner-sub">Busca y evalúa vacantes remotas por ti. Un clic y te avisa cuando esté listo.</p>
         <button class="pill-btn" id="startBtn" type="button">Iniciar búsqueda &#8594;</button>
+        <button class="text-btn" id="startFreshBtn" type="button" hidden>Empezar de nuevo (sin retomar)</button>
         <button class="text-btn" id="viewLastBtn" type="button" hidden>Ver dashboard de la última corrida</button>
         <button class="text-btn" id="clearCacheBtn" type="button">Limpiar caché</button>
       </section>
@@ -104,13 +106,15 @@
           <span class="notice-icon">&#9888;</span>
           <p class="notice-text" id="noticeText"></p>
         </div>
+        <button class="text-btn" id="cancelBtn" type="button">Pausar</button>
       </section>
 
       <section class="state" data-state="error">
         <div class="icon-ring err">&#10005;</div>
         <p class="state-title">Se interrumpió la corrida</p>
         <p class="state-detail" id="errorMessage"></p>
-        <button class="pill-btn" id="retryBtn" type="button">Reintentar</button>
+        <button class="pill-btn" id="retryBtn" type="button">Reanudar</button>
+        <button class="text-btn" id="freshRetryBtn" type="button">Empezar de nuevo (sin retomar)</button>
       </section>
 
       <section class="state" data-state="done">

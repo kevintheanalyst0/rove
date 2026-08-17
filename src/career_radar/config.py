@@ -212,6 +212,15 @@ OPENROUTER_MODEL = os.getenv(
 AI_BATCH_SIZE = int(os.getenv("AI_BATCH_SIZE", "10"))
 AI_MAX_RETRIES = int(os.getenv("AI_MAX_RETRIES", "3"))
 AI_RETRY_BACKOFF_SECONDS = float(os.getenv("AI_RETRY_BACKOFF_SECONDS", "2.0"))
+# Neither provider SDK was given an explicit timeout before (2026-08-16,
+# Kevin's live report: "Cancelar" did nothing) — an AI call that just hangs
+# instead of erroring blocks the run for however long the SDK's own default
+# is (the OpenAI SDK's is 600s), and no amount of checking a flag *between*
+# batches (pipeline.py's cooperative cancellation) can interrupt a single
+# call already in flight. Bounding it here means the worst case is now this
+# many seconds, not effectively unbounded — Cancelar becomes reliable within
+# that bound instead of only working when a run happens to be between calls.
+AI_REQUEST_TIMEOUT_SECONDS = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "60"))
 
 # ---------------------------------------------------------------------------
 # Logging

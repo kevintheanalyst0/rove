@@ -106,6 +106,154 @@
       (debounce); the race fix + terminal notice should already be solid.
       The window repaint nudge is the one remaining unverified piece —
       still can't confirm actual Windows/WSLg rendering behavior from here.
+- [ ] **Kevin's live report (2026-08-16, separate session)**: repaint nudge
+      still didn't bring the window forward for a real captcha. Root cause:
+      every focus call so far (`activate`, `window.max/normal`) only ever
+      reaches Chromium's *own* internal state over CDP — none of them ever
+      asked *Windows* (which owns the real WSLg-forwarded Win32 window) to
+      raise it. Added `browser._force_windows_foreground`: shells out to
+      `powershell.exe` (reachable from WSL via interop) to find the window
+      via a marker string (`bring_to_front` now sets `document.title` to it
+      first, avoiding a past false-match risk — the captcha tab's title was
+      sometimes a generic "New Tab") and force it forward with
+      `SetForegroundWindow`, preceded by a synthetic Alt keypress
+      (`keybd_event`) — the standard workaround for Windows' foreground-lock,
+      which normally blocks an unrelated process from stealing focus.
+      Best-effort/non-fatal (wrapped, swallows errors) so a missing/stuck
+      `powershell.exe` can never break the actual captcha-wait flow. Ran the
+      generated PowerShell directly (rc 0, no errors) to confirm it at least
+      compiles/executes on this box — **the actual foreground-steal still
+      needs Kevin's live confirmation**, same caveat as the repaint nudge.
+      Tests: `_is_wsl`/`_force_windows_foreground` unit-tested with
+      `subprocess.run` faked; added an autouse `tests/conftest.py` fixture
+      stubbing `_force_windows_foreground` to a no-op so no test suite run
+      ever shells out to a real `powershell.exe` — 360 passed.
+- [x] **Separately, found and fixed a real regression (2026-08-16,
+      uncommitted, unrelated to captcha focus)**: `scripts/run_web.sh` had
+      been changed to launch the web UI via `msedge --app-id=<hardcoded ID>`
+      (an attempt at a custom taskbar icon via an installed PWA) instead of
+      the proven `msedge --app=URL`. That ID was never confirmed installed
+      on Kevin's machine — this is almost certainly why he couldn't open the
+      app at all ("parece que ya está activa la ventana pero no sale nada").
+      Reverted to `--app=URL` as the default; `CAREER_RADAR_EDGE_APP_ID` env
+      var still available to opt back in once the PWA install + ID are
+      actually live-verified.
+- [x] **Taskbar icon, actually solved (2026-08-16)**: turned out Career
+      Radar *was* correctly installed (`web_app_install_metrics` in Edge's
+      own `Preferences` confirmed it, matching Kevin's `edge://apps`
+      screenshot) — the earlier "not installed" theory above was wrong.
+      Root cause of the missing icon: Edge runs a persistent background
+      instance (`--no-startup-window`); both `msedge --app=URL` and
+      `msedge --app-id=X` just forward the request via Chromium's
+      single-instance IPC into a *new popup inside that same already-running
+      process* — confirmed live by window-enumerating the resulting HWND
+      (owned by the same long-lived PID either way) — so the window only
+      ever carries Edge's own generic icon, no matter how "correct" the
+      app-id is. The fix: activate via Shell instead of a raw exe flag —
+      `explorer.exe "shell:AppsFolder\<AUMID>"`, the same path Windows uses
+      opening a pinned/Start-menu app. AUMID found via `(New-Object
+      -ComObject Shell.Application).NameSpace('shell:AppsFolder').Items()`:
+      `127.0.0.1-4FF64651_pfncv7bjx4w4g!App`. Kevin confirmed live: this
+      window showed the correct icon, the `--app=`/`--app-id=` ones moments
+      before did not. `run_web.sh` updated to use this by default
+      (`CAREER_RADAR_APP_AUMID` env var to override if Kevin ever
+      reinstalls the app and gets a new AUMID); the old `--app=URL` path
+      kept only as a fallback if the var is ever cleared. Also explains why
+      `--app-id` alone "didn't open anything" originally: separately, the
+      exact same command run from this automated/scripted context (not
+      Kevin's own interactive double-click) reproducibly fails with
+      "Acceso denegado" for *any* `msedge` invocation, app-id or not —
+      root cause not fully pinned down (session/token nuance of how WSL
+      interop spawns Windows GUI processes vs. a real Explorer-launched
+      one), but `shell:AppsFolder` activation launches cleanly from both
+      contexts, so it's the more robust choice for `run_web.sh` regardless.
+- [x] **New: "Cancelar" button (2026-08-16, Kevin's request)**. Found live
+      while diagnosing the above: a stuck/ghost Chrome window left a run
+      hung at `running: true` with no way to stop it short of killing the
+      whole server. New `career_radar/cancellation.py` — one process-wide
+      `threading.Event`, reset at the start of every `pipeline.run()`.
+      Two-pronged so it works whether a collector is blocked *between*
+      calls or *inside* one: (1) cooperative — `pipeline.py` checks it at
+      every stage boundary (each source, each AI batch); `browser.py`'s new
+      `start_cancellation_watcher(coord.giveup)` (called once from
+      `indeed.py`/`linkedin.py`'s `collect()`) mirrors it onto the
+      collectors' own existing `giveup` switch, so a captcha/login wait's
+      poll loop picks it up within ~0.5s for free, no other code touched.
+      (2) forceful — `browser.py` now tracks every launched Chrome's real
+      PID (`build_page`/`forget_page`); `/cancel` (server.py) also calls
+      `browser.kill_all_browsers()` as a safety net for a call stuck
+      *inside* a single blocking CDP operation, which no cooperative check
+      between iterations can interrupt. Lands as `RunStatus.PAUSED` (an
+      enum value that already existed for exactly this, unused until now) —
+      not ERROR — since the checkpoint survives and `resume=True` (the
+      default) picks the run back up instead of re-scraping. Frontend: a
+      "Cancelar" text-btn in the working state, POSTs `/cancel`. Tests: new
+      `test_cancellation.py`, kill/PID-tracking + watcher tests in
+      `test_browser.py` (spawns real short-lived `sleep`/`true` processes to
+      verify actual OS-level kill, not mocked), cancellation-mid-collect and
+      cancellation-mid-AI-scoring + resume-after-cancel in `test_pipeline.py`,
+      `/cancel` route tests in `test_web_server.py` — 376 passed. New
+      autouse `tests/conftest.py` fixture resets the cancellation flag
+      around every test so it can never leak between them. **Not yet
+      live-verified** (server/UI, not just unit tests) — ask Kevin to click
+      it on a real run.
+- [x] **Real regression from the `shell:AppsFolder` fix (2026-08-16, Kevin's
+      live test)**: `run_web.sh` opened the window (correct icon this time)
+      but the page showed `ERR_CONNECTION_REFUSED` — the server was already
+      dead. Root cause: `set -e` (top of the script) treats ANY nonzero exit
+      as fatal, not just ones explicitly chained with `&&` — and
+      `explorer.exe`'s exit code is unreliable (nonzero even on a
+      successful activation, already noted above). So the script's own EXIT
+      trap (`kill "$SERVER_PID"`) fired seconds after opening the browser,
+      killing uvicorn out from under the window Kevin was looking at. Fixed
+      with `|| true` on that line. Verified with a real end-to-end run
+      (`bash scripts/run_web.sh`, not just `bash -n`): server responded 200
+      mid-run, script reached its normal end instead of dying early.
+- [x] **"Cancelar" didn't work on a resumed run (2026-08-16, Kevin's live
+      test)**: clicked it, nothing happened. `/status` still showed
+      `running: true` minutes later, 0% CPU, and — unlike every prior stuck
+      case — no Chrome process existed at all, ruling out
+      `kill_all_browsers` as a fix (nothing to kill). Root cause: neither AI
+      provider SDK (`_openai_compatible.py`'s `OpenAI(...)`, `gemini.py`'s
+      `genai.Client(...)`) was ever given an explicit request timeout, so a
+      hung AI call blocks for however long the SDK's own default is (the
+      OpenAI SDK's is 600s) — and cooperative cancellation (checked
+      *between* AI batches) can't interrupt a call already in flight, the
+      same class of gap `kill_all_browsers` covers for the browser
+      collectors, just with no equivalent "kill the process" option for an
+      in-thread HTTP call. Fixed: new `config.AI_REQUEST_TIMEOUT_SECONDS`
+      (default 60s) wired into both SDK clients — bounds a single stuck
+      call to 60s instead of ~600s+. Residual, honestly-not-fully-solved
+      gap: `tenacity`'s retry wrapper means a *genuinely* hung batch can
+      still take up to `AI_MAX_RETRIES` × 60s + backoff (~3 min worst case)
+      before Cancelar actually takes effect, since cancellation isn't
+      checked *between* retry attempts of the same batch — much better than
+      before, not instant. 2 new tests verifying the timeout is actually
+      passed to each real SDK client constructor (not just fakes, which
+      every other provider test injects and which would never have caught
+      this) — 378 passed.
+- [x] **"Cancelar" is really "Pausar", and Kevin had no way to start clean
+      (2026-08-16, Kevin's own framing)**: "Iniciar"/"Reintentar" always
+      silently resumed a leftover checkpoint (`resume=True` default, no UI
+      path to override it) — the backend already fully supported
+      `resume=False` (discards the checkpoint via `_clear_run_artifacts`,
+      already used by "Limpiar caché"), it just wasn't reachable except by
+      that separate, confirm-dialog-gated button. Fixed: `/status` gained
+      `has_checkpoint`; the idle screen now shows "Reanudar búsqueda" (label
+      change) + a secondary "Empezar de nuevo (sin retomar)" button when one
+      exists, hidden otherwise; the error/paused screen (what "Pausar" now
+      correctly says instead of "Cancelar" — matches what it actually does)
+      always offers both "Reanudar" and "Empezar de nuevo". `startRun()`
+      takes an explicit `resume` param now; fixed 3 call sites
+      (`retryBtn`/`sideRerunBtn`/`topRerunBtn`) that passed the click
+      `Event` object as `resume` by referencing `startRun` directly as the
+      handler — harmless before (any truthy value), but would have silently
+      broken now that `resume` is serialized into the request body. 3 new
+      tests (`has_checkpoint` true/false, `resume: false` reaches
+      `pipeline_run`) — 380 passed. Live-verified `/status`+the idle
+      screen's button state against a real server with no checkpoint
+      present; **the "Empezar de nuevo" / has-checkpoint-true path itself
+      still needs Kevin's own live click to confirm.**
 - [x] **Indeed's false-captcha-alarm problem, tightened (best evidence, not
       lab-confirmed)**: `is_captcha_page`'s bare `"captcha"` substring
       matched anywhere in the *entire page HTML* — almost certainly the

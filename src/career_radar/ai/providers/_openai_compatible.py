@@ -42,7 +42,11 @@ class OpenAICompatibleProvider(Provider):
         if self._client is None:
             from openai import OpenAI
 
-            self._client = OpenAI(api_key=self._api_key, base_url=self.base_url)
+            self._client = OpenAI(
+                api_key=self._api_key,
+                base_url=self.base_url,
+                timeout=config.AI_REQUEST_TIMEOUT_SECONDS,
+            )
         return self._client
 
     def _complete(self, prompt: str) -> str:

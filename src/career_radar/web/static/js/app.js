@@ -24,8 +24,10 @@
 
 const states = document.querySelectorAll(".state");
 const startBtn = document.getElementById("startBtn");
+const startFreshBtn = document.getElementById("startFreshBtn");
 const viewLastBtn = document.getElementById("viewLastBtn");
 const retryBtn = document.getElementById("retryBtn");
+const freshRetryBtn = document.getElementById("freshRetryBtn");
 const sideRerunBtn = document.getElementById("sideRerunBtn");
 const topRerunBtn = document.getElementById("topRerunBtn");
 const statusText = document.getElementById("statusText");
@@ -33,6 +35,7 @@ const barFill = document.getElementById("barFill");
 const barPct = document.getElementById("barPct");
 const noticeBanner = document.getElementById("noticeBanner");
 const noticeText = document.getElementById("noticeText");
+const cancelBtn = document.getElementById("cancelBtn");
 const errorMessage = document.getElementById("errorMessage");
 const doneMessage = document.getElementById("doneMessage");
 
@@ -195,17 +198,34 @@ function connectEvents() {
   };
 }
 
-async function startRun() {
+async function startRun(resume = true) {
+  // Kevin's call (2026-08-16): "Iniciar"/"Reanudar" always silently resumed
+  // a leftover checkpoint, with no way to choose a clean run instead — the
+  // "Empezar de nuevo" buttons pass resume=false, which pipeline.run()
+  // already supported end to end (discards the checkpoint via
+  // _clear_run_artifacts), just never reachable from the UI.
   notices = {};
   renderNotices();
   showState("working");
-  setProgress(0, "Iniciando…");
+  setProgress(0, resume ? "Iniciando…" : "Iniciando corrida limpia…");
+  cancelBtn.disabled = false;
   connectEvents();
   await fetch("/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: "{}",
+    body: JSON.stringify({ resume }),
   });
+}
+
+async function cancelRun() {
+  // The actual stop can take a few seconds (a captcha/login wait's poll
+  // loop, or a stuck browser call getting force-killed server-side) — the
+  // "error" event server.py's /cancel triggers is what actually moves the
+  // UI out of "working"; this just gives immediate feedback that the click
+  // registered, without touching the progress bar itself.
+  cancelBtn.disabled = true;
+  statusText.textContent = "Cancelando…";
+  await fetch("/cancel", { method: "POST" });
 }
 
 // ---------------------------------------------------------------------------
@@ -613,16 +633,23 @@ async function init() {
       return;
     }
     viewLastBtn.hidden = !(data.last && data.last.status === "success");
+    // A checkpoint means a run stopped mid-way (paused/crashed) — offer the
+    // choice instead of "Iniciar" silently resuming it every time.
+    startBtn.textContent = data.has_checkpoint ? "Reanudar búsqueda →" : "Iniciar búsqueda →";
+    startFreshBtn.hidden = !data.has_checkpoint;
   } catch {
     // No /status yet (first run ever) — fall through to idle.
   }
   showState("idle");
 }
 
-startBtn.addEventListener("click", startRun);
+startBtn.addEventListener("click", () => startRun(true));
+startFreshBtn.addEventListener("click", () => startRun(false));
+freshRetryBtn.addEventListener("click", () => startRun(false));
+cancelBtn.addEventListener("click", cancelRun);
 viewLastBtn.addEventListener("click", revealResults);
-retryBtn.addEventListener("click", startRun);
-sideRerunBtn.addEventListener("click", startRun);
+retryBtn.addEventListener("click", () => startRun(true));
+sideRerunBtn.addEventListener("click", () => startRun(true));
 sideRerunBtn.addEventListener("keydown", (event) => {
   if (event.key === "Enter" || event.key === " ") { event.preventDefault(); startRun(); }
 });
@@ -655,6 +682,6 @@ async function clearCache(button) {
 
 clearCacheBtn.addEventListener("click", () => clearCache(clearCacheBtn));
 sideClearCacheBtn.addEventListener("click", () => clearCache(sideClearCacheBtn));
-topRerunBtn.addEventListener("click", startRun);
+topRerunBtn.addEventListener("click", () => startRun(true));
 
 init();

@@ -33,7 +33,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from career_radar import config
+from career_radar import cancellation, config
 from career_radar.ai.base import AiResult
 from career_radar.ai.parse import match_ai_results
 from career_radar.ai.router import AiRouter, build_default_router
@@ -181,6 +181,7 @@ def _collect_stage(
     total = len(requested)
 
     for index, source in enumerate(requested, start=1):
+        cancellation.check()
         percent = _COLLECT_START + (_COLLECT_END - _COLLECT_START) * index / max(total, 1)
 
         if source in checkpoint.collected_sources:
@@ -220,6 +221,7 @@ def _gate_stage(
     recency_days: int | None,
     event_bus: EventBus,
 ) -> list[Job]:
+    cancellation.check()
     event_bus.publish("gate", "running", _GATE_START, "Filtrando y depurando duplicados...")
 
     original_max_days_old = config.MAX_DAYS_OLD
@@ -325,6 +327,7 @@ def _score_stage(
         event_bus.publish("ai", "running", _AI_START, "Sin vacantes nuevas para evaluar con IA")
 
     for index, batch in enumerate(batches, start=1):
+        cancellation.check()
         percent = _AI_START + (_AI_END - _AI_START) * index / len(batches)
         event_bus.publish(
             "ai", "running", percent, f"Evaluando con IA: lote {index}/{len(batches)}..."
@@ -437,6 +440,7 @@ def run(
     disk for the next call to pick up.
     """
     config.configure_logging()
+    cancellation.reset()
     event_bus = event_bus or default_bus
     profile = profile or load_profile()
     criteria = _with_ai_cap(criteria or load_criteria(), ai_cap)
@@ -458,6 +462,25 @@ def run(
         )
         ranked = _score_stage(kept, criteria, router, profile, checkpoint, event_bus)
         return _persist(ranked, source_health, checkpoint.counts, run_started_at, cache, event_bus)
+    except cancellation.RunCancelled:
+        # Kevin's own "Cancelar" click, not a failure — logged plainly (no
+        # traceback) and left as RunStatus.PAUSED rather than ERROR, since
+        # everything checkpointed so far is still on disk and `resume=True`
+        # (the default) picks it back up on the next "Iniciar" instead of
+        # re-scraping from scratch.
+        logger.info("run cancelled by Kevin")
+        write_json(
+            config.STATUS_FILE,
+            {
+                "started_at": run_started_at.isoformat(),
+                "finished_at": datetime.now(UTC).isoformat(),
+                "status": RunStatus.PAUSED.value,
+                "message": "Corrida cancelada.",
+                "counts": checkpoint.counts,
+            },
+        )
+        event_bus.publish("error", "error", 0.0, "Corrida cancelada.")
+        raise
     except BaseException as exc:
         logger.error("run interrupted: %s", exc)
         write_json(

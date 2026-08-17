@@ -49,8 +49,14 @@ class GeminiProvider(Provider):
     def _get_client(self):
         if self._client is None:
             from google import genai
+            from google.genai import types
 
-            self._client = genai.Client(api_key=self._api_key)
+            self._client = genai.Client(
+                api_key=self._api_key,
+                http_options=types.HttpOptions(
+                    timeout=int(config.AI_REQUEST_TIMEOUT_SECONDS * 1000)
+                ),
+            )
         return self._client
 
     def _generate(self, prompt: str) -> str:
