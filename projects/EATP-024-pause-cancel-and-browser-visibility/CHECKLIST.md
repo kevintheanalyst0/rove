@@ -11,7 +11,7 @@
 
 ### Phase 2 — Indeed Chrome window visibility
 - [x] Fresh diagnosis (not a repeat of EATP-023's already-failed attempts)
-- [x] Fix attempt — **still needs Kevin's live confirmation**
+- [x] Fix attempt — **live-verified by Kevin (2026-08-16): window now appears reliably**
 - [x] Tests (whatever is unit-testable — the GUI/WSLg part itself never is)
 
 ### Phase 1b — Real-run report: Pausar/Cancelar still didn't stop the run
@@ -46,8 +46,10 @@
 | 2026-08-16 | Fase 2 | ~20 min | Diagnóstico en vivo con captura de logs de Chrome en el WSLg real de Kevin (no simulado) — confirmé `GPU.ContextLost` real y su desaparición con `--disable-gpu-compositing`. |
 | 2026-08-16 | Fase 1b | ~25 min | Kevin reportó en vivo que ni Pausar ni Cancelar frenaban una corrida real — encontré que los collectors HTTP no tenían ningún chequeo de cancelación dentro de su propio loop, y que la fase de IA no tenía forma de abandonar una llamada lenta/colgada. Arreglado en ambos frentes, con tests. |
 | 2026-08-16 | Fase 3 | ~10 min | Cierre: pytest verde, ROADMAP, commit. |
+| 2026-08-16 | Fase 1c | ~10 min | Kevin probó una corrida real: confirmé en vivo (curl directo, no su clic) que Cancelar detiene la corrida en 1.8s. Sus propios clics seguían sin reaccionar — causa: Edge reutilizaba una sesión vieja con el JS anterior; un hard-refresh (Ctrl+Shift+R) lo resolvió. Guardado como memoria para futuras sesiones. |
+| 2026-08-16 | Fase 4 | ~5 min | Kevin confirmó en vivo que la ventana de Indeed/LinkedIn ahora aparece bien. Cierre final del proyecto. |
 
-**Total project time:** ~1h10min
+**Total project time:** ~1h25min
 
 ## Session notes
 **Pausar (primera vuelta)**: causa raíz encontrada por inspección de código — una condición de carrera de frontend: al hacer clic, el mensaje "Cancelando…" se mostraba, pero eventos normales de progreso lo sobreescribían en 1-2 segundos. Fix: bandera `cancelling` que congela el mensaje.
@@ -56,4 +58,6 @@
 
 **Cancelar**: nuevo botón, sin confirmación (decisión de Kevin). Reusa el mismo mecanismo de `/cancel`, con un flag `discard` nuevo en `cancellation.py` que, al capturarse `RunCancelled` en `pipeline.py`, además borra el checkpoint — así "Iniciar" arranca limpio en vez de retomar.
 
-**Ventana de Indeed**: encontré algo que no se había probado en EATP-023 — lancé Chrome de verdad en el WSLg real de esta máquina (el mismo que usa Kevin) con `--enable-logging`/`--log-file` y capturé evidencia directa: `GPU.ContextLost.RendererCompositor`/`RendererRasterWorker` se disparaban en segundos con solo cargar `about:blank`, y el propio `GPU.BlocklistFeatureTestResults.GpuCompositing` de Chrome ya marca este hardware/driver como bloqueado para composición. Un contexto GPU perdido a mitad de sesión explica exactamente el síntoma que Kevin describió (ventana con marco pero sin pintar hasta que la clickea). Confirmé con un segundo run idéntico agregando `--disable-gpu-compositing`: cero eventos `ContextLost`. Apliqué la flag en `build_options()` — afecta a LinkedIn e Indeed por igual (comparten la función). **Sigue pendiente la confirmación visual de Kevin** — no hay forma de ver el lado Windows desde acá, pero por primera vez esta hipótesis está respaldada por telemetría real de Chrome capturada en su propia máquina, no solo teoría.
+**Ventana de Indeed**: encontré algo que no se había probado en EATP-023 — lancé Chrome de verdad en el WSLg real de esta máquina (el mismo que usa Kevin) con `--enable-logging`/`--log-file` y capturé evidencia directa: `GPU.ContextLost.RendererCompositor`/`RendererRasterWorker` se disparaban en segundos con solo cargar `about:blank`, y el propio `GPU.BlocklistFeatureTestResults.GpuCompositing` de Chrome ya marca este hardware/driver como bloqueado para composición. Un contexto GPU perdido a mitad de sesión explica exactamente el síntoma que Kevin describió (ventana con marco pero sin pintar hasta que la clickea). Confirmé con un segundo run idéntico agregando `--disable-gpu-compositing`: cero eventos `ContextLost`. Apliqué la flag en `build_options()` — afecta a LinkedIn e Indeed por igual (comparten la función). **Kevin confirmó en vivo (2026-08-16) que la ventana ahora aparece bien** — primera vez en todo el ciclo EATP-023/024 que este problema queda resuelto y no solo teorizado.
+
+**Cierre**: los tres puntos del Definition of Done quedaron live-verificados por Kevin en la misma sesión: Pausar reacciona visiblemente, Cancelar descarta el checkpoint en un clic (~1-2s), y la ventana de Indeed/LinkedIn aparece de forma confiable. Nada quedó pendiente.
