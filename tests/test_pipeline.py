@@ -393,6 +393,46 @@ def test_cancellation_during_collect_stops_before_the_next_source():
     assert status["message"] == "Corrida cancelada."
 
 
+class DiscardingCollector(FakeCollector):
+    """Same shape as `CancellingCollector`, but requests a discard —
+    models the new "Cancelar" button (EATP-024), not "Pausar"."""
+
+    def collect(self) -> Iterator[Job]:
+        self.calls += 1
+        cancellation.request(discard=True)
+        yield from self._jobs
+
+
+def test_discard_cancellation_wipes_the_checkpoint():
+    jobs_a = [_job(source="occ", source_job_id="1")]
+    registry = CollectorRegistry()
+    registry.register("occ", lambda: DiscardingCollector("occ", jobs_a))
+
+    with pytest.raises(cancellation.RunCancelled):
+        pipeline.run(
+            registry=registry,
+            router=_router(ScriptedProvider({})),
+            profile=PROFILE,
+            criteria=_criteria(),
+        )
+
+    assert not config.CHECKPOINT_FILE.exists()
+    status = json.loads(config.STATUS_FILE.read_bytes())
+    assert status["status"] == "paused"
+    assert status["message"] == "Corrida descartada."
+
+    # A fresh "Iniciar" (resume=True, the default) must not pick anything
+    # back up — the checkpoint is gone, so occ gets scraped again.
+    fresh_collector = FakeCollector("occ", jobs_a)
+    registry2 = CollectorRegistry()
+    registry2.register("occ", lambda: fresh_collector)
+    result = pipeline.run(
+        registry=registry2, router=_router(ScriptedProvider({})), profile=PROFILE, criteria=_criteria()
+    )
+    assert fresh_collector.calls == 1
+    assert result.status == RunStatus.SUCCESS
+
+
 class CancellingProvider(Provider):
     """Same shape as `CrashingProvider`, but requests cancellation instead
     of raising — models the AI-scoring phase getting cancelled mid-run."""

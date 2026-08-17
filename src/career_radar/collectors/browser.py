@@ -181,6 +181,24 @@ def build_options(*, use_profile: bool = True, headless: bool = False) -> Chromi
     width, height = random.choice(_VIEWPORTS)
     options.set_argument(f"--window-size={width},{height}")
     options.set_argument("--disable-blink-features=AutomationControlled")
+    # EATP-024: WSLg's virtual GPU is unstable enough to lose its
+    # compositor context mid-session — reproduced live on this exact box
+    # with Chrome's own `--enable-logging`/`--log-file` output: a plain
+    # `about:blank` load alone fired `GPU.ContextLost.RendererCompositor`
+    # and `GPU.ContextLost.RendererRasterWorker` within seconds (Chrome's
+    # own `GPU.BlocklistFeatureTestResults.GpuCompositing` histogram already
+    # flags this hardware/driver combo as blocklisted for compositing).
+    # After a context loss, Chromium already falls back to software
+    # compositing for *later* renderer processes on its own (confirmed via
+    # `ps`: new tabs picked up `--disable-gpu-compositing` mid-session that
+    # the first tab didn't have) — which lines up with the exact symptom
+    # Kevin reported in EATP-023 (a window whose content doesn't paint until
+    # he clicks it: the compositor recovering from a lost context needs an
+    # external nudge). Passing the flag from the first launch avoids the
+    # mid-session context loss entirely instead of recovering from it after
+    # the fact — verified with the same log capture: an identical run with
+    # this flag produced zero `ContextLost` events.
+    options.set_argument("--disable-gpu-compositing")
     if headless:
         options.headless(True)
 

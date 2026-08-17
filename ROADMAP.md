@@ -69,10 +69,13 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-021** | Collector speed in the full pipeline + Indeed captcha/tab tradeoff | — | ✅ | 020 | Medium | ~1h05 (2026-08-15) |
 | **EATP-022** | LinkedIn & Indeed: close the speed gap with legacy (real-browser listing back for LinkedIn, tab/pacing tuning for Indeed) | — | ✅ | 021 | Medium-High | ~1h30 (2026-08-15) |
 | **EATP-023** | Final polish: window focus, no visible terminal, auto-shutdown on tab close | — | ✅ | 022 | Medium | ~1h55 (2026-08-15) |
+| **EATP-024** | Pausar/Cancelar reliability + Indeed browser visibility | — | ✅ | 023 | Medium | ~40 min (2026-08-16) |
 
-> **Career Radar closed out 2026-08-15** (EATP-023) — every planned project is ✅.
-> Only remaining loose end is documented on EATP-023: Kevin's own live confirmation of
-> the Windows-side launcher/window-focus behavior, which isn't testable from WSL.
+> **Career Radar closed out 2026-08-15** (EATP-023), reopened once more for EATP-024
+> (2026-08-16) to close loose ends found live after that closeout. Remaining loose end:
+> Kevin's own live confirmation that the Indeed Chrome window now appears reliably
+> (EATP-024's `--disable-gpu-compositing` fix) and that "Pausar"/"Cancelar" behave as
+> expected in his real browser — none of this is testable from WSL alone.
 
 > Fill **Status** and **Total time** as each project completes. The **Complexity** column
 > exists so no project balloons: they're all sized Medium-ish, with a couple intentionally

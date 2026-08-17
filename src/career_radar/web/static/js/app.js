@@ -36,6 +36,7 @@ const barPct = document.getElementById("barPct");
 const noticeBanner = document.getElementById("noticeBanner");
 const noticeText = document.getElementById("noticeText");
 const cancelBtn = document.getElementById("cancelBtn");
+const discardBtn = document.getElementById("discardBtn");
 const errorMessage = document.getElementById("errorMessage");
 const doneMessage = document.getElementById("doneMessage");
 
@@ -144,6 +145,20 @@ function renderNotices() {
 // intervention notice is stale by then, since collect is fully done.
 const PHASES_PAST_COLLECT = new Set(["gate", "prefilter", "ai", "persist"]);
 
+// EATP-024: set the moment "Pausar"/"Cancelar" is clicked. The pipeline can
+// take a while to actually stop (a captcha/login wait's poll loop, or up to
+// ~3 min in the worst case mid-AI-retry — see cancellation.py), and it keeps
+// publishing perfectly normal "working" progress events the whole time.
+// Before this flag, those events reached `setProgress` same as any other and
+// silently overwrote the "Cancelando…" message with the run's regular
+// status text within a second or two — Kevin's exact report ("Pausar
+// doesn't visibly do anything"): it did react, just for a moment too short
+// to notice. Once set, every routine progress event is ignored until the
+// run actually ends (the "error"/cancelled event below, which always clears
+// it), so the message stays on screen for the whole wait instead of
+// flickering back to normal.
+let cancelling = false;
+
 function handleEvent(event) {
   if (event.status === "needs_intervention") {
     notices[event.phase] = event.message;
@@ -162,6 +177,7 @@ function handleEvent(event) {
   }
 
   if (event.phase === "error") {
+    cancelling = false;
     notices = {};
     errorMessage.textContent = event.message || "Ocurrió un error inesperado.";
     showState("error");
@@ -169,12 +185,15 @@ function handleEvent(event) {
   }
 
   if (event.phase === "persist" && event.status === "done") {
+    cancelling = false;
     notices = {};
     doneMessage.textContent = event.message || "Listo";
     showState("done");
     window.setTimeout(revealResults, DONE_HOLD_MS);
     return;
   }
+
+  if (cancelling) return;
 
   if (PHASES_PAST_COLLECT.has(event.phase)) {
     notices = {};
@@ -204,11 +223,13 @@ async function startRun(resume = true) {
   // "Empezar de nuevo" buttons pass resume=false, which pipeline.run()
   // already supported end to end (discards the checkpoint via
   // _clear_run_artifacts), just never reachable from the UI.
+  cancelling = false;
   notices = {};
   renderNotices();
   showState("working");
   setProgress(0, resume ? "Iniciando…" : "Iniciando corrida limpia…");
   cancelBtn.disabled = false;
+  discardBtn.disabled = false;
   connectEvents();
   await fetch("/run", {
     method: "POST",
@@ -217,15 +238,34 @@ async function startRun(resume = true) {
   });
 }
 
-async function cancelRun() {
-  // The actual stop can take a few seconds (a captcha/login wait's poll
-  // loop, or a stuck browser call getting force-killed server-side) — the
-  // "error" event server.py's /cancel triggers is what actually moves the
-  // UI out of "working"; this just gives immediate feedback that the click
-  // registered, without touching the progress bar itself.
+// Shared by "Pausar" (discard=false) and "Cancelar" (discard=true, EATP-024)
+// — same stop mechanism server-side, the only difference is whether the
+// checkpoint survives for the next "Iniciar" to resume into. The actual
+// stop can take a few seconds to a few minutes (a captcha/login wait's poll
+// loop, or a stuck/slow browser or AI call getting force-killed
+// server-side) — the "error" event server.py's /cancel eventually triggers
+// is what actually moves the UI out of "working"; this just gives immediate
+// feedback that the click registered, and `cancelling` (see `handleEvent`)
+// keeps that feedback visible for the whole wait instead of letting normal
+// progress events overwrite it.
+async function stopRun(discard) {
+  cancelling = true;
   cancelBtn.disabled = true;
-  statusText.textContent = "Cancelando…";
-  await fetch("/cancel", { method: "POST" });
+  discardBtn.disabled = true;
+  statusText.textContent = discard ? "Cancelando (descartando avance)…" : "Cancelando…";
+  await fetch("/cancel", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ discard }),
+  });
+}
+
+async function cancelRun() {
+  await stopRun(false);
+}
+
+async function discardRun() {
+  await stopRun(true);
 }
 
 // ---------------------------------------------------------------------------
@@ -647,6 +687,7 @@ startBtn.addEventListener("click", () => startRun(true));
 startFreshBtn.addEventListener("click", () => startRun(false));
 freshRetryBtn.addEventListener("click", () => startRun(false));
 cancelBtn.addEventListener("click", cancelRun);
+discardBtn.addEventListener("click", discardRun);
 viewLastBtn.addEventListener("click", revealResults);
 retryBtn.addEventListener("click", () => startRun(true));
 sideRerunBtn.addEventListener("click", () => startRun(true));

@@ -260,6 +260,8 @@ body[data-state="results"] #runnerCard { display: none; }
 .text-btn:disabled { opacity: 0.5; cursor: default; }
 .text-btn-side { align-self: center; margin: 6px 0 2px; }
 
+.working-actions { display: flex; align-items: center; gap: 18px; }
+
 /* ---- spinner: ring of 8 dots ---- */
 .cr-spinner { position: relative; width: 54px; height: 54px; }
 .cr-spinner span {

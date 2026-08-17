@@ -232,6 +232,16 @@ def test_build_options_without_profile_skips_user_data_path(monkeypatch):
     assert not any(arg.startswith("--user-data-dir=") for arg in options.arguments)
 
 
+def test_build_options_disables_gpu_compositing(monkeypatch, tmp_path):
+    # EATP-024: WSLg's GPU compositor was confirmed to drop context
+    # mid-session on this box (live `--enable-logging` capture) — this flag
+    # avoids that instability from the first launch.
+    monkeypatch.setattr(browser_mod.config, "CHROME_BROWSER_PATH", "/custom/chrome")
+    monkeypatch.setattr(browser_mod.config, "CHROME_USER_DATA_DIR", str(tmp_path))
+    options = browser_mod.build_options()
+    assert "--disable-gpu-compositing" in options.arguments
+
+
 def test_request_manual_intervention_publishes_event_not_input():
     test_bus = EventBus()
     original_bus = browser_mod.bus

@@ -104,6 +104,23 @@ def test_cancel_requests_cancellation_while_a_run_is_in_progress() -> None:
     assert response.status_code == 202
     assert response.json() == {"status": "cancelling"}
     assert cancellation.is_requested() is True
+    assert cancellation.is_discard_requested() is False
+    time.sleep(0.4)  # let the background thread finish so it doesn't leak
+
+
+def test_cancel_with_discard_sets_the_discard_flag() -> None:
+    # EATP-024: "Cancelar" (distinct from "Pausar") — the new request body.
+    def slow_run(**kwargs):
+        time.sleep(0.3)
+
+    client, _bus = _make_client(pipeline_run=slow_run)
+    client.post("/run", json={})
+
+    response = client.post("/cancel", json={"discard": True})
+
+    assert response.status_code == 202
+    assert cancellation.is_requested() is True
+    assert cancellation.is_discard_requested() is True
     time.sleep(0.4)  # let the background thread finish so it doesn't leak
 
 

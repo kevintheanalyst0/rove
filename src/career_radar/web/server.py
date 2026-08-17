@@ -144,6 +144,12 @@ class RunRequest(BaseModel):
     resume: bool = True
 
 
+class CancelRequest(BaseModel):
+    # EATP-024: "Pausar" (discard=False, the default) keeps the checkpoint
+    # so the next run resumes; "Cancelar" (discard=True) throws it away too.
+    discard: bool = False
+
+
 class TrackRequest(BaseModel):
     signature: str
     action: TrackingAction
@@ -266,9 +272,10 @@ def create_app(
         return JSONResponse({"status": "started"}, status_code=202)
 
     @app.post("/cancel")
-    def cancel_run() -> JSONResponse:
-        """Kevin's "Cancelar" button — no run to cancel is a 409, not a
-        silent no-op, so the UI never shows "cancelling" for nothing.
+    def cancel_run(request: CancelRequest = CancelRequest()) -> JSONResponse:
+        """"Pausar" (discard=False)/"Cancelar" (discard=True, EATP-024) —
+        no run to cancel is a 409, not a silent no-op, so the UI never shows
+        "cancelling" for nothing.
 
         Two-pronged, since a collector can be stuck two different ways:
         `cancellation.request()` is the cooperative path (picked up between
@@ -285,9 +292,10 @@ def create_app(
         with lock:
             if not state["running"]:
                 return JSONResponse({"status": "not_running"}, status_code=409)
-        cancellation.request()
+        cancellation.request(discard=request.discard)
         browser.kill_all_browsers()
-        event_bus.publish("cancel", "running", 0.0, "Cancelando la corrida...")
+        message = "Descartando la corrida..." if request.discard else "Cancelando la corrida..."
+        event_bus.publish("cancel", "running", 0.0, message)
         return JSONResponse({"status": "cancelling"}, status_code=202)
 
     @app.post("/reset")

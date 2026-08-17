@@ -463,23 +463,28 @@ def run(
         ranked = _score_stage(kept, criteria, router, profile, checkpoint, event_bus)
         return _persist(ranked, source_health, checkpoint.counts, run_started_at, cache, event_bus)
     except cancellation.RunCancelled:
-        # Kevin's own "Cancelar" click, not a failure — logged plainly (no
-        # traceback) and left as RunStatus.PAUSED rather than ERROR, since
-        # everything checkpointed so far is still on disk and `resume=True`
-        # (the default) picks it back up on the next "Iniciar" instead of
-        # re-scraping from scratch.
+        # Kevin's own "Pausar"/"Cancelar" click, not a failure — logged
+        # plainly (no traceback) and left as RunStatus.PAUSED rather than
+        # ERROR. "Pausar" keeps the checkpoint on disk so `resume=True` (the
+        # default) picks it back up on the next "Iniciar" instead of
+        # re-scraping from scratch; "Cancelar" (EATP-024) additionally
+        # discards it, so the next run starts genuinely fresh.
         logger.info("run cancelled by Kevin")
+        discard = cancellation.is_discard_requested()
+        if discard:
+            _clear_run_artifacts()
+        message = "Corrida descartada." if discard else "Corrida cancelada."
         write_json(
             config.STATUS_FILE,
             {
                 "started_at": run_started_at.isoformat(),
                 "finished_at": datetime.now(UTC).isoformat(),
                 "status": RunStatus.PAUSED.value,
-                "message": "Corrida cancelada.",
+                "message": message,
                 "counts": checkpoint.counts,
             },
         )
-        event_bus.publish("error", "error", 0.0, "Corrida cancelada.")
+        event_bus.publish("error", "error", 0.0, message)
         raise
     except BaseException as exc:
         logger.error("run interrupted: %s", exc)
