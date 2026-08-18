@@ -319,15 +319,35 @@ class _ScriptedPage:
         self.quit_called = False
         self.new_tab_calls = 0
         self.process_id = 999001  # mirrors real ChromiumPage.process_id (browser.forget_page)
+        self.get_calls: list[str] = []
+        # Set to N to model Kevin actually solving the challenge: after N
+        # reads of the captcha page, Indeed swaps it for the real page *in
+        # place*, with no navigation from us. That in-place swap is the
+        # point — EATP-025's bug was the collector re-navigating on every
+        # poll instead of waiting for it, which destroyed the captcha he was
+        # halfway through solving.
+        self.captcha_clears_after_html_reads: int | None = None
+        # Per-thread (= per-tab) and reset on every `get`, so two tabs each
+        # hitting their own captcha — and a second episode later in the same
+        # run — are independent, exactly like real pages.
+        self._captcha_reads_by_thread: dict[int, int] = {}
 
     def get(self, url: str) -> None:
         with self._lock:
+            self.get_calls.append(url)
             queue = self._responses.get(url)
             html, cards, title = queue.pop(0) if queue else ("", [], "")
         self._current_by_thread[threading.get_ident()] = (url, html, cards, title)
+        self._captcha_reads_by_thread[threading.get_ident()] = 0
 
     def _current(self):
         return self._current_by_thread.get(threading.get_ident())
+
+    def _captcha_is_solved(self) -> bool:
+        limit = self.captcha_clears_after_html_reads
+        if limit is None:
+            return False
+        return self._captcha_reads_by_thread.get(threading.get_ident(), 0) > limit
 
     @property
     def url(self) -> str:
@@ -336,13 +356,30 @@ class _ScriptedPage:
 
     @property
     def html(self) -> str:
+        # Production reads html first, then title, for one `is_captcha_page`
+        # check — so the counter advances here and `title` only reads the
+        # result. Otherwise a single check would count as two.
         current = self._current()
-        return current[1] if current else ""
+        if current is None:
+            return ""
+        html, title = current[1], current[3]
+        if self.captcha_clears_after_html_reads is not None and is_captcha_page(html, title):
+            thread_id = threading.get_ident()
+            self._captcha_reads_by_thread[thread_id] = (
+                self._captcha_reads_by_thread.get(thread_id, 0) + 1
+            )
+            if self._captcha_is_solved():
+                return "1 resultado"
+        return html
 
     @property
     def title(self) -> str:
         current = self._current()
-        return current[3] if current else ""
+        if current is None:
+            return ""
+        if is_captcha_page(current[1], current[3]) and self._captcha_is_solved():
+            return ""
+        return current[3]
 
     def eles(self, selector: str) -> list[_FakeCard]:
         current = self._current()
@@ -496,11 +533,14 @@ def test_collect_waits_for_captcha_resolution_then_recovers(monkeypatch):
 
     search_url = build_search_url("analista de datos", 0)
     captcha_response = (search_url, "Security Check", [], "Security Check")
-    # Kevin "solves" it between the initial hit and the first poll check.
+    # The single re-load, once the challenge is actually gone.
     real_response = (search_url, "1 resultado", [_card_for(fixtures[0])], "")
     page = _ScriptedPage(
         _responses_for(captcha_response, real_response, _detail_response(fixtures[0]))
     )
+    # Kevin "solves" it between the initial hit (which reads the page twice,
+    # once either side of the debounce) and the first poll check.
+    page.captcha_clears_after_html_reads = 2
 
     subscriber = events.bus.subscribe()
     try:
@@ -553,6 +593,39 @@ def test_collect_gives_up_cleanly_after_persistent_captcha(monkeypatch):
         events.bus.unsubscribe(subscriber)
 
 
+def test_collect_never_navigates_while_kevin_is_solving_the_captcha(monkeypatch):
+    """EATP-025 (Kevin, live 2026-08-18): same report as LinkedIn's login
+    wall — the page kept reloading and never gave him a chance to finish.
+
+    The captcha wait used to `tab.get(url)` on every poll. A captcha is only
+    clearable by hand, so a wait that reloads the page mid-attempt can never
+    succeed. Pins the requirement: no navigation at all between discovering
+    the challenge and it clearing.
+    """
+    fixtures = FIXTURES[:1]
+    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
+
+    search_url = build_search_url("analista de datos", 0)
+    page = _ScriptedPage(
+        _responses_for(
+            (search_url, "Security Check", [], "Security Check"),
+            (search_url, "1 resultado", [_card_for(fixtures[0])], ""),
+            _detail_response(fixtures[0]),
+        )
+    )
+    # He takes his time: still unsolved on the first poll.
+    page.captcha_clears_after_html_reads = 3
+
+    collector = IndeedCollector(page_factory=lambda: page)
+    jobs = list(collector.collect())
+
+    assert [job.title for job in jobs] == [fixtures[0]["title"]]
+    # The search URL is fetched exactly twice: the initial hit that found
+    # the challenge, and the single re-load once it cleared. Every poll in
+    # between touched nothing.
+    assert page.get_calls.count(search_url) == 2
+
+
 def test_collect_notifies_separately_for_a_second_captcha_later_in_the_run(monkeypatch):
     # Kevin's report (2026-08-13): a captcha can clear, the run continues,
     # and a SECOND, unrelated captcha shows up minutes later — that second
@@ -573,6 +646,8 @@ def test_collect_notifies_separately_for_a_second_captcha_later_in_the_run(monke
             _detail_response(fixtures[1]),
         )
     )
+    # Each episode is solved between its initial hit and its first poll.
+    page.captcha_clears_after_html_reads = 2
 
     subscriber = events.bus.subscribe()
     try:

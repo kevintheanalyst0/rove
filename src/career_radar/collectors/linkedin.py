@@ -181,29 +181,13 @@ def _build_job(job_id: str, detail: dict[str, str]) -> Job | None:
 # ---------------------------------------------------------------------------
 
 
-class _LoginCoordination:
+class _LoginCoordination(browser.ManualIntervention):
+    """LinkedIn's login wall, on the shared episode coordinator — the logic
+    is identical to Indeed's captcha wait, only the wording and the timeout
+    differ."""
+
     def __init__(self) -> None:
-        self.giveup = threading.Event()
-        self._lock = threading.Lock()
-        self._deadline: float | None = None
-
-    def report_and_get_deadline(self, message: str) -> tuple[float, bool]:
-        """Returns `(deadline, is_new_episode)` — see `indeed.py`'s
-        `_CaptchaCoordination.report_and_get_deadline` for why: only the tab
-        that actually reported a new episode should `bring_to_front()`
-        itself, not every tab that independently discovers the same
-        session-wide block."""
-        with self._lock:
-            is_new = self._deadline is None
-            if is_new:
-                self._deadline = time.monotonic() + _LOGIN_WAIT_SECONDS
-                browser.request_manual_intervention(SOURCE, message)
-            return self._deadline, is_new
-
-    def resolved(self) -> None:
-        with self._lock:
-            self._deadline = None
-        browser.clear_manual_intervention(SOURCE)
+        super().__init__(SOURCE, _LOGIN_WAIT_SECONDS)
 
 
 # ---------------------------------------------------------------------------
@@ -362,18 +346,37 @@ class LinkedInCollector:
     ) -> bool:
         """Kevin's call (2026-08-12, mirrored from `indeed.py`): solve it
         himself in the browser window rather than the run giving up
-        immediately. Publishes ONE event for the whole `collect()` call and
-        polls passively — re-navigating only to check, never hammering."""
-        deadline, is_new = coord.report_and_get_deadline(
+        immediately.
+
+        EATP-025 (2026-08-18, Kevin, live): this used to `tab.get(url)` on
+        every poll — in *every* tab that hit the wall, every 10s. Kevin
+        couldn't sign in at all: the page reloaded out from under him
+        mid-typing, wiping the form, four tabs at a time. Re-navigating was
+        never a "passive check"; it's the single most destructive thing to
+        do to someone filling in a login form.
+
+        So nothing here touches the browser while he's working:
+        - the tab that owns the episode polls `tab.url` read-only, which is
+          enough — LinkedIn navigates *itself* off /login once he's in;
+        - every other tab parks on the shared event and doesn't touch its
+          own tab at all;
+        - the target URL is only re-loaded once the block is actually gone.
+        """
+        deadline, is_owner = coord.report_and_get_deadline(
             f"LinkedIn pide iniciar sesión ({context}); inicia sesión en la ventana "
             f"del navegador — la corrida espera hasta {_LOGIN_WAIT_SECONDS // 60} minutos."
         )
-        if is_new:
-            # EATP-023: starts minimized — this is the one moment it
-            # actually needs his eyes, so raise it now, maximized. Only the
-            # tab that reported this episode does it (see `indeed.py`'s
-            # identical fix for why).
-            browser.bring_to_front(tab)
+
+        if not is_owner:
+            if not coord.wait_until_cleared(deadline):
+                return False
+            return self._resume_after_login(tab, url, coord)
+
+        # EATP-023: the window starts minimized — this is the one moment it
+        # actually needs Kevin's eyes, so raise it now, maximized. Only the
+        # owning tab does this: several tabs racing to activate themselves
+        # is what produced the wrong-tab/flashing chaos he reported.
+        browser.bring_to_front(tab)
 
         while time.monotonic() < deadline:
             if coord.giveup.is_set():
@@ -382,11 +385,9 @@ class LinkedInCollector:
             if coord.giveup.is_set():
                 return False
 
-            tab.get(url)
-            browser.human_pause()
-            if not is_login_page(tab.url or ""):
+            if not is_login_page(tab.url or ""):  # read-only: never navigates
                 coord.resolved()
-                return True
+                return self._resume_after_login(tab, url, coord)
 
         if not coord.giveup.is_set():
             coord.giveup.set()
@@ -396,3 +397,15 @@ class LinkedInCollector:
                 "se omite LinkedIn en esta corrida.",
             )
         return False
+
+    def _resume_after_login(self, tab, url: str, coord: _LoginCoordination) -> bool:
+        """Put a tab back on the page it wanted, now that the wall is gone.
+
+        This is the only navigation in the whole login flow, and it happens
+        strictly after Kevin is done — never while he's typing.
+        """
+        if coord.giveup.is_set():
+            return False
+        tab.get(url)
+        browser.human_pause()
+        return not is_login_page(tab.url or "")

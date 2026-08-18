@@ -212,9 +212,18 @@ class _ScriptedPage:
         self.quit_called = False
         self.new_tab_calls = 0
         self.process_id = 999002  # mirrors real ChromiumPage.process_id (browser.forget_page)
+        self.get_calls: list[str] = []
+        # Set to N to model Kevin actually signing in: after N reads of
+        # `.url` while sitting on the authwall, LinkedIn navigates itself
+        # off it. That self-navigation is the whole point — EATP-025's bug
+        # was the collector re-navigating on every poll instead of waiting
+        # for it, which wiped the login form Kevin was typing into.
+        self.login_clears_after_url_reads: int | None = None
+        self._url_reads = 0
 
     def get(self, url: str) -> None:
         with self._lock:
+            self.get_calls.append(url)
             queue = self._responses.get(url)
             resulting_url, html = queue.pop(0) if queue else (url, "")
         self._current_by_thread[threading.get_ident()] = (resulting_url, html)
@@ -225,7 +234,17 @@ class _ScriptedPage:
     @property
     def url(self) -> str:
         current = self._current()
-        return current[0] if current else ""
+        if current is None:
+            return ""
+        resulting_url = current[0]
+        limit = self.login_clears_after_url_reads
+        if limit is not None and is_login_page(resulting_url):
+            with self._lock:
+                self._url_reads += 1
+                signed_in = self._url_reads > limit
+            if signed_in:
+                return "https://www.linkedin.com/feed/"
+        return resulting_url
 
     @property
     def html(self) -> str:
@@ -389,9 +408,10 @@ def test_collect_waits_for_login_then_recovers(monkeypatch):
     page = _ScriptedPage(
         _responses_for(
             _login_response(url),  # first hit: redirected to the authwall
-            _ok_response(url, ids),  # Kevin "logs in" between the hit and the first poll
+            _ok_response(url, ids),  # the single re-load, once the wall is gone
         )
     )
+    page.login_clears_after_url_reads = 1  # Kevin signs in before the first poll
 
     subscriber = events.bus.subscribe()
     try:
@@ -413,6 +433,41 @@ def test_collect_waits_for_login_then_recovers(monkeypatch):
         assert resolved_event.phase == "collect:linkedin"
     finally:
         events.bus.unsubscribe(subscriber)
+
+
+def test_collect_never_navigates_while_kevin_is_signing_in(monkeypatch):
+    """EATP-025 (Kevin, live 2026-08-18): "las pestañas se recargaban ... no
+    me dió chance de iniciar mi sesión".
+
+    The login wait used to `tab.get(url)` on every poll, in every tab that
+    hit the wall — reloading the page under him mid-typing and wiping the
+    form. The wall is only escapable by hand, so a wait that destroys the
+    thing Kevin is filling in can never succeed.
+
+    Pins the actual requirement: between discovering the wall and it
+    clearing, the collector issues NO navigation at all. It waits for
+    LinkedIn to move itself off the wall (which is what signing in does),
+    and only then re-loads the page it wanted.
+    """
+    monkeypatch.setattr(config, "SEARCH_TERMS", ["analista de datos"])
+    fixtures = FIXTURES[:1]
+    ids = [f["job_id"] for f in fixtures]
+    url = build_search_url("analista de datos", 0)
+
+    page = _ScriptedPage(_responses_for(_login_response(url), _ok_response(url, ids)))
+    # He takes his time: the wall is still up on the first poll, and only
+    # clears on the second (the fixture's shrunk 20s/10s budget allows two).
+    page.login_clears_after_url_reads = 2
+
+    collector = LinkedInCollector(
+        page_factory=lambda: page, detail_fetcher=_detail_fetcher_from_fixtures(fixtures)
+    )
+    jobs = list(collector.collect())
+
+    assert [job.title for job in jobs] == [fixtures[0]["title"]]
+    # Exactly two: the initial hit that found the wall, and the single
+    # re-load after it cleared. Every poll in between touched nothing.
+    assert page.get_calls == [url, url]
 
 
 def test_collect_gives_up_cleanly_after_a_persistent_login_wall(monkeypatch):

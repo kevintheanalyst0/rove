@@ -534,3 +534,67 @@ def clear_manual_intervention(source: str) -> None:
         status="intervention_resolved",
         message="",
     )
+
+
+class ManualIntervention:
+    """Coordinates ONE manual-intervention episode (a captcha, a login wall)
+    across every tab of a single `collect()` call.
+
+    The block is session-wide, so several tabs discover it within
+    milliseconds of each other. Exactly one of them "owns" the episode: it
+    publishes the notice, it's the one raised for Kevin, and it's the only
+    one allowed to touch the browser while he's working in it. The rest
+    park on `cleared` and don't so much as read from their tab.
+
+    `_deadline` resets to None on `resolved()` so a *second* episode later
+    in the same run gets a fresh window and its own notification — without
+    that, it would silently inherit the first one's expired deadline and the
+    source would skip itself without ever telling Kevin (Kevin's experience,
+    2026-08-13: one run really can hit two captchas minutes apart).
+    """
+
+    def __init__(self, source: str, wait_seconds: float) -> None:
+        self.source = source
+        self.wait_seconds = wait_seconds
+        self.giveup = threading.Event()
+        self.cleared = threading.Event()
+        self._lock = threading.Lock()
+        self._deadline: float | None = None
+
+    def report_and_get_deadline(self, message: str) -> tuple[float, bool]:
+        """Returns `(deadline, is_owner)`. `is_owner` is True only for the
+        one call that actually opened this episode — see the class docstring
+        for why every other tab must then keep its hands off."""
+        with self._lock:
+            is_owner = self._deadline is None
+            if is_owner:
+                self._deadline = time.monotonic() + self.wait_seconds
+                self.cleared.clear()
+                request_manual_intervention(self.source, message)
+            return self._deadline, is_owner
+
+    def resolved(self) -> None:
+        with self._lock:
+            self._deadline = None
+        self.cleared.set()
+        clear_manual_intervention(self.source)
+
+    def wait_until_cleared(self, deadline: float, poll_seconds: float = 0.5) -> bool:
+        """Park a non-owner tab until the owner reports the block gone.
+
+        Deliberately touches nothing: no navigation, not even a property
+        read on its own tab. Returns False if the run is cancelled or the
+        shared deadline passes first.
+
+        Polls with `time.sleep` rather than blocking on `cleared.wait()`
+        so the collectors' fake-clock tests can drive it — their fake clock
+        only advances on `time.sleep`, so an `Event.wait` here would spin
+        against a frozen `time.monotonic()` and never reach the deadline.
+        """
+        while time.monotonic() < deadline:
+            if self.giveup.is_set():
+                return False
+            if self.cleared.is_set():
+                return True
+            time.sleep(poll_seconds)
+        return self.cleared.is_set()

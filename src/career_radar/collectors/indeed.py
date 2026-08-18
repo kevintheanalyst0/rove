@@ -297,49 +297,20 @@ def _build_job(job_id: str, detail: dict[str, str]) -> Job | None:
 # ---------------------------------------------------------------------------
 
 
-class _CaptchaCoordination:
-    """Shared across the search tab and every detail tab for one `collect()`
-    call. The moment any one of them hits a captcha, all of them wait out the
-    SAME deadline (set once, by whichever tab hits it first) instead of each
-    starting its own timer, and only one `needs_intervention` event is
-    published — not one per tab. `giveup` still means "stop everything": set
-    once the shared deadline passes without the captcha clearing.
+class _CaptchaCoordination(browser.ManualIntervention):
+    """Indeed's captcha, on the shared episode coordinator — identical logic
+    to LinkedIn's login wall, only the wording and the timeout differ.
 
-    Kevin's experience (2026-08-13): a single run can hit more than one
-    captcha, minutes apart. `_deadline` is reset back to `None` once a
-    captcha clears (`resolved()`) specifically so the *next* occurrence gets
-    its own fresh `_CAPTCHA_WAIT_SECONDS` window and its own notification —
-    without the reset, a second captcha would silently reuse the first one's
-    already-expired deadline and Indeed would give up on itself without ever
-    telling Kevin.
+    Shared across the search tab and every detail tab for one `collect()`
+    call: the moment any one of them hits a captcha, all of them wait out
+    the SAME deadline instead of each starting its own timer, and only one
+    `needs_intervention` event is published — not one per tab. See
+    `browser.ManualIntervention` for why only the tab that opened the
+    episode may touch the browser while Kevin is solving it.
     """
 
     def __init__(self) -> None:
-        self.giveup = threading.Event()
-        self._lock = threading.Lock()
-        self._deadline: float | None = None
-
-    def report_and_get_deadline(self, message: str) -> tuple[float, bool]:
-        """Returns `(deadline, is_new_episode)` — `is_new_episode` tells the
-        caller whether *this* call was the one that just reported (vs. a
-        concurrent tab piling onto an already-reported episode), so only one
-        tab ever tries to `bring_to_front()` itself per episode (EATP-023,
-        Kevin's report: multiple tabs independently racing to activate/
-        maximize themselves — the block is session-wide, so several of them
-        can genuinely hit it within milliseconds of each other — produced
-        exactly the chaos he saw: the wrong tab shown, an odd fullscreen-like
-        flash, and total silence on a later episode where the "losing" tab's
-        CDP calls apparently never took effect)."""
-        with self._lock:
-            is_new = self._deadline is None
-            if is_new:
-                self._deadline = time.monotonic() + _CAPTCHA_WAIT_SECONDS
-                browser.request_manual_intervention(SOURCE, message)
-            return self._deadline, is_new
-
-    def resolved(self) -> None:
-        with self._lock:
-            self._deadline = None
+        super().__init__(SOURCE, _CAPTCHA_WAIT_SECONDS)
 
 
 class IndeedCollector:
@@ -607,17 +578,30 @@ class IndeedCollector:
     ) -> bool:
         """Kevin's call (2026-08-12): he'd rather solve a captcha himself in
         the browser window than have Indeed auto-skip after a short cooldown
-        — mirrors LinkedIn's login wait (`linkedin.py`'s
-        `_resolve_login_if_needed`). Publishes ONE event for the whole
-        `collect()` call (via `coord.report_and_get_deadline`, not one per
-        tab) and polls passively — re-navigating only to check, never
-        hammering — until it clears or the shared deadline passes.
+        — mirrors LinkedIn's login wait.
+
+        EATP-025 (2026-08-18, Kevin, live): this used to `tab.get(url)` on
+        every poll, in every tab that hit the captcha. Kevin couldn't
+        complete the verification — the page reloaded under him mid-attempt,
+        repeatedly. Re-navigating was never a "passive check"; it's the one
+        thing guaranteed to destroy a captcha someone is halfway through.
+
+        Now nothing touches the browser while he's working: the tab that
+        owns the episode re-reads its own already-loaded HTML (Indeed swaps
+        the challenge out for the real page itself once it's satisfied),
+        every other tab parks on the shared event, and the target URL is
+        only re-loaded once the block is actually gone.
         """
-        deadline, _is_new = coord.report_and_get_deadline(
+        deadline, is_owner = coord.report_and_get_deadline(
             f"Indeed pide verificación humana ({context}); resuélvela en la ventana "
             f"del navegador — la corrida espera hasta {_CAPTCHA_WAIT_SECONDS // 60} "
             "minutos."
         )
+
+        if not is_owner:
+            if not coord.wait_until_cleared(deadline):
+                return False
+            return self._resume_after_captcha(tab, url, coord)
 
         while time.monotonic() < deadline:
             if coord.giveup.is_set():
@@ -626,12 +610,10 @@ class IndeedCollector:
             if coord.giveup.is_set():
                 return False
 
-            tab.get(url)
-            browser.human_pause()
+            # Read-only: never navigates.
             if not is_captcha_page(tab.html or "", getattr(tab, "title", "") or ""):
                 coord.resolved()
-                browser.clear_manual_intervention(SOURCE)
-                return True
+                return self._resume_after_captcha(tab, url, coord)
 
         if not coord.giveup.is_set():
             coord.giveup.set()
@@ -641,3 +623,13 @@ class IndeedCollector:
                 "se omite Indeed en esta corrida.",
             )
         return False
+
+    def _resume_after_captcha(self, tab, url: str, coord: _CaptchaCoordination) -> bool:
+        """Put a tab back on the page it wanted, now that the captcha is
+        gone. The only navigation in this flow, and strictly after Kevin is
+        done — never while he's solving."""
+        if coord.giveup.is_set():
+            return False
+        tab.get(url)
+        browser.human_pause()
+        return not is_captcha_page(tab.html or "", getattr(tab, "title", "") or "")
