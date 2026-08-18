@@ -70,12 +70,27 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-022** | LinkedIn & Indeed: close the speed gap with legacy (real-browser listing back for LinkedIn, tab/pacing tuning for Indeed) | — | ✅ | 021 | Medium-High | ~1h30 (2026-08-15) |
 | **EATP-023** | Final polish: window focus, no visible terminal, auto-shutdown on tab close | — | ✅ | 022 | Medium | ~1h55 (2026-08-15) |
 | **EATP-024** | Pausar/Cancelar reliability + Indeed browser visibility | — | ✅ | 023 | Medium | ~1h25 (2026-08-16) |
+| **EATP-025** | Dead-browser hang fix + migration out of WSL to native Windows | — | ✅ | 024 | High | ~2h30 (2026-08-17/18) |
 
-> **Career Radar closed out 2026-08-15** (EATP-023), reopened once more for EATP-024
-> (2026-08-16) to close loose ends found live after that closeout — Pausar/Cancelar
-> reliability and Indeed's Chrome window visibility. Both live-verified by Kevin on
-> 2026-08-16 (Pausar/Cancelar react in ~1-2s; the Indeed/LinkedIn window now appears
-> reliably). No open loose ends.
+> **Career Radar closed out 2026-08-15** (EATP-023), reopened for EATP-024
+> (2026-08-16) and again for EATP-025 (2026-08-17/18).
+
+> **EATP-025** started as "LinkedIn hangs the run" and ended as a platform move.
+> Root cause of the hang: `page.quit()` issues the same timeout-less `Browser.close`
+> CDP call as everything else, so against an already-dead Chrome it blocked forever —
+> and it sat in a `finally`, outside every bound added for the collecting work.
+> Fixed with `browser.close_page()` (bounded quit, then force-kill regardless).
+>
+> What kept killing Chrome in the first place was WSLg's virtualized GPU. Kevin
+> then pointed out the fact that reframed everything: **legacy ran natively on
+> Windows, never under WSL** — so its stability never validated any of these
+> settings here. The project moved to `D:\Development\Career Radar` on native
+> Windows (Python 3.12 via `uv`). The WSL copy stays as a backup.
+>
+> The move immediately surfaced two real Windows bugs the WSL-only test runs could
+> never have caught: `signal.SIGKILL` doesn't exist on Windows (it would have
+> crashed the "Cancelar" button), and `Path.read_text()` without an explicit
+> encoding reads cp1252 there, which breaks on any accented Spanish text.
 
 > Fill **Status** and **Total time** as each project completes. The **Complexity** column
 > exists so no project balloons: they're all sized Medium-ish, with a couple intentionally

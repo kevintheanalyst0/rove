@@ -16,7 +16,7 @@ import pytest
 from career_radar.collectors.linkedin_api import fetch_job_detail, fetch_job_details
 
 FIXTURES = json.loads(
-    (Path(__file__).parent / "fixtures" / "linkedin_jobs.json").read_text()
+    (Path(__file__).parent / "fixtures" / "linkedin_jobs.json").read_text(encoding="utf-8")
 )
 
 

@@ -23,7 +23,7 @@ from career_radar.collectors.wwr import WWRCollector
 from career_radar.models import RemoteStatus
 
 FIXTURES = json.loads(
-    (Path(__file__).parent / "fixtures" / "remote_boards_jobs.json").read_text()
+    (Path(__file__).parent / "fixtures" / "remote_boards_jobs.json").read_text(encoding="utf-8")
 )
 
 _OFF_TOPIC = {

@@ -4,22 +4,44 @@ The authoritative dependency list is `pyproject.toml`. This file explains **what
 dependency is for**, **when it's needed**, and the **install/verify protocol** Claude
 Code must follow.
 
+## Runtime environment (EATP-025, 2026-08-18)
+
+**The project runs natively on Windows, at `D:\Development\Career Radar`.** It was
+built under WSL through EATP-024; the WSL copy at
+`/home/kevin/Projects/career-radar` is kept only as a backup and is no longer the
+one that runs.
+
+Why it moved: every browser-layer failure of EATP-023/024/025 traced to WSLg's
+virtualized GPU and forwarded display — a window that wouldn't repaint until
+clicked, GPU context loss mid-session, and finally Chrome dying outright three runs
+in a row, which hung the whole pipeline. **Legacy `jobmatch` never hit any of it,
+because legacy also ran natively on Windows.** That comparison is only valid across
+the same platform — see CLAUDE.md golden rule 12.
+
+- **Python 3.12** via `uv` (`uv python install 3.12`). Windows' own Python is 3.14,
+  too new to trust for the compiled dependencies here (`lxml`, `orjson`,
+  `pydantic-core`); `uv` keeps 3.12 alongside it without touching the system install.
+- **`uv`** lives at `C:\Users\kevin\.local\bin\uv.exe` (not on PATH by default).
+- **Chromium** comes from `playwright install chromium`, which on Windows lands in
+  `%LOCALAPPDATA%\ms-playwright\chromium-*\chrome-win64\chrome.exe` — note
+  `chrome-win64`, not the WSL layout's `chrome-linux64`. `browser.py` resolves both.
+
 ## Protocol (every session)
 
 1. At project start, check what's already installed **before** installing anything:
-   ```bash
-   python -c "import <pkg>; print('<pkg> ok')"
-   pip show <pkg> | head -3
+   ```bat
+   .venv\Scripts\python.exe -c "import <pkg>; print('<pkg> ok')"
+   uv pip show <pkg>
    ```
 2. Install only what the current project needs (see "Needed by" column).
 3. If a project needs a dependency **not** in this list → **ask Kevin first**
    (CLAUDE.md §8), then add it here and to `pyproject.toml` + `requirements.txt`.
 4. First-time full install:
-   ```bash
-   python -m venv .venv && source .venv/bin/activate
-   pip install -e ".[dev]"
-   # For browser + verification projects only:
-   #   playwright install chromium
+   ```bat
+   uv venv --python 3.12
+   uv pip install -e ".[dev]"
+   REM For browser + verification projects only:
+   REM   .venv\Scripts\python.exe -m playwright install chromium
    ```
 5. Prefer the venv. Never install globally.
 

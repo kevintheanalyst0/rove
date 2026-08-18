@@ -27,7 +27,7 @@ from career_radar.collectors.greenhouse import GreenhouseCollector
 from career_radar.collectors.lever import LeverCollector
 from career_radar.models import RemoteStatus
 
-FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "ats_jobs.json").read_text())
+FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "ats_jobs.json").read_text(encoding="utf-8"))
 
 _OFF_TOPIC = {
     "id": "9999",

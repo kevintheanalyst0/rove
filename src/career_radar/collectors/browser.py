@@ -18,6 +18,7 @@ import os
 import random
 import signal
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -91,44 +92,76 @@ if ($target -ne [IntPtr]::Zero) {{
 
 def _is_wsl(proc_version_path: Path = Path("/proc/version")) -> bool:
     try:
-        return "microsoft" in proc_version_path.read_text().lower()
+        return "microsoft" in proc_version_path.read_text(encoding="utf-8").lower()
     except OSError:
         return False
 
 
 def _force_windows_foreground() -> None:
-    """Best-effort: ask Windows itself (via `powershell.exe`, reachable from
-    WSL through interop) to raise the automation Chrome window.
+    """Best-effort: ask Windows itself to raise the automation Chrome window.
 
-    Exists because the automation Chrome is a native Linux process forwarded
-    to Windows through WSLg — `bring_to_front`'s CDP calls (`.set.activate()`,
-    `.set.window.*`) only reach Chromium's own internal state, not the Win32
-    window WSLg forwards it to. Kevin's live tests (2026-08-16, EATP-023)
-    showed those CDP-only calls don't reliably raise/repaint that window.
-    Unverified outside a live WSL/Windows run — this is the next thing for
-    Kevin to confirm. Swallows all errors: a missing/stuck `powershell.exe`
-    must never break the actual captcha-wait flow, only the "please look at
-    this" nicety."""
-    if not _is_wsl():
-        return
+    Originally (EATP-023) this existed because under WSL the automation
+    Chrome was a Linux process whose window WSLg forwarded to Windows —
+    `bring_to_front`'s CDP calls only ever reached Chromium's internal
+    state, never that forwarded Win32 window, so it wouldn't reliably
+    raise or repaint.
+
+    EATP-025 moved the project to native Windows, where Chrome owns a real
+    Win32 window and the CDP calls in `bring_to_front` should be enough on
+    their own. This is kept as a belt-and-braces nudge (Windows' own
+    foreground lock can still ignore a focus request from a background
+    process — see `_FOCUS_PS_SCRIPT` for the synthetic-Alt workaround) and
+    now runs on native Windows as well as under WSL. Swallows all errors: a
+    missing or stuck PowerShell must never break the actual captcha-wait
+    flow, only the "please look at this" nicety."""
+    if os.name == "nt":
+        command = ["powershell", "-NoProfile", "-NonInteractive", "-Command", _FOCUS_PS_SCRIPT]
+    elif _is_wsl():
+        command = ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", _FOCUS_PS_SCRIPT]
+    else:
+        return  # a real Linux desktop: no Win32 window to raise
     try:
-        subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", _FOCUS_PS_SCRIPT],
-            capture_output=True,
-            timeout=10,
-            check=False,
-        )
+        subprocess.run(command, capture_output=True, timeout=10, check=False)
     except (OSError, subprocess.TimeoutExpired):  # noqa: BLE001 - best-effort nicety, never fatal
         pass
 
 
+def _playwright_cache_dir() -> Path:
+    """Where Playwright parks its downloaded browsers on this platform."""
+    if os.name == "nt":
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        base = Path(local_app_data) if local_app_data else Path.home() / "AppData" / "Local"
+        return base / "ms-playwright"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Caches" / "ms-playwright"
+    return Path.home() / ".cache" / "ms-playwright"
+
+
+# The per-platform subpath to the actual binary inside a `chromium-*` dir.
+# Both `chrome-win64` and `chrome-win` are listed because Playwright renamed
+# that directory across versions and the installed one won't always match
+# whatever this was written against (live: 1234 ships `chrome-win64`) —
+# EATP-025 lost a round to exactly that mismatch, silently resolving to
+# None and falling back to whatever was on PATH.
+_CHROMIUM_BINARY_PATTERNS: tuple[str, ...] = (
+    ("chromium-*/chrome-win64/chrome.exe", "chromium-*/chrome-win/chrome.exe")
+    if os.name == "nt"
+    else ("chromium-*/chrome-mac/Chromium.app/Contents/MacOS/Chromium",)
+    if sys.platform == "darwin"
+    else ("chromium-*/chrome-linux64/chrome", "chromium-*/chrome-linux/chrome")
+)
+
+
 def _find_playwright_chromium() -> str | None:
     """Locate the `chrome` binary Playwright downloaded, if any."""
-    cache_dir = Path.home() / ".cache" / "ms-playwright"
+    cache_dir = _playwright_cache_dir()
     if not cache_dir.exists():
         return None
-    candidates = sorted(cache_dir.glob("chromium-*/chrome-linux64/chrome"), reverse=True)
-    return str(candidates[0]) if candidates else None
+    for pattern in _CHROMIUM_BINARY_PATTERNS:
+        candidates = sorted(cache_dir.glob(pattern), reverse=True)
+        if candidates:
+            return str(candidates[0])
+    return None
 
 
 def resolve_chrome_path() -> str | None:
@@ -202,16 +235,16 @@ def build_options(*, use_profile: bool = True, headless: bool = False) -> Chromi
     # touching the driver Chrome's own histogram already distrusts. Slower
     # per-frame, irrelevant for scraping.
     #
-    # Worth recording plainly, because it reframes every "legacy did this
-    # fine" comparison in this file: **legacy never ran under WSL at all.**
-    # Kevin ran it natively on Windows (2026-08-17) — real GPU driver, no
-    # WSLg compositor, no virtualized display. So legacy's stability here is
-    # not evidence that 4 tabs / headful / this flag set is safe *in WSL*;
-    # it's evidence that this whole class of GPU/display instability simply
-    # did not exist in the environment legacy ran in. Every collector
-    # setting inherited from legacy needs judging against WSL on its own
-    # merits, not against legacy's track record on a different platform.
-    options.set_argument("--disable-gpu")
+    # WSL-only, because the problem is: the fix belongs to the virtualized
+    # driver, not to Chrome. **Legacy never ran under WSL at all** — Kevin
+    # ran it natively on Windows (confirmed 2026-08-17), real GPU driver, no
+    # WSLg compositor — and never saw any of this. That's the evidence this
+    # whole class of instability is environmental, and the reason EATP-025
+    # moved the project to native Windows. On that native GPU there's no
+    # reason to force software rendering, so this stays scoped to the
+    # environment that actually needs it.
+    if _is_wsl():
+        options.set_argument("--disable-gpu")
     if headless:
         options.headless(True)
 
@@ -220,6 +253,31 @@ def build_options(*, use_profile: bool = True, headless: bool = False) -> Chromi
 
 _active_pids: set[int] = set()
 _active_pids_lock = threading.Lock()
+
+# Windows has no SIGKILL. `os.kill` there ignores the signal's Unix meaning
+# and calls TerminateProcess, which is already an unconditional kill — so
+# SIGTERM is the right constant to pass, not a softer fallback. Resolved
+# once here because getting this wrong crashes the "Cancelar" button
+# (EATP-025: `signal.SIGKILL` raised AttributeError the first time this ran
+# on Windows).
+_FORCE_KILL_SIGNAL = getattr(signal, "SIGKILL", signal.SIGTERM)
+
+
+def _force_kill(pid: int) -> None:
+    """SIGKILL a pid if it's still alive; no-op if it isn't.
+
+    `os.kill(pid, 0)` first, so an already-dead PID (the common case) is
+    skipped instead of risking a signal to some unrelated process that
+    reused the number.
+    """
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return  # already gone
+    try:
+        os.kill(pid, _FORCE_KILL_SIGNAL)
+    except OSError:
+        pass
 
 
 def forget_page(page: ChromiumPage) -> None:
@@ -262,15 +320,7 @@ def close_page(page: ChromiumPage, timeout: float = 20.0) -> None:
 
     if pid is None:
         return
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        pass  # already gone, nothing to clean up
-    else:
-        try:
-            os.kill(pid, signal.SIGKILL)
-        except OSError:
-            pass
+    _force_kill(pid)
     with _active_pids_lock:
         _active_pids.discard(pid)
 
@@ -287,24 +337,16 @@ def kill_all_browsers() -> None:
     yet `forget_page`-d — the safety net the "Cancelar" button (server.py's
     `/cancel`) falls back on for a collector genuinely stuck *inside* a
     single blocking CDP call, which a cooperative cancellation check between
-    iterations can't interrupt. `os.kill(pid, 0)` first, so an already-dead
-    PID (the common case — most cancels land between calls, not inside one)
-    is skipped instead of risking a signal to some unrelated process that
-    reused the number; the tiny remaining race (PID reused in between that
-    liveness check and the SIGKILL) is an accepted, low-stakes tradeoff for
-    a personal tool a single user clicks a few times a day, not a
-    multi-tenant server."""
+    iterations can't interrupt. See `_force_kill` for the liveness check
+    that keeps this from signalling an unrelated process that reused a
+    dead browser's PID; the tiny remaining race (PID reused in between that
+    check and the kill) is an accepted, low-stakes tradeoff for a personal
+    tool a single user clicks a few times a day, not a multi-tenant
+    server."""
     with _active_pids_lock:
         pids = list(_active_pids)
     for pid in pids:
-        try:
-            os.kill(pid, 0)
-        except OSError:
-            continue
-        try:
-            os.kill(pid, signal.SIGKILL)
-        except OSError:
-            pass
+        _force_kill(pid)
 
 
 def start_cancellation_watcher(giveup: threading.Event) -> None:

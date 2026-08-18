@@ -565,4 +565,4 @@ def test_reset_all_run_data_wipes_derived_files_but_keeps_tracking():
     assert not config.AI_CHECKPOINT_FILE.exists()
 
     assert config.TRACKING_FILE.exists()
-    assert "applied" in config.TRACKING_FILE.read_text()
+    assert "applied" in config.TRACKING_FILE.read_text(encoding="utf-8")

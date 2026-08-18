@@ -21,7 +21,7 @@ from career_radar.collectors.computrabajo import _END_MARKER, ComputrabajoCollec
 from career_radar.models import RemoteStatus
 
 FIXTURES = json.loads(
-    (Path(__file__).parent / "fixtures" / "computrabajo_jobs.json").read_text()
+    (Path(__file__).parent / "fixtures" / "computrabajo_jobs.json").read_text(encoding="utf-8")
 )
 # "Docente Online" (EIDHI International University) is an education posting —
 # used on its own to test the title-exclusion pre-filter, not in the

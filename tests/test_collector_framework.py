@@ -232,15 +232,27 @@ def test_build_options_without_profile_skips_user_data_path(monkeypatch):
     assert not any(arg.startswith("--user-data-dir=") for arg in options.arguments)
 
 
-def test_build_options_disables_gpu(monkeypatch, tmp_path):
+def test_build_options_disables_gpu_under_wsl(monkeypatch, tmp_path):
     # EATP-024/025: WSLg's GPU driver was confirmed to drop compositor
     # context mid-session, then later to crash the whole Chrome process
     # outright (live `--enable-logging` captures both times) — disabling the
     # GPU process entirely avoids both instabilities from the first launch.
+    monkeypatch.setattr(browser_mod, "_is_wsl", lambda: True)
     monkeypatch.setattr(browser_mod.config, "CHROME_BROWSER_PATH", "/custom/chrome")
     monkeypatch.setattr(browser_mod.config, "CHROME_USER_DATA_DIR", str(tmp_path))
     options = browser_mod.build_options()
     assert "--disable-gpu" in options.arguments
+
+
+def test_build_options_keeps_the_gpu_off_wsl(monkeypatch, tmp_path):
+    # EATP-025: the flag is a workaround for WSLg's virtualized driver, not
+    # a general setting — on native Windows (where the project now runs, on
+    # a real GPU) forcing software rendering would only slow things down.
+    monkeypatch.setattr(browser_mod, "_is_wsl", lambda: False)
+    monkeypatch.setattr(browser_mod.config, "CHROME_BROWSER_PATH", "/custom/chrome")
+    monkeypatch.setattr(browser_mod.config, "CHROME_USER_DATA_DIR", str(tmp_path))
+    options = browser_mod.build_options()
+    assert "--disable-gpu" not in options.arguments
 
 
 def test_request_manual_intervention_publishes_event_not_input():

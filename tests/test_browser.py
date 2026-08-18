@@ -5,6 +5,7 @@ rule 3/8)."""
 from __future__ import annotations
 
 import subprocess
+import sys
 import threading
 import time
 
@@ -93,35 +94,54 @@ def test_is_wsl_false_when_proc_version_is_missing(tmp_path):
     assert browser._is_wsl(tmp_path / "does-not-exist") is False
 
 
-def test_force_windows_foreground_does_nothing_off_wsl(monkeypatch):
+def test_force_windows_foreground_does_nothing_on_a_real_linux_desktop(monkeypatch):
     # Undo conftest's autouse no-op stub first — these tests exercise the
     # real `_force_windows_foreground`, with only `subprocess.run` faked.
     monkeypatch.undo()
+    monkeypatch.setattr(browser.os, "name", "posix")
     monkeypatch.setattr(browser, "_is_wsl", lambda: False)
 
     def _fail_if_called(*_args, **_kwargs):
-        raise AssertionError("subprocess.run must not be called off WSL")
+        raise AssertionError("subprocess.run must not be called: no Win32 window exists")
 
     monkeypatch.setattr(browser.subprocess, "run", _fail_if_called)
 
     browser._force_windows_foreground()
 
 
+def _capture_foreground_call(monkeypatch) -> list:
+    calls = []
+    monkeypatch.setattr(browser.subprocess, "run", lambda argv, **kw: calls.append((argv, kw)))
+    browser._force_windows_foreground()
+    return calls
+
+
 def test_force_windows_foreground_shells_out_to_powershell_on_wsl(monkeypatch):
     monkeypatch.undo()
+    monkeypatch.setattr(browser.os, "name", "posix")
     monkeypatch.setattr(browser, "_is_wsl", lambda: True)
-    calls = []
 
-    def _fake_run(argv, **kwargs):
-        calls.append((argv, kwargs))
-
-    monkeypatch.setattr(browser.subprocess, "run", _fake_run)
-
-    browser._force_windows_foreground()
+    calls = _capture_foreground_call(monkeypatch)
 
     assert len(calls) == 1
     argv, kwargs = calls[0]
+    # Under WSL it has to cross the interop boundary, which needs the `.exe`.
     assert argv[0] == "powershell.exe"
+    assert browser._FOCUS_TITLE_MARKER in argv[-1]
+    assert kwargs["timeout"] == 10
+
+
+def test_force_windows_foreground_uses_native_powershell_on_windows(monkeypatch):
+    # EATP-025: the project runs natively on Windows now, where PowerShell
+    # is on PATH as plain `powershell` and there's no interop to cross.
+    monkeypatch.undo()
+    monkeypatch.setattr(browser.os, "name", "nt")
+
+    calls = _capture_foreground_call(monkeypatch)
+
+    assert len(calls) == 1
+    argv, kwargs = calls[0]
+    assert argv[0] == "powershell"
     assert browser._FOCUS_TITLE_MARKER in argv[-1]
     assert kwargs["timeout"] == 10
 
@@ -195,15 +215,23 @@ def test_forget_page_is_a_noop_for_an_untracked_pid():
     browser.forget_page(_FakePageWithPid(123456))  # must not raise
 
 
+def _spawn_sleeper(seconds: int) -> subprocess.Popen:
+    """A real, short-lived child process to kill — `sleep`/`true` are
+    Unix-only, and this suite has to pass on Windows too now that the
+    project runs there (EATP-025). The interpreter running these tests is
+    guaranteed present on both."""
+    return subprocess.Popen([sys.executable, "-c", f"import time; time.sleep({seconds})"])
+
+
 def test_kill_all_browsers_kills_a_real_tracked_process():
     # The "Cancelar" button's safety net (server.py's /cancel) — needs a
     # genuine OS-level kill to matter, so this spawns (and cleans up) a real
     # short-lived process rather than mocking os.kill.
-    proc = subprocess.Popen(["sleep", "30"])
+    proc = _spawn_sleeper(30)
     browser._active_pids.add(proc.pid)
     try:
         browser.kill_all_browsers()
-        proc.wait(timeout=2)
+        proc.wait(timeout=5)
         assert proc.returncode is not None
     finally:
         browser._active_pids.discard(proc.pid)
@@ -212,7 +240,7 @@ def test_kill_all_browsers_kills_a_real_tracked_process():
 
 
 def test_kill_all_browsers_skips_an_already_dead_pid():
-    proc = subprocess.Popen(["true"])
+    proc = _spawn_sleeper(0)
     proc.wait()  # already exited before kill_all_browsers ever sees it
     browser._active_pids.add(proc.pid)
     try:

@@ -19,7 +19,7 @@ from career_radar.collectors import occ as occ_mod
 from career_radar.collectors.occ import OCCCollector
 from career_radar.models import RemoteStatus
 
-FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "occ_jobs.json").read_text())
+FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "occ_jobs.json").read_text(encoding="utf-8"))
 
 
 def _numeric_id(fixture: dict) -> str:

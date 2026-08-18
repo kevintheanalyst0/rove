@@ -35,7 +35,7 @@ from career_radar.collectors.linkedin import (
 from career_radar.models import RemoteStatus
 
 FIXTURES = json.loads(
-    (Path(__file__).parent / "fixtures" / "linkedin_jobs.json").read_text()
+    (Path(__file__).parent / "fixtures" / "linkedin_jobs.json").read_text(encoding="utf-8")
 )
 
 

@@ -10,8 +10,8 @@ apply to beats a long one he has to wade through.
 
 ## Cómo correrlo (Kevin)
 
-**La forma fácil — un acceso** (está en esta misma carpeta, se ve desde Windows en
-`\\wsl.localhost\Ubuntu-24.04\home\kevin\Projects\career-radar\`):
+**La forma fácil — un acceso** (está en esta misma carpeta,
+`D:\Development\Career Radar\`):
 
 - **`Career Radar.vbs`** — abre el navegador siempre en la misma pantalla de inicio,
   con tres botones: **Iniciar búsqueda**, **Limpiar caché** y **Ver dashboard de la
@@ -25,11 +25,10 @@ directo en el Escritorio, clic derecho sobre `Career Radar.vbs` → *Enviar a* �
 *Escritorio (crear acceso directo)*.
 
 **La forma manual** (si el `.vbs` no te funciona, o querés ver qué está pasando):
-1. Abre una terminal de Ubuntu/WSL en esta carpeta.
-2. Activa el entorno y levanta el servidor:
-   ```bash
-   source .venv/bin/activate
-   uvicorn career_radar.web.server:app --host 127.0.0.1 --port 8000
+1. Abre PowerShell o CMD en esta carpeta (`D:\Development\Career Radar`).
+2. Levanta el servidor:
+   ```bat
+   .venv\Scripts\python.exe -m uvicorn career_radar.web.server:app --host 127.0.0.1 --port 8000
    ```
 3. Abre `http://127.0.0.1:8000` en el navegador.
 
@@ -40,10 +39,7 @@ directo en el Escritorio, clic derecho sobre `Career Radar.vbs` → *Enviar a* �
    recolectan normalmente. Si LinkedIn o Indeed piden verificación humana, la ventana
    se sube sola al frente, maximizada — resuélvela ahí (el sistema espera hasta 5
    minutos; si no llegas a tiempo, esa fuente se omite y el resto de la corrida sigue
-   igual), y una vez resuelto el aviso en el dashboard desaparece solo. Si la ventana
-   de Chrome no aparece en pantalla cuando debería, probá reiniciar Ubuntu/WSL
-   (`wsl --shutdown` desde PowerShell y volver a abrir) — es un problema conocido de
-   WSLg, no del sistema.
+   igual), y una vez resuelto el aviso en el dashboard desaparece solo.
 3. En el dashboard puedes marcar cada vacante **Apliqué** / **No me interesa** — las que
    marques "no me interesa" no vuelven a aparecer en corridas futuras.
 
@@ -95,12 +91,20 @@ what each build session shipped.
 
 ## Development
 
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-playwright install chromium   # browser-driven collectors + UI visual checks
-pytest                          # runs offline against fixtures — no live AI calls
+Runs natively on Windows (EATP-025 — it used to run under WSL; see
+`docs/governance/DEPENDENCIES.md` for why it moved). Python 3.12 via `uv`:
+
+```bat
+uv venv --python 3.12
+uv pip install -e ".[dev]"
+.venv\Scripts\python.exe -m playwright install chromium   REM browser collectors
+.venv\Scripts\python.exe -m pytest                        REM offline, no live AI calls
+.venv\Scripts\python.exe scripts\smoke_browser.py         REM real Chrome launch+teardown
 ```
+
+`scripts/smoke_browser.py` is worth running after any change to the browser
+layer: the unit tests mock the browser away entirely, so a launch or teardown
+that hangs against a real Chrome is invisible to them.
 
 See `CLAUDE.md` for the full operating contract this project was built under, and
 `docs/governance/DEPENDENCIES.md` for what each dependency is for.

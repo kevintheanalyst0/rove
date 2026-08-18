@@ -38,7 +38,7 @@ def test_record_run_writes_one_entry_per_job(tmp_path):
 
     path = record_run(jobs, run_started_at, history_dir=tmp_path)
 
-    lines = path.read_text().strip().splitlines()
+    lines = path.read_text(encoding="utf-8").strip().splitlines()
     assert len(lines) == 2
 
 

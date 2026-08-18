@@ -20,7 +20,7 @@ from career_radar.models import Job, RemoteStatus
 from career_radar.quality.cache import SignatureCache
 from career_radar.quality.filters import gate
 
-FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "latest_jobs.json").read_text())
+FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "latest_jobs.json").read_text(encoding="utf-8"))
 
 
 def _job(**overrides) -> Job:
