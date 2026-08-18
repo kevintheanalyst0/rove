@@ -20,6 +20,7 @@ import signal
 import subprocess
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 from DrissionPage import ChromiumOptions, ChromiumPage
@@ -188,17 +189,29 @@ def build_options(*, use_profile: bool = True, headless: bool = False) -> Chromi
     # and `GPU.ContextLost.RendererRasterWorker` within seconds (Chrome's
     # own `GPU.BlocklistFeatureTestResults.GpuCompositing` histogram already
     # flags this hardware/driver combo as blocklisted for compositing).
-    # After a context loss, Chromium already falls back to software
-    # compositing for *later* renderer processes on its own (confirmed via
-    # `ps`: new tabs picked up `--disable-gpu-compositing` mid-session that
-    # the first tab didn't have) — which lines up with the exact symptom
-    # Kevin reported in EATP-023 (a window whose content doesn't paint until
-    # he clicks it: the compositor recovering from a lost context needs an
-    # external nudge). Passing the flag from the first launch avoids the
-    # mid-session context loss entirely instead of recovering from it after
-    # the fact — verified with the same log capture: an identical run with
-    # this flag produced zero `ContextLost` events.
-    options.set_argument("--disable-gpu-compositing")
+    # `--disable-gpu-compositing` alone (EATP-024's fix) only took the GPU
+    # process out of the *compositor* step — it kept running for
+    # rasterization and everything else, still talking to the same
+    # blocklisted driver. EATP-025 (2026-08-17): two live runs in a row hit
+    # a harder failure than context-loss-with-blank-paint — the whole Chrome
+    # process died mid-session (confirmed via `ps`: zombie, no other chrome
+    # process left at all), hanging LinkedIn's/Indeed's collectors forever
+    # (see `run_bounded` below for why "forever" and not "erroring out").
+    # `--disable-gpu` removes the GPU process from the picture entirely —
+    # Chromium falls back to full software rendering from launch, never
+    # touching the driver Chrome's own histogram already distrusts. Slower
+    # per-frame, irrelevant for scraping.
+    #
+    # Worth recording plainly, because it reframes every "legacy did this
+    # fine" comparison in this file: **legacy never ran under WSL at all.**
+    # Kevin ran it natively on Windows (2026-08-17) — real GPU driver, no
+    # WSLg compositor, no virtualized display. So legacy's stability here is
+    # not evidence that 4 tabs / headful / this flag set is safe *in WSL*;
+    # it's evidence that this whole class of GPU/display instability simply
+    # did not exist in the environment legacy ran in. Every collector
+    # setting inherited from legacy needs judging against WSL on its own
+    # merits, not against legacy's track record on a different platform.
+    options.set_argument("--disable-gpu")
     if headless:
         options.headless(True)
 
@@ -216,6 +229,57 @@ def forget_page(page: ChromiumPage) -> None:
     run)."""
     with _active_pids_lock:
         _active_pids.discard(page.process_id)
+
+
+def close_page(page: ChromiumPage, timeout: float = 20.0) -> None:
+    """Shut a collector's browser down without ever being able to hang on it.
+
+    EATP-025: `page.quit()` looked like pure teardown, so it sat in a
+    `finally` outside the bounded call — but it opens with the same
+    `self._run_cdp('Browser.close')` every other DrissionPage call uses, and
+    that call has no timeout either. Against a browser that's already dead
+    it blocks forever, exactly like a mid-run `tab.get()` does. That's what
+    kept hanging LinkedIn after the collector's own work was already safely
+    bounded, and it's why the run's thread never ended even once the
+    collecting was done.
+
+    So: try the graceful quit in a thread, give it `timeout`, then SIGKILL
+    whatever's left either way. The kill is not a fallback for the timeout
+    path only — a `quit()` that *returns* can still leave the process alive
+    (its own force-kill is best-effort and silently swallows failures), and
+    a leaked Chrome on a 16GB box is precisely the memory pressure that
+    starts this whole failure mode over again on the next source.
+    """
+    pid = None
+    try:
+        pid = page.process_id
+    except Exception:  # noqa: BLE001 - a dead browser may not even report this
+        pass
+
+    quitter = threading.Thread(target=lambda: _quiet_quit(page), daemon=True)
+    quitter.start()
+    quitter.join(timeout=timeout)
+
+    if pid is None:
+        return
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        pass  # already gone, nothing to clean up
+    else:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
+    with _active_pids_lock:
+        _active_pids.discard(pid)
+
+
+def _quiet_quit(page: ChromiumPage) -> None:
+    try:
+        page.quit()
+    except Exception:  # noqa: BLE001 - teardown must never raise into a collector
+        pass
 
 
 def kill_all_browsers() -> None:
@@ -260,6 +324,66 @@ def start_cancellation_watcher(giveup: threading.Event) -> None:
             time.sleep(0.5)
 
     threading.Thread(target=_watch, daemon=True).start()
+
+
+# Generous — normal listing/detail-fetch work for a tab pool finishes in
+# well under this (linkedin.py's own live numbers: 61-165s for the whole
+# 4-tab listing phase). Only a browser that's actually died mid-`func`
+# should ever hit it.
+_STUCK_WORKER_TIMEOUT_SECONDS = 180.0
+
+
+def run_bounded(
+    func: Callable[[], None],
+    giveup: threading.Event,
+    source: str,
+    timeout: float = _STUCK_WORKER_TIMEOUT_SECONDS,
+) -> None:
+    """Run `func` in a background thread, but never wait past `timeout`
+    total. `func` is expected to accumulate its results into whatever
+    mutable structure (dict/Queue/list) the caller already holds a
+    reference to, not return a value — that's what lets the caller keep
+    whatever partial progress landed even if `func` never finishes.
+
+    EATP-025 (2026-08-17, live, three times): when the Chrome process dies
+    mid-session, a thread blocked inside a CDP call waiting for that tab's
+    response never wakes up on its own — DrissionPage puts no timeout on
+    that specific wait, so it's not an exception the collector could catch,
+    just a permanent hang. `giveup.is_set()` checks between iterations can't
+    help a thread that's stuck *inside* one such call, and neither can
+    cooperative cancellation (confirmed live: `/cancel` sat for 20+ seconds
+    with the run still "running" and the dead Chrome still unreaped).
+
+    First cut of this backstop only wrapped the final `thread.join()` of an
+    already-running tab-worker pool — still hung a third time, because
+    opening that pool's *own* tabs (`new_tab()`, called synchronously by the
+    caller before any worker thread exists) is just as capable of blocking
+    forever on a dead browser as anything the workers themselves do
+    afterward. Wrapping the entire call — tab setup, worker spawn, and
+    their join, whatever `func` actually contains — closes that gap: no CDP
+    call anywhere inside a collector's browser-touching work can hang the
+    run past `timeout`, regardless of which one it happens to be this time.
+
+    This is the backstop, not the fix — the actual prevention is
+    `--disable-gpu` in `build_options` above (removes the driver that's
+    been dying) plus keeping the browser's own memory footprint down
+    (fewer parallel tabs). This just guarantees a hard ceiling on the
+    damage if the browser dies anyway: past `timeout`, stop waiting and set
+    `giveup` so every other in-flight thread for this `collect()` call winds
+    down too. The abandoned thread (and anything it started) is never
+    killed, just left running — Python has no way to force-kill a thread —
+    harmless, since it dies with the process regardless.
+    """
+    thread = threading.Thread(target=func, daemon=True)
+    thread.start()
+    thread.join(timeout=timeout)
+    if thread.is_alive():
+        giveup.set()
+        bus.publish(
+            phase=f"collect:{source}",
+            status="degraded",
+            message=f"{source}: el navegador dejó de responder; se omite el resto de esta fuente.",
+        )
 
 
 def build_page(

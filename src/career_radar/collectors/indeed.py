@@ -362,7 +362,12 @@ class IndeedCollector:
         coord = _CaptchaCoordination()
         browser.start_cancellation_watcher(coord.giveup)
         try:
-            ids_by_term = self._collect_all_term_ids(page, coord)
+            ids_by_term: dict[str, list[str]] = {}
+            browser.run_bounded(
+                lambda: self._collect_all_term_ids(page, coord, ids_by_term),
+                coord.giveup,
+                SOURCE,
+            )
 
             seen: set[str] = set()
             ordered_ids: list[str] = []
@@ -374,22 +379,26 @@ class IndeedCollector:
 
             yield from self._fetch_details(page, ordered_ids, coord)
         finally:
-            page.quit()
-            browser.forget_page(page)
+            browser.close_page(page)
 
     def _collect_all_term_ids(
-        self, page, coord: _CaptchaCoordination
-    ) -> dict[str, list[str]]:
+        self, page, coord: _CaptchaCoordination, results: dict[str, list[str]]
+    ) -> None:
         """Fan search terms out across a small pool of tabs — legacy's own
         proven search-tab count (2), EATP-022. Same worker-per-tab-pulling-
-        a-shared-queue shape as `_fetch_details` below, just for listing."""
+        a-shared-queue shape as `_fetch_details` below, just for listing.
+
+        Writes into the caller-owned `results` dict rather than returning
+        one: the caller runs this whole method inside `browser.run_bounded`
+        (EATP-025), which can abandon it mid-flight if the browser dies —
+        writing in place means whatever terms had already finished are still
+        there for the caller to use even then."""
         worker_count = max(1, min(self._search_workers, len(config.SEARCH_TERMS)))
         tabs = [page] + [page.new_tab() for _ in range(worker_count - 1)]
 
         term_queue: Queue[str] = Queue()
         for term in config.SEARCH_TERMS:
             term_queue.put(term)
-        results: dict[str, list[str]] = {}
         results_lock = threading.Lock()
 
         def worker(tab) -> None:
@@ -411,8 +420,6 @@ class IndeedCollector:
             browser.human_pause(0.3, 0.8)  # stagger tab starts, not a single burst
         for thread in threads:
             thread.join()
-
-        return results
 
     def _collect_term_ids(
         self, page, term: str, coord: _CaptchaCoordination
@@ -485,9 +492,6 @@ class IndeedCollector:
         if not job_ids or coord.giveup.is_set():
             return
 
-        worker_count = max(1, min(self._detail_workers, len(job_ids)))
-        tabs = [page] + [page.new_tab() for _ in range(worker_count - 1)]
-
         job_queue: Queue[str] = Queue()
         for job_id in job_ids:
             job_queue.put(job_id)
@@ -512,13 +516,22 @@ class IndeedCollector:
                 finally:
                     job_queue.task_done()
 
-        threads = [threading.Thread(target=worker, args=(tab,)) for tab in tabs]
-        for thread in threads:
-            thread.start()
-            browser.human_pause(0.3, 0.8)  # stagger tab starts, not a single burst
+        def run() -> None:
+            # Tab setup (`new_tab()`) runs here too, not just the workers —
+            # EATP-025: opening this pool's own tabs is just as capable of
+            # blocking forever on a dead browser as anything a worker does
+            # afterward, so it needs to be inside `run_bounded`'s wrapped
+            # call, not before it.
+            worker_count = max(1, min(self._detail_workers, len(job_ids)))
+            tabs = [page] + [page.new_tab() for _ in range(worker_count - 1)]
+            threads = [threading.Thread(target=worker, args=(tab,)) for tab in tabs]
+            for thread in threads:
+                thread.start()
+                browser.human_pause(0.3, 0.8)  # stagger tab starts, not a single burst
+            for thread in threads:
+                thread.join()
 
-        for thread in threads:
-            thread.join()
+        browser.run_bounded(run, coord.giveup, SOURCE)
 
         while not results.empty():
             yield results.get_nowait()

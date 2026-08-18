@@ -83,6 +83,11 @@ _MAX_PAGES_PER_TERM = 10
 # Legacy's own proven tab count for listing (its docstring: "4 pestañas en
 # paralelo"). Detail-fetch stays on the separate, cheap, anonymous HTTP path
 # (`linkedin_api.py`) so this only costs browser-tab overhead, not account risk.
+#
+# EATP-025 (2026-08-17): briefly dropped to 2 on a memory theory that never
+# held up — no kernel OOM ever appeared, and the WSL VM sat at ~1.1GB of
+# 9.7GB used through every crash. Reverted to legacy's 4. The real cause was
+# `page.quit()` hanging on an already-dead browser (see `browser.close_page`).
 _SEARCH_WORKERS = 4
 
 _JOB_ID_PATTERN = re.compile(r'data-occludable-job-id="(\d+)"')
@@ -227,11 +232,15 @@ class LinkedInCollector:
         page = self._page_factory()
         coord = _LoginCoordination()
         browser.start_cancellation_watcher(coord.giveup)
+        ids_by_term: dict[str, list[str]] = {}
         try:
-            ids_by_term = self._collect_all_term_ids(page, coord)
+            browser.run_bounded(
+                lambda: self._collect_all_term_ids(page, coord, ids_by_term),
+                coord.giveup,
+                SOURCE,
+            )
         finally:
-            page.quit()
-            browser.forget_page(page)
+            browser.close_page(page)
 
         # Merge in a fixed order (config.SEARCH_TERMS, then page order within
         # a term) so the result is deterministic regardless of which tab
@@ -253,17 +262,24 @@ class LinkedInCollector:
             if job is not None:
                 yield job
 
-    def _collect_all_term_ids(self, page, coord: _LoginCoordination) -> dict[str, list[str]]:
+    def _collect_all_term_ids(
+        self, page, coord: _LoginCoordination, results: dict[str, list[str]]
+    ) -> None:
         """Fan search terms out across a small pool of browser tabs — mirrors
         `indeed.py::_fetch_details`'s worker-per-tab-pulling-a-shared-queue
-        shape, just for listing instead of detail-fetch."""
+        shape, just for listing instead of detail-fetch.
+
+        Writes into the caller-owned `results` dict rather than returning
+        one: the caller runs this whole method inside `browser.run_bounded`
+        (EATP-025), which can abandon it mid-flight if the browser dies —
+        writing in place means whatever terms had already finished are still
+        there for the caller to use even then."""
         worker_count = max(1, min(self._search_workers, len(config.SEARCH_TERMS)))
         tabs = [page] + [page.browser.new_tab() for _ in range(worker_count - 1)]
 
         term_queue: Queue[str] = Queue()
         for term in config.SEARCH_TERMS:
             term_queue.put(term)
-        results: dict[str, list[str]] = {}
         results_lock = threading.Lock()
 
         def worker(tab) -> None:
@@ -285,8 +301,6 @@ class LinkedInCollector:
             browser.human_pause(0.3, 0.8)  # stagger tab starts, not a single burst
         for thread in threads:
             thread.join()
-
-        return results
 
     def _collect_term_ids(self, tab, term: str, coord: _LoginCoordination) -> list[str]:
         term_ids: list[str] = []
