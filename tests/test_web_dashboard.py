@@ -21,7 +21,8 @@ from career_radar.web.server import create_app
 
 def _make_client() -> TestClient:
     app = create_app(event_bus=EventBus(), pipeline_run=lambda **_: None)
-    return TestClient(app)
+    # EATP-026: see test_web_server.py's _make_client for why base_url is set.
+    return TestClient(app, base_url="http://127.0.0.1:8000")
 
 
 def _scored_job(signature: str = "sig-1") -> ScoredJob:

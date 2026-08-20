@@ -39,7 +39,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -60,6 +60,42 @@ from career_radar.tracking.store import TrackingAction
 logger = get_logger(__name__)
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+# ADR-010 / EATP-026: same origin/port `run_web.sh` actually binds to
+# (CAREER_RADAR_PORT, default 8000) — kept as the single source of truth for
+# "what port is this server on" rather than hardcoding 8000 a second time.
+_PORT = os.getenv("CAREER_RADAR_PORT", "8000")
+_ALLOWED_ORIGINS = frozenset(
+    {f"http://127.0.0.1:{_PORT}", f"http://localhost:{_PORT}"}
+)
+
+
+def _verify_same_origin(request: Request) -> None:
+    """ADR-010: block a cross-origin browser tab from triggering a
+    state-mutating action (start/cancel/reset a run, track a job, label a
+    job) via a same-machine POST — binding to 127.0.0.1 alone does not stop
+    another tab in Kevin's own browser from doing this.
+
+    Only applied to POST routes with real side effects. Deliberately NOT
+    applied to the GET routes: without an `Access-Control-Allow-Origin`
+    header (never set here), the browser already refuses to let a
+    cross-origin page read their JSON response, so an extra check there
+    would guard against something the browser's own default same-origin
+    policy already blocks.
+
+    `Origin` absent entirely (some same-origin requests legitimately omit
+    it) is allowed through; `Origin` present and not in the allowlist is
+    rejected. `Host` is checked too since forging `Origin` while a proxy or
+    DNS-rebinding attack changes `Host` is the other half of this attack
+    class.
+    """
+    origin = request.headers.get("origin")
+    if origin is not None and origin not in _ALLOWED_ORIGINS:
+        raise HTTPException(status_code=403, detail="origin not allowed")
+
+    host = request.headers.get("host")
+    if host is not None and host not in {f"127.0.0.1:{_PORT}", f"localhost:{_PORT}"}:
+        raise HTTPException(status_code=403, detail="host not allowed")
 
 # Bounds how long a leaked SSE thread can outlive a client that disconnected
 # mid-wait: q.get() would otherwise block a thread forever (no way to cancel
@@ -262,7 +298,7 @@ def create_app(
         # just the <link rel="icon"> in index.html.
         return FileResponse(STATIC_DIR / "favicon.ico")
 
-    @app.post("/run")
+    @app.post("/run", dependencies=[Depends(_verify_same_origin)])
     def start_run(request: RunRequest) -> JSONResponse:
         with lock:
             if state["running"]:
@@ -271,7 +307,7 @@ def create_app(
         threading.Thread(target=_worker, args=(request,), daemon=True).start()
         return JSONResponse({"status": "started"}, status_code=202)
 
-    @app.post("/cancel")
+    @app.post("/cancel", dependencies=[Depends(_verify_same_origin)])
     def cancel_run(request: CancelRequest = CancelRequest()) -> JSONResponse:
         """"Pausar" (discard=False)/"Cancelar" (discard=True, EATP-024) —
         no run to cancel is a 409, not a silent no-op, so the UI never shows
@@ -298,7 +334,7 @@ def create_app(
         event_bus.publish("cancel", "running", 0.0, message)
         return JSONResponse({"status": "cancelling"}, status_code=202)
 
-    @app.post("/reset")
+    @app.post("/reset", dependencies=[Depends(_verify_same_origin)])
     def reset_data() -> JSONResponse:
         """"Limpiar caché" (EATP-019, Kevin's call): wipe every derived
         run artifact for a clean test run. Refuses while a run is active —
@@ -339,7 +375,7 @@ def create_app(
         }
         return JSONResponse({"result": result, "tracking": tracking})
 
-    @app.post("/track")
+    @app.post("/track", dependencies=[Depends(_verify_same_origin)])
     def track(request: TrackRequest) -> JSONResponse:
         tracking_store.record_action(request.signature, request.action)
         return JSONResponse({"status": "ok", "signature": request.signature, "action": request.action.value})
@@ -355,7 +391,7 @@ def create_app(
         }
         return JSONResponse(labels)
 
-    @app.post("/eval/label")
+    @app.post("/eval/label", dependencies=[Depends(_verify_same_origin)])
     def label_job(request: LabelRequest) -> JSONResponse:
         eval_labels_store.record_label(request.signature, request.label, request.reason)
         return JSONResponse({

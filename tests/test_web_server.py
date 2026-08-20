@@ -27,7 +27,10 @@ from career_radar.web.server import (
 def _make_client(pipeline_run, reset_run_data=lambda: None) -> tuple[TestClient, EventBus]:
     bus = EventBus()
     app = create_app(event_bus=bus, pipeline_run=pipeline_run, reset_run_data=reset_run_data)
-    return TestClient(app), bus
+    # EATP-026: base_url matches what run_web.sh actually binds to (127.0.0.1:8000,
+    # the CAREER_RADAR_PORT default), so TestClient's Host header passes the
+    # same-origin check in server.py instead of the httpx default "testserver".
+    return TestClient(app, base_url="http://127.0.0.1:8000"), bus
 
 
 def test_index_serves_html() -> None:
@@ -149,6 +152,57 @@ def test_reset_refuses_while_a_run_is_in_progress() -> None:
     assert response.status_code == 409
     assert response.json() == {"status": "run_in_progress"}
     assert calls == []
+
+
+def test_reset_rejects_cross_origin_request() -> None:
+    """ADR-010 / EATP-026 / SEC-3, SEC-4: a same-machine cross-origin tab must
+    not be able to trigger a real side effect (here, wiping run data) via a
+    simple POST — see server.py's _verify_same_origin."""
+    calls: list[str] = []
+    client, _bus = _make_client(pipeline_run=lambda **_: None, reset_run_data=lambda: calls.append("reset"))
+
+    response = client.post("/reset", headers={"Origin": "http://evil.example.com"})
+
+    assert response.status_code == 403
+    assert calls == []
+
+
+def test_reset_rejects_spoofed_host_header() -> None:
+    """Same protection, other half: Origin can look legitimate while Host is
+    forged (proxy/DNS-rebinding-style attack) — both must match."""
+    calls: list[str] = []
+    client, _bus = _make_client(pipeline_run=lambda **_: None, reset_run_data=lambda: calls.append("reset"))
+
+    response = client.post(
+        "/reset",
+        headers={"Origin": "http://127.0.0.1:8000", "Host": "evil.example.com"},
+    )
+
+    assert response.status_code == 403
+    assert calls == []
+
+
+def test_reset_allows_same_origin_request() -> None:
+    """The real frontend's fetch("/reset") — Origin present and legitimate —
+    must keep working, not just get blocked by accident."""
+    calls: list[str] = []
+    client, _bus = _make_client(pipeline_run=lambda **_: None, reset_run_data=lambda: calls.append("reset"))
+
+    response = client.post("/reset", headers={"Origin": "http://127.0.0.1:8000"})
+
+    assert response.status_code == 200
+    assert calls == ["reset"]
+
+
+def test_get_status_is_unaffected_by_a_hostile_origin() -> None:
+    """Read-only routes are deliberately NOT origin-checked (see
+    _verify_same_origin's docstring) — the browser's own same-origin policy
+    already blocks a cross-origin page from reading the JSON response."""
+    client, _bus = _make_client(pipeline_run=lambda **_: None)
+
+    response = client.get("/status", headers={"Origin": "http://evil.example.com"})
+
+    assert response.status_code == 200
 
 
 def test_status_reflects_running_state_and_last_result(tmp_path, monkeypatch) -> None:

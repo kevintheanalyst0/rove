@@ -71,6 +71,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-023** | Final polish: window focus, no visible terminal, auto-shutdown on tab close | — | ✅ | 022 | Medium | ~1h55 (2026-08-15) |
 | **EATP-024** | Pausar/Cancelar reliability + Indeed browser visibility | — | ✅ | 023 | Medium | ~1h25 (2026-08-16) |
 | **EATP-025** | Dead-browser hang fix + migration out of WSL to native Windows | — | ✅ | 024 | High | ~2h30 (2026-08-17/18) |
+| **EATP-026** | API surface hardening + adversarial input tests (Security Hardening initiative) | — | ✅ | — | Light-Medium | ~1h20 (2026-08-19) |
 
 > **Career Radar closed out 2026-08-15** (EATP-023), reopened for EATP-024
 > (2026-08-16) and again for EATP-025 (2026-08-17/18).
@@ -91,6 +92,18 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 > never have caught: `signal.SIGKILL` doesn't exist on Windows (it would have
 > crashed the "Cancelar" button), and `Path.read_text()` without an explicit
 > encoding reads cp1252 there, which breaks on any accented Spanish text.
+
+> **EATP-026** opened 2026-08-19 as part of the cross-repo "Security Hardening —
+> Portfolio, Career Radar y Snippets" initiative (tracked in Notion; Portfolio and
+> Snippets have their own equivalent projects in their own repos). Independent of
+> 001-025 — no dependency either way. Built and verified in this native-Windows
+> repo (not the WSL backup copy — the design/planning session initially targeted the
+> WSL copy by mistake since it was unaware of the EATP-025 migration; Kevin caught
+> it before any commit happened there, and the finished work was ported over 1:1
+> since `server.py`, the test files, and the launcher's host/port contract turned out
+> byte-identical between the two copies pre-migration). See
+> `docs/adr/ADR-010-origin-host-validation-strategy.md` and the SEC-# traceability
+> note below.
 
 > Fill **Status** and **Total time** as each project completes. The **Complexity** column
 > exists so no project balloons: they're all sized Medium-ish, with a couple intentionally
@@ -170,6 +183,29 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 > Indi Staffing Services) but is almost certainly incomplete; grow it as Kevin names
 > more, and keep the door open for a behavioral heuristic in EATP-009/013 rather than
 > relying on the static list alone.
+
+### Security Hardening initiative (separate id space: SEC-#)
+
+Not part of the P#/R# job-search backlog above — tracked separately because it's a
+cross-repo initiative (Notion: "Security Hardening — Portfolio, Career Radar y
+Snippets", 2026-08-19) that also touches the `portfolio` and `snippets` repos, each
+with its own equivalent project. Only the Career Radar items are listed here.
+
+| # | Item | Origin | Solved in |
+|---|------|--------|-----------|
+| SEC-12 | API keys of AI providers only in `.env`, never committed | Kevin | Already true (verified — `.env` never tracked, only `os.getenv` in source) |
+| SEC-13 | GitHub Secret Scanning + Push Protection active | Kevin | Already true (confirmed enabled) |
+| SEC-14 | Audit git history for leaked keys | Kevin | Already true (full-history audit found no real keys) |
+| SEC-3 | Validate Host/Origin on the local server | Kevin | EATP-026 |
+| SEC-4 | Harden `/run`, `/reset`, `/cancel` | Kevin | EATP-026 |
+| SEC-5 | Tests against prompt injection via malicious job descriptions | Kevin | EATP-026 |
+| **SEC-15** | *Host/Origin gap is CSRF/DNS-rebinding-class against routes with destructive side effects (not just generic hardening); `/track` and `/eval/label` belong in the same fix* | **AI** | EATP-026 |
+
+> Bold/italic = surfaced by the AI during the 2026-08-19 audit, not on Kevin's original
+> Notion checklist. Numbering continues the same SEC-# scheme used in the Portfolio and
+> Snippets repos' own charters, for cross-repo reference back to the original Notion
+> page and the design conversation — the ids are not otherwise meaningful inside this
+> repo alone.
 
 ---
 

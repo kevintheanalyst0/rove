@@ -3,6 +3,9 @@ it can't salvage instead."""
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from career_radar.ai.base import AiResult
@@ -13,6 +16,8 @@ from career_radar.ai.parse import (
     parse_batch_response,
     strip_code_fences,
 )
+
+_FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
 
 def test_strip_code_fences_removes_markdown_json_fence():
@@ -111,3 +116,64 @@ def test_match_ai_results_normal_case():
     matched = match_ai_results(jobs, results)
     assert set(matched) == {"s1", "s2"}
     assert matched["s1"].ai_score == 80
+
+
+def test_match_ai_results_drops_id_not_in_requested_jobs():
+    """EATP-026 / SEC-5: an id the model invented (or an attacker injected)
+    that doesn't belong to any job actually sent must never surface as a
+    result — this is the core containment ADR-006 relies on."""
+    jobs = [_FakeJob("s1")]
+    results = [
+        AiResult(signature="s1", ai_score=40),
+        AiResult(signature="attacker-injected", ai_score=100),
+    ]
+    matched = match_ai_results(jobs, results)
+    assert set(matched) == {"s1"}
+
+
+def test_match_ai_results_drops_ambiguous_duplicate_entirely():
+    """Two competing results for the same id (e.g. an attacker trying to get
+    a second, higher-scored copy accepted) are dropped entirely, not
+    resolved by picking either one — see match_ai_results' own docstring."""
+    jobs = [_FakeJob("s1")]
+    results = [
+        AiResult(signature="s1", ai_score=10),
+        AiResult(signature="s1", ai_score=99),
+    ]
+    matched = match_ai_results(jobs, results)
+    assert matched == {}
+
+
+# --- EATP-026 / SEC-5: adversarial job-description fixture -----------------
+#
+# These don't call live AI (CLAUDE.md §7). Each fixture case's
+# `simulated_llm_response` stands in for what a model *might* be tricked
+# into emitting if `malicious_job_description` (embedded verbatim into the
+# prompt by ai/prompts.py) actually succeeded at manipulating it. The test
+# proves that even a "successful" injection at the LLM-output level still
+# can't get an unrequested/duplicate id treated as a real result, because
+# match_ai_results' signature-allowlist (ADR-006) sits between the raw model
+# text and anything the app trusts.
+
+with open(_FIXTURES_DIR / "adversarial_jobs.json", encoding="utf-8") as _f:
+    _ADVERSARIAL_FIXTURE = json.load(_f)
+
+_ADVERSARIAL_JOBS = [_FakeJob(job["signature"]) for job in _ADVERSARIAL_FIXTURE["jobs"]]
+
+
+@pytest.mark.parametrize(
+    "case",
+    _ADVERSARIAL_FIXTURE["adversarial_cases"],
+    ids=[case["name"] for case in _ADVERSARIAL_FIXTURE["adversarial_cases"]],
+)
+def test_adversarial_injection_is_contained(case):
+    results = parse_batch_response(case["simulated_llm_response"])
+    matched = match_ai_results(_ADVERSARIAL_JOBS, results)
+
+    for signature in case["expect_signatures_present"]:
+        assert signature in matched, f"expected {signature!r} to survive containment"
+    for signature in case["expect_signatures_absent"]:
+        assert signature not in matched, (
+            f"{signature!r} should have been dropped by match_ai_results "
+            f"but leaked through ({case['name']})"
+        )
