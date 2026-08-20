@@ -92,18 +92,28 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 > never have caught: `signal.SIGKILL` doesn't exist on Windows (it would have
 > crashed the "Cancelar" button), and `Path.read_text()` without an explicit
 > encoding reads cp1252 there, which breaks on any accented Spanish text.
+>
+> **Update, 2026-08-19:** the WSL copy (`~/Projects/career-radar`) was deleted.
+> During EATP-026 planning it caused a real mix-up — a design/build session targeted
+> it by mistake, unaware of this migration, since it looked current. Kevin decided
+> the confusion risk outweighed keeping it as a backup; this native-Windows repo
+> (`D:\Development\Career Radar`) is now the only copy. Before deleting, `.env` was
+> confirmed identical and `data/` confirmed to have nothing the Windows copy didn't
+> already have (Windows had strictly more: real run history, results, cache).
+>
+> **This repo's `origin` was pointing at that now-deleted WSL path** (that's how it
+> got cloned during the EATP-025 migration) — fetching from it started failing
+> immediately after the deletion. Repointed `origin` straight to GitHub
+> (`git@github.com:kevintheanalyst0/career-radar.git`) instead. Local is currently
+> **4 commits ahead of GitHub** (a3b0b38, 29bcd25, 333a871, a4f7fe4) — not pushed
+> automatically; push only with Kevin's explicit go-ahead, per CLAUDE.md §10.
 
 > **EATP-026** opened 2026-08-19 as part of the cross-repo "Security Hardening —
 > Portfolio, Career Radar y Snippets" initiative (tracked in Notion; Portfolio and
 > Snippets have their own equivalent projects in their own repos). Independent of
-> 001-025 — no dependency either way. Built and verified in this native-Windows
-> repo (not the WSL backup copy — the design/planning session initially targeted the
-> WSL copy by mistake since it was unaware of the EATP-025 migration; Kevin caught
-> it before any commit happened there, and the finished work was ported over 1:1
-> since `server.py`, the test files, and the launcher's host/port contract turned out
-> byte-identical between the two copies pre-migration). See
-> `docs/adr/ADR-010-origin-host-validation-strategy.md` and the SEC-# traceability
-> note below.
+> 001-025 — no dependency either way. Built and verified in this native-Windows repo.
+> See `docs/adr/ADR-010-origin-host-validation-strategy.md` and the SEC-#
+> traceability note below.
 
 > Fill **Status** and **Total time** as each project completes. The **Complexity** column
 > exists so no project balloons: they're all sized Medium-ish, with a couple intentionally

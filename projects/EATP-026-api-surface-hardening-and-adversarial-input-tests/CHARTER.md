@@ -35,7 +35,7 @@ their own repos, sharing this numbering):
 | `docs/adr/ADR-010-origin-host-validation-strategy.md` | The decision this project implements — read in full before touching `server.py`. |
 | `src/career_radar/web/server.py` | Where `/run`, `/cancel`, `/reset`, `/track`, `/eval/label`, and the read-only routes are defined; add the Host/Origin check here. |
 | `src/career_radar/web/static/js/app.js` | Confirm exactly what `Origin`/base URL the frontend actually sends, so the allowlist doesn't lock Kevin out of his own UI. |
-| `scripts/run_web.bat` | Confirms host/port (`127.0.0.1`, `CAREER_RADAR_PORT` default `8000`) the allowlist must match — this is the real launcher since EATP-025's move to native Windows; `run_web.sh` is the old WSL launcher, kept only in the WSL backup copy. |
+| `scripts/run_web.bat` | Confirms host/port (`127.0.0.1`, `CAREER_RADAR_PORT` default `8000`) the allowlist must match — this is the real launcher since EATP-025's move to native Windows. `run_web.sh` still exists in this repo too but is dead since the WSL copy was deleted 2026-08-19. |
 | `src/career_radar/ai/prompts.py` | Where the raw job description is embedded into the AI prompt — needed to design a realistic adversarial fixture. |
 | `src/career_radar/ai/parse.py` | `match_ai_results` (existing id-allowlist containment, ~lines 100-135) — the new test must exercise this function directly. |
 
