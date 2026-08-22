@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import asyncio
 import time
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
 
 from career_radar import cancellation, config
 from career_radar.events import EventBus
+from career_radar.quality.cache import SignatureCache
 from career_radar.storage import write_json
 from career_radar.web.server import (
     _SHUTDOWN_GRACE_SECONDS,
@@ -192,6 +194,59 @@ def test_reset_allows_same_origin_request() -> None:
 
     assert response.status_code == 200
     assert calls == ["reset"]
+
+
+def test_get_cache_returns_records_most_recently_seen_first(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(config, "SIGNATURES_FILE", tmp_path / "signatures.jsonl")
+    cache = SignatureCache()
+    cache.update("old", title="Old One", company="Acme", source="occ", today=date(2026, 1, 1))
+    cache.update("new", title="New One", company="Beta", source="indeed", today=date(2026, 1, 20))
+    cache.save()
+
+    client, _bus = _make_client(pipeline_run=lambda **_: None)
+    response = client.get("/cache")
+
+    assert response.status_code == 200
+    records = response.json()["records"]
+    assert [r["signature"] for r in records] == ["new", "old"]
+    assert records[0]["title"] == "New One"
+    assert records[0]["company"] == "Beta"
+
+
+def test_reset_cache_wipes_only_the_signature_cache(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(config, "SIGNATURES_FILE", tmp_path / "signatures.jsonl")
+    cache = SignatureCache()
+    cache.update("abc123", title="Data Analyst", today=date(2026, 1, 1))
+    cache.save()
+
+    client, _bus = _make_client(pipeline_run=lambda **_: None)
+    response = client.post("/cache/reset", headers={"Origin": "http://127.0.0.1:8000"})
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    assert len(SignatureCache.load()) == 0
+
+
+def test_reset_cache_refuses_while_a_run_is_in_progress() -> None:
+    def slow_run(**kwargs):
+        time.sleep(0.3)
+
+    client, _bus = _make_client(pipeline_run=slow_run)
+    client.post("/run", json={})
+
+    response = client.post("/cache/reset")
+
+    assert response.status_code == 409
+    assert response.json() == {"status": "run_in_progress"}
+    time.sleep(0.4)  # let the background thread finish so it doesn't leak
+
+
+def test_reset_cache_rejects_cross_origin_request() -> None:
+    client, _bus = _make_client(pipeline_run=lambda **_: None)
+
+    response = client.post("/cache/reset", headers={"Origin": "http://evil.example.com"})
+
+    assert response.status_code == 403
 
 
 def test_get_status_is_unaffected_by_a_hostile_origin() -> None:

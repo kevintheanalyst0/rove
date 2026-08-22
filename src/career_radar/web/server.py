@@ -53,6 +53,7 @@ from career_radar.events import EventBus, ProgressEvent
 from career_radar.events import bus as default_bus
 from career_radar.pipeline import reset_all_run_data
 from career_radar.pipeline import run as run_pipeline
+from career_radar.quality.cache import SignatureCache
 from career_radar.storage import read_json
 from career_radar.tracking import store as tracking_store
 from career_radar.tracking.store import TrackingAction
@@ -345,6 +346,32 @@ def create_app(
             if state["running"]:
                 return JSONResponse({"status": "run_in_progress"}, status_code=409)
         reset_run_data()
+        return JSONResponse({"status": "ok"})
+
+    @app.get("/cache")
+    def get_cache() -> JSONResponse:
+        """"Ver cacheadas" (EATP-029/P29): read-only view of the signature
+        cache — the vacancies currently suppressing repeats, most-recently-
+        seen first. Separate from `/results`: this is about what's HIDDEN,
+        not what's shown."""
+        cache = SignatureCache.load()
+        return JSONResponse(
+            {"records": [record.model_dump(mode="json") for record in cache.records()]}
+        )
+
+    @app.post("/cache/reset", dependencies=[Depends(_verify_same_origin)])
+    def reset_cache() -> JSONResponse:
+        """EATP-029/P29: wipes ONLY the signature cache — deliberately
+        narrower than `/reset` ("Limpiar caché" in the UI), which also wipes
+        results/raw/history/health. Same in-progress guard as `/reset`: a
+        run's own `_persist` step writes this same file, so clearing it out
+        from under an active run would race with that write."""
+        with lock:
+            if state["running"]:
+                return JSONResponse({"status": "run_in_progress"}, status_code=409)
+        cache = SignatureCache.load()
+        cache.reset()
+        cache.save()
         return JSONResponse({"status": "ok"})
 
     @app.get("/status")

@@ -101,7 +101,7 @@ number, so it can never look contradictory.
 | `raw/<source>.jsonl` | `Job` per line | each collector (streamed) |
 | `gated.jsonl` | `Job` per line | quality layer |
 | `results.json` | `RunResult` | orchestrator (atomic) |
-| `cache/signatures.jsonl` | `{signature, first_seen, last_seen, final_score}` | cache |
+| `cache/signatures.jsonl` | `{signature, first_seen, last_seen, final_score, title, company, source}` | cache — the last three (EATP-029) are display-only, for the "Ver cacheadas" view; suppression still keys purely on `signature` |
 | `history/<run-timestamp>.jsonl` | `{signature, source, title, company, shown_at}` per shown job | history store (append-only, one file per run) |
 | `health/yields.jsonl` | `{run_started_at, source, yielded, status}` per source per run | health check (EATP-011, append-only, one cumulative file — raw yield, not shown count, so gate attrition never looks like a broken scraper) |
 | `status.json` | run status for the UI | orchestrator |

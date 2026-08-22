@@ -440,7 +440,13 @@ def _persist(
     ]
 
     for scored in ranked:
-        cache.update(scored.job.signature, final_score=scored.final_score)
+        cache.update(
+            scored.job.signature,
+            final_score=scored.final_score,
+            title=scored.job.title,
+            company=scored.job.company,
+            source=scored.job.source,
+        )
     cache.save()
     history_store.record_run([scored.job for scored in ranked], run_started_at)
 

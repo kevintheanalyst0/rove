@@ -3,6 +3,21 @@
 All notable changes to this project, grouped by build session (`EATP-00X`). Dates are
 the day the work was done; see `ROADMAP.md` for status/complexity/time per project.
 
+## EATP-029 — Cache observability: "Ver cacheadas" + manual reset (2026-08-21)
+- `SignatureRecord` gains `title`/`company`/`source` (display-only; suppression
+  still keys on `signature` alone) so the cache is finally human-readable.
+- New `GET /cache` (read-only list, most-recently-seen first) and
+  `POST /cache/reset` (clears only the signature cache — deliberately
+  separate from the existing "Limpiar caché" button, which wipes far more:
+  results/raw/history/health). Kevin's call: keep "Limpiar caché" exactly as
+  it is, add this as its own distinct control.
+- The funnel diagnostic's `cached_recently` count (EATP-028) already covered
+  "how many did the cache hide this run" — verified end to end, no new
+  tracking needed.
+- 395 tests passing (10 net new). No change to the 30-day suppression window
+  or what gets suppressed — every pre-existing cache test still passes
+  unmodified.
+
 ## EATP-028 — English-requirement classification + funnel diagnostic + search terms (2026-08-21)
 - Replaced the bare `english_required: bool` hard-reject with a three-tier
   `EnglishRequirement` classification (`compatible`/`indeterminate`/`reject`) —

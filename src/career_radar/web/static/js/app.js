@@ -58,6 +58,7 @@ const modalBody = document.getElementById("modalBody");
 
 const clearCacheBtn = document.getElementById("clearCacheBtn");
 const sideClearCacheBtn = document.getElementById("sideClearCacheBtn");
+const sideViewCacheBtn = document.getElementById("sideViewCacheBtn");
 
 // How long the "Listo" checkmark holds before fading into the dashboard.
 const DONE_HOLD_MS = 1100;
@@ -582,6 +583,70 @@ function closeModal() {
   overlay.dataset.signature = "";
 }
 
+// "Ver cacheadas" (EATP-029/P29): read-only view of the signature cache, in
+// the same overlay/modal used for job details — different content, same
+// close mechanics (#modalCloseBtn). Its own reset only clears this cache,
+// never the broader "Limpiar caché" data (results/raw/history/health).
+function renderCacheList(records) {
+  if (!records.length) {
+    return '<p class="empty">No hay vacantes cacheadas todavía.</p>';
+  }
+  return `<ul class="cache-list">${records.map((r) => `
+    <li class="cache-row">
+      <div class="cache-row-main">
+        <strong>${escapeHtml(r.title || "(sin título)")}</strong>
+        <span class="job-meta">${escapeHtml(r.company || "—")} · ${escapeHtml(r.source || "—")}</span>
+      </div>
+      <div class="cache-row-dates">
+        <span>Visto: ${escapeHtml(r.first_seen)} → ${escapeHtml(r.last_seen)}</span>
+      </div>
+    </li>`).join("")}</ul>`;
+}
+
+async function renderCacheModal() {
+  modalBody.innerHTML = `
+    <div class="modal-head">
+      <div><h2>Vacantes cacheadas</h2><p class="meta">Ocultas de corridas nuevas por hasta 30 días.</p></div>
+      <button class="modal-close" type="button" id="modalCloseBtn">&#10005;</button>
+    </div>
+    <div id="cacheListBody"><p class="empty">Cargando...</p></div>
+    <div class="modal-footer">
+      <button type="button" class="btn-full ghost" data-cache-reset>Olvidar todas las cacheadas</button>
+    </div>`;
+
+  const res = await fetch("/cache");
+  const data = await res.json();
+  document.getElementById("cacheListBody").innerHTML = renderCacheList(data.records || []);
+}
+
+async function openCacheModal() {
+  overlay.classList.add("open");
+  overlay.dataset.signature = "";
+  await renderCacheModal();
+}
+
+async function resetCache(button) {
+  const ok = window.confirm(
+    "¿Olvidar todas las vacantes cacheadas?\n\n" +
+    "La próxima corrida podría volver a mostrar vacantes que ya viste. " +
+    "Esto NO borra resultados, historial ni tus marcas de \"Apliqué\" / " +
+    "\"No me interesa\" — solo el caché de duplicados."
+  );
+  if (!ok) return;
+
+  button.disabled = true;
+  try {
+    const res = await fetch("/cache/reset", { method: "POST" });
+    if (res.status === 409) {
+      window.alert("Hay una corrida en curso — esperá a que termine.");
+      return;
+    }
+    await renderCacheModal();
+  } finally {
+    button.disabled = false;
+  }
+}
+
 resultsGrid.addEventListener("click", (event) => {
   const card = event.target.closest(".job-card");
   if (!card) return;
@@ -591,6 +656,11 @@ resultsGrid.addEventListener("click", (event) => {
 modalBody.addEventListener("click", (event) => {
   if (event.target.closest("#modalCloseBtn")) {
     closeModal();
+    return;
+  }
+  const cacheResetBtn = event.target.closest("[data-cache-reset]");
+  if (cacheResetBtn) {
+    resetCache(cacheResetBtn);
     return;
   }
   const actionBtn = event.target.closest("[data-modal-action]");
@@ -738,6 +808,7 @@ async function clearCache(button) {
 
 clearCacheBtn.addEventListener("click", () => clearCache(clearCacheBtn));
 sideClearCacheBtn.addEventListener("click", () => clearCache(sideClearCacheBtn));
+sideViewCacheBtn.addEventListener("click", openCacheModal);
 topRerunBtn.addEventListener("click", () => startRun(true));
 
 init();
