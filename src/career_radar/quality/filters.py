@@ -4,7 +4,9 @@
 
 1. `title_is_rejected()` — absolute title/company exclusion (ADR-009:
    deliberately narrow, never the ambiguous caution words).
-2. `requires_advanced_english()` — advanced English required.
+2. `classify_english_requirement_with_evidence()` — only the `REJECT` tier
+   (explicit C1/C2/native/bilingual) rejects here; `INDETERMINATE` (ambiguous
+   phrasing, EATP-028/P27) is kept and flagged downstream instead.
 3. The remote hard-gate (ADR-002) — `remote_status` must be `remote`.
 4. Staleness — `days_old` beyond `config.MAX_DAYS_OLD`.
 5. Cross-source fuzzy dedup (EATP-010, `quality/dedup.py`) — a repost from a
@@ -16,9 +18,10 @@
 7. Kevin's dismissed signatures (EATP-016, ADR-007) — 'no me interesa' from
    the dashboard, if a `dismissed` set is passed in. Skipped when `None`.
 
-Each rejection carries its own reason string (for run counts/debugging;
-never shown to Kevin in the UI). The matcher/AI (EATP-012/013) is out of
-scope here — a kept `Job` is just "structurally plausible", nothing more.
+Each rejection carries its own reason string — tallied per-source into the
+run's funnel diagnostic (EATP-028/P28), never shown per-job in the UI. The
+matcher/AI (EATP-012/013) is out of scope here — a kept `Job` is just
+"structurally plausible", nothing more.
 
 A kept job's `title_caution_flags` (ADR-009) are computed and attached to it
 as data — never a reject reason at this layer — so the matcher can weigh
@@ -32,7 +35,7 @@ from dataclasses import dataclass, field
 
 from career_radar import config, criteria
 from career_radar.config import get_logger
-from career_radar.models import Job, RemoteStatus
+from career_radar.models import EnglishRequirement, Job, RemoteStatus
 from career_radar.quality.cache import SignatureCache
 from career_radar.quality.dedup import dedup as fuzzy_dedup
 
@@ -51,9 +54,19 @@ def _check_job(job: Job) -> tuple[Job, str | None]:
     if criteria.title_is_rejected(job.title, job.company):
         return job, "excluded_title_or_company"
 
-    if criteria.requires_advanced_english(job.title, job.description):
-        job = job.model_copy(update={"english_required": True})
-        return job, "advanced_english_required"
+    english_requirement, english_evidence = criteria.classify_english_requirement_with_evidence(
+        job.title, job.description
+    )
+    if english_requirement != EnglishRequirement.COMPATIBLE:
+        job = job.model_copy(
+            update={"english_requirement": english_requirement, "english_evidence": english_evidence}
+        )
+        if english_requirement == EnglishRequirement.REJECT:
+            return job, "advanced_english_required"
+        # INDETERMINATE (EATP-028, P27): ambiguous phrasing ("English
+        # required", "professional English") never specified a level — kept
+        # visible instead of dropped; `confirm_english` gets attached to the
+        # ScoredJob once evaluate.py assembles it (Layer 3), not here.
 
     remote_status, remote_evidence = criteria.classify_remote_with_evidence(
         f"{job.title}\n{job.description}"

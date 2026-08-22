@@ -29,16 +29,21 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from career_radar.config import CRITERIA_FILE
-from career_radar.models import RemoteStatus
+from career_radar.models import EnglishRequirement, RemoteStatus
 
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
 
 
-class AdvancedEnglish(BaseModel):
-    phrases: list[str]
-    regex: list[str]
+class EnglishRequirementCriteria(BaseModel):
+    """EATP-028: two tiers, not one — see `criteria.toml`'s
+    `[english_requirement]` header for the reasoning."""
+
+    reject_phrases: list[str]
+    reject_regex: list[str]
+    indeterminate_phrases: list[str]
+    indeterminate_regex: list[str]
 
 
 class RemoteSignals(BaseModel):
@@ -69,7 +74,7 @@ class Criteria(BaseModel):
     excluded_companies: list[str]
     excluded_title_keywords: dict[str, list[str]]
     title_caution_words: dict[str, list[str]]
-    advanced_english: AdvancedEnglish
+    english_requirement: EnglishRequirementCriteria
     remote_signals: RemoteSignals
     matcher: Matcher
 
@@ -139,16 +144,44 @@ def title_is_rejected(title: str, company: str, criteria: Criteria | None = None
 
 
 # ---------------------------------------------------------------------------
-# Advanced English
+# English requirement (EATP-028) — reject overrides indeterminate, mirroring
+# `classify_remote_with_evidence`'s anti-signal-overrides-positive shape.
 # ---------------------------------------------------------------------------
 
 
-def requires_advanced_english(title: str, description: str, criteria: Criteria | None = None) -> bool:
+def classify_english_requirement_with_evidence(
+    title: str, description: str, criteria: Criteria | None = None
+) -> tuple[EnglishRequirement, list[str]]:
+    """Classify a job's English requirement, plus the exact phrase(s) that
+    decided it (auditable, same reasoning as `classify_remote_with_evidence`:
+    Kevin needs to see WHY, not just trust a verdict — P24/ADR-009 pattern).
+
+    `REJECT` (explicit C1/C2/native/bilingual) always wins over
+    `INDETERMINATE` even if both kinds of phrase appear in the same posting.
+    No signal at all -> `COMPATIBLE`, the safe default.
+    """
     criteria = criteria or load_criteria()
     text = f"{title}\n{description}".lower()
-    if any(phrase in text for phrase in criteria.advanced_english.phrases):
-        return True
-    return any(re.search(pattern, text) for pattern in criteria.advanced_english.regex)
+    rules = criteria.english_requirement
+
+    reject_phrase = next((p for p in rules.reject_phrases if p in text), None)
+    reject_match = next(
+        (m.group(0) for pattern in rules.reject_regex if (m := re.search(pattern, text))), None
+    )
+    if reject_phrase or reject_match:
+        evidence = [e for e in (reject_phrase, reject_match) if e]
+        return EnglishRequirement.REJECT, evidence
+
+    indeterminate_phrase = next((p for p in rules.indeterminate_phrases if p in text), None)
+    indeterminate_match = next(
+        (m.group(0) for pattern in rules.indeterminate_regex if (m := re.search(pattern, text))),
+        None,
+    )
+    if indeterminate_phrase or indeterminate_match:
+        evidence = [e for e in (indeterminate_phrase, indeterminate_match) if e]
+        return EnglishRequirement.INDETERMINATE, evidence
+
+    return EnglishRequirement.COMPATIBLE, []
 
 
 # ---------------------------------------------------------------------------

@@ -439,6 +439,9 @@ function renderCard({ scored, isNew, action }) {
   const badges = [`<span class="grade-pill tone-${gradeTone(scored.grade)}">${escapeHtml(scored.grade)}</span>`];
   if (job.remote_status === "remote") badges.push('<span class="badge badge-remote">Remoto</span>');
   if (isNew) badges.push('<span class="badge badge-new">Nuevo</span>');
+  if ((scored.flags || []).includes("confirm_english")) {
+    badges.push('<span class="badge badge-confirm-english">Confirmar inglés</span>');
+  }
   if (action === "applied") badges.push('<span class="badge badge-applied">Aplicada</span>');
   if (action === "dismissed") badges.push('<span class="badge badge-dismissed">Descartada</span>');
 
@@ -526,6 +529,18 @@ function renderModal(signature) {
   const pros = (scored.pros || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
   const cons = (scored.contras || []).map((c) => `<li>${escapeHtml(c)}</li>`).join("");
 
+  // EATP-028/P27: an ambiguous English mention ("English required", "fluent")
+  // keeps the job visible instead of dropping it — but Kevin still needs to
+  // see exactly which phrase triggered it, to judge for himself.
+  const confirmEnglish = (scored.flags || []).includes("confirm_english");
+  const englishNotice = confirmEnglish
+    ? `<div class="notice" style="margin-bottom:14px;">
+         <span class="notice-icon">&#9888;</span>
+         <p class="notice-text"><strong>Confirmar inglés:</strong> la vacante menciona inglés sin
+           especificar el nivel — "${escapeHtml((job.english_evidence || []).join('", "'))}"</p>
+       </div>`
+    : "";
+
   modalBody.innerHTML = `
     <div class="modal-head">
       <div>
@@ -544,6 +559,7 @@ function renderModal(signature) {
       <strong>Resumen de IA</strong>
       <p>${escapeHtml(scored.summary) || "Esta vacante no llegó a evaluación de IA."}</p>
     </div>
+    ${englishNotice}
     <div class="pc-grid">
       <div class="pc-col pros"><h4>Pros</h4><ul>${pros || '<li class="empty">Sin datos</li>'}</ul></div>
       <div class="pc-col cons"><h4>Contras</h4><ul>${cons || '<li class="empty">Sin contras detectadas</li>'}</ul></div>

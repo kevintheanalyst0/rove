@@ -91,26 +91,43 @@ security = ["data", "analytics", "business", "bi", "reporting", "business intell
 "finance analyst" = ["data", "bi", "analytics", "reporting", "business intelligence"]
 
 # ---------------------------------------------------------------------------
-# Advanced English required -> reject (Kevin is B2; B1/B2 "intermediate" is fine).
+# English requirement classification (EATP-028; was a single hard-reject
+# list). Kevin is B2 — B1/B2/"intermediate" is fine, never relaxed.
+#
+# `reject_*`: genuinely explicit — C1/C2, "native", "bilingual", "advanced" —
+# no reasonable reading of this phrase is B2-compatible. Hard-rejects at the
+# gate, same as before.
+#
+# `indeterminate_*`: mentions English is needed but never specifies a level
+# ("English required", "professional English", "fluent" — "fluent" is used
+# loosely in job ads and doesn't reliably mean C1). These used to hard-reject
+# too, which silently dropped B2-compatible jobs (Kevin + ChatGPT's
+# 2026-08-21 backlog, P27). Now they keep the job visible with a
+# `confirm_english` flag and the exact matched phrase instead of dropping it.
+# "resume/cv/interview in english" moved here too: doing an interview in
+# English doesn't by itself require above B2.
 # ---------------------------------------------------------------------------
-[advanced_english]
-phrases = [
+[english_requirement]
+reject_phrases = [
     "advanced english", "advanced level of english", "advanced spoken english",
-    "advanced written english", "excellent english", "strong english",
-    "fluent english", "fluency in english", "english fluency", "native english",
-    "professional english", "english required", "english is required",
-    "must speak english", "written and spoken english", "resume in english",
-    "cv in english", "interview in english", "bilingual", "fully bilingual",
-    "english communication skills", "strong communication skills in english",
-    "inglés avanzado", "ingles avanzado", "inglés fluido", "ingles fluido",
-    "dominio del inglés", "dominio del ingles", "inglés indispensable",
-    "ingles indispensable",
+    "advanced written english", "native english", "bilingual", "fully bilingual",
+    "inglés avanzado", "ingles avanzado",
 ]
-regex = [
+reject_regex = [
     '\bc1\b', '\bc2\b', '\bc1 english\b', '\bc2 english\b',
     '\benglish level c1\b', '\benglish level c2\b',
     '\bnivel c1\b', '\bnivel c2\b', '\bielts\b', '\btoefl\b',
 ]
+indeterminate_phrases = [
+    "excellent english", "strong english", "fluent english", "fluency in english",
+    "english fluency", "professional english", "english required",
+    "english is required", "must speak english", "written and spoken english",
+    "resume in english", "cv in english", "interview in english",
+    "english communication skills", "strong communication skills in english",
+    "inglés fluido", "ingles fluido", "dominio del inglés", "dominio del ingles",
+    "inglés indispensable", "ingles indispensable",
+]
+indeterminate_regex = []
 
 # ---------------------------------------------------------------------------
 # Remote signals (ADR-002) — anti-remote overrides positive. On-site tolerance

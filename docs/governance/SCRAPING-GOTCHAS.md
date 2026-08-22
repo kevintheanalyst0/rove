@@ -213,7 +213,8 @@ The rule for EATP-004-010, resolving the ambiguity:
   before a job's full description exists.
 - **Must NOT live in the collector — centralize in EATP-009's `quality/filters.py`,
   run once over the pooled jobs from every source:** the English-requirement check
-  (`requires_advanced_english`), `title_caution_flags()` (advisory, per ADR-009), the
+  (`classify_english_requirement_with_evidence`, EATP-028), `title_caution_flags()`
+  (advisory, per ADR-009), the
   remote hard-gate, and any future junk/fraud heuristic beyond the static company
   list. None of these need to happen inside a collector — English detection in
   particular needs the full description, which means the detail request has already

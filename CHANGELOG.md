@@ -3,6 +3,27 @@
 All notable changes to this project, grouped by build session (`EATP-00X`). Dates are
 the day the work was done; see `ROADMAP.md` for status/complexity/time per project.
 
+## EATP-028 — English-requirement classification + funnel diagnostic + search terms (2026-08-21)
+- Replaced the bare `english_required: bool` hard-reject with a three-tier
+  `EnglishRequirement` classification (`compatible`/`indeterminate`/`reject`) —
+  same shape as the existing `remote_status`/`remote_evidence` pattern. Only
+  `reject` (explicit C1/C2/native/bilingual) still hard-gates; `indeterminate`
+  (ambiguous phrasing like "English required", "professional English",
+  "fluent" — none of which specify a level) is kept visible with a
+  `confirm_english` flag and the exact matched phrase instead of being
+  silently dropped (P27, Kevin's 2026-08-21 backlog).
+- Added `RunResult.funnel`: a per-source breakdown of every gate-rejection
+  reason, so a quiet run can be told apart from a stage/source quietly
+  filtering a lot (P28) — reuses `quality/filters.py`'s existing reason
+  strings, no new tracking mechanism.
+- Expanded `config.py`'s search-term lists with 10 new titles (Power BI
+  Developer, Insights Analyst, SAP Data Analyst, People Analytics, etc.) plus
+  "analista de inteligencia comercial".
+- UI: "Confirmar inglés" badge on the job card + matched-phrase notice in the
+  detail modal.
+- 385 tests passing (8 net new, covering both classification tiers and the
+  three previously-misclassified example phrases).
+
 ## EATP-027 — Remove LinkedIn as a source entirely (2026-08-21)
 - Deleted `collectors/linkedin.py`, `collectors/linkedin_api.py`, their tests, their
   fixture, and the unused UI icon asset. Dropped `linkedin` from the collector

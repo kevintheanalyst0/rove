@@ -29,6 +29,7 @@ the *process* (crash/kill), not a modeled quota pause.
 from __future__ import annotations
 
 import threading
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from queue import Empty, Queue
@@ -98,6 +99,8 @@ class _Checkpoint(BaseModel):
     collector_results: dict[str, dict] = Field(default_factory=dict)
     source_health: dict[str, dict] = Field(default_factory=dict)
     counts: dict[str, int] = Field(default_factory=dict)
+    # EATP-028/P28: {source: {rejection_reason: count}} — see RunResult.funnel.
+    funnel: dict[str, dict[str, int]] = Field(default_factory=dict)
 
 
 def _load_checkpoint(mode: str, sources: list[str]) -> _Checkpoint | None:
@@ -245,6 +248,16 @@ def _gate_stage(
     checkpoint.counts["collected"] = len(all_jobs)
     checkpoint.counts["gated_kept"] = len(gate_result.kept)
     checkpoint.counts["gated_rejected"] = len(gate_result.rejected)
+
+    # EATP-028/P28: per-source rejection-reason tally — reuses the exact
+    # reason strings `quality/filters.py::gate()` already produces, so
+    # "the market was slow" and "a stage/source quietly filtered a lot" are
+    # never confused for each other.
+    by_source: dict[str, Counter[str]] = {}
+    for job, reason in gate_result.rejected:
+        by_source.setdefault(job.source, Counter())[reason] += 1
+    checkpoint.funnel = {source: dict(reasons) for source, reasons in by_source.items()}
+
     _save_checkpoint(checkpoint)
 
     event_bus.publish(
@@ -410,6 +423,7 @@ def _persist(
     ranked: list[ScoredJob],
     source_health: list[SourceHealth],
     counts: dict[str, int],
+    funnel: dict[str, dict[str, int]],
     run_started_at: datetime,
     cache: SignatureCache,
     event_bus: EventBus,
@@ -437,6 +451,7 @@ def _persist(
         status=RunStatus.SUCCESS,
         message=f"{len(ranked)} vacantes encontradas",
         counts=counts,
+        funnel=funnel,
         source_health=source_health,
         jobs=ranked,
         ai_usage=_ai_usage_snapshot(),
@@ -507,7 +522,9 @@ def run(
             registry, requested, checkpoint, cache, recency_days, event_bus
         )
         ranked = _score_stage(kept, criteria, router, profile, checkpoint, event_bus)
-        return _persist(ranked, source_health, checkpoint.counts, run_started_at, cache, event_bus)
+        return _persist(
+            ranked, source_health, checkpoint.counts, checkpoint.funnel, run_started_at, cache, event_bus
+        )
     except cancellation.RunCancelled:
         # Kevin's own "Pausar"/"Cancelar" click, not a failure — logged
         # plainly (no traceback) and left as RunStatus.PAUSED rather than

@@ -16,7 +16,7 @@ from career_radar.ai.base import AiResult
 from career_radar.ai.parse import match_ai_results
 from career_radar.ai.router import AiRouter
 from career_radar.config import AI_BATCH_SIZE
-from career_radar.models import Job, ScoredJob
+from career_radar.models import EnglishRequirement, Job, ScoredJob
 from career_radar.profile import Profile
 
 
@@ -24,9 +24,21 @@ def _chunk(items: list[Job], size: int) -> list[list[Job]]:
     return [items[i : i + size] for i in range(0, len(items), size)]
 
 
+def _initial_flags(job: Job) -> list[str]:
+    """Flags known the moment a `ScoredJob` is built, independent of whether
+    the AI ever scores it (EATP-028/P27) — `confirm_english` must reach
+    Kevin even for a job the AI cap defers, not only AI-evaluated ones."""
+    if job.english_requirement == EnglishRequirement.INDETERMINATE:
+        return ["confirm_english"]
+    return []
+
+
 def _assemble(job: Job, prefilter_score: int, ai_result: AiResult | None) -> ScoredJob:
+    flags = _initial_flags(job)
     if ai_result is None:
-        return ScoredJob(job=job, prefilter_score=prefilter_score, prefilter_passed=True)
+        return ScoredJob(
+            job=job, prefilter_score=prefilter_score, prefilter_passed=True, flags=flags
+        )
     return ScoredJob(
         job=job,
         prefilter_score=prefilter_score,
@@ -36,6 +48,7 @@ def _assemble(job: Job, prefilter_score: int, ai_result: AiResult | None) -> Sco
         pros=ai_result.pros,
         contras=ai_result.contras,
         summary=ai_result.summary,
+        flags=flags,
     )
 
 
@@ -64,6 +77,11 @@ def build_deferred(deferred: list[Job], prefilter_scores: dict[str, int]) -> lis
     """Jobs that passed the pre-filter but fell outside the AI cap — ranked
     on their prefilter score alone, never sent to the AI (P14)."""
     return [
-        ScoredJob(job=job, prefilter_score=prefilter_scores[job.signature], prefilter_passed=True)
+        ScoredJob(
+            job=job,
+            prefilter_score=prefilter_scores[job.signature],
+            prefilter_passed=True,
+            flags=_initial_flags(job),
+        )
         for job in deferred
     ]

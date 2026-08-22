@@ -73,7 +73,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-025** | Dead-browser hang fix + migration out of WSL to native Windows | — | ✅ | 024 | High | ~2h30 (2026-08-17/18) |
 | **EATP-026** | API surface hardening + adversarial input tests (Security Hardening initiative) | — | ✅ | — | Light-Medium | ~1h20 (2026-08-19) |
 | **EATP-027** | Remove LinkedIn as a source entirely | — | ✅ | 026 | Medium | ~35 min (2026-08-21) |
-| **EATP-028** | English-requirement classification (reject/compatible/indeterminate) + per-run funnel diagnostic + expanded search terms | — | ⬜ | 027 | Medium | TBD |
+| **EATP-028** | English-requirement classification (reject/compatible/indeterminate) + per-run funnel diagnostic + expanded search terms | — | ✅ | 027 | Medium | ~30 min (2026-08-21) |
 | **EATP-029** | Cache observability — "Ver cacheadas" view + manual reset | — | ⬜ | 028 | Light-med | TBD |
 | **EATP-030** | New sources — LaPieza, Hireline, WeRemoto, RemotoJOB (+ Glassdoor viability spike) | — | ⬜ | 029 | Medium-High | TBD |
 

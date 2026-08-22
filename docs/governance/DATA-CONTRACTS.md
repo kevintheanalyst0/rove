@@ -20,7 +20,8 @@ filters, cache, scoring, and the UI all speak these — no ad-hoc dicts.
 | `posted_at` | date \| None | best-effort posting date |
 | `days_old` | int | 999 if unknown |
 | `location_raw` | str | as scraped, for the UI |
-| `english_required` | bool | advanced-English-required signal |
+| `english_requirement` | enum | `compatible` \| `indeterminate` \| `reject` (EATP-028) — `reject` is explicit C1/C2/native/bilingual (hard-gated); `indeterminate` is ambiguous phrasing ("English required", "fluent") that never specifies a level, kept visible with a `confirm_english` flag instead of dropped |
+| `english_evidence` | list[str] | phrase(s) that drove the `english_requirement` classification (auditable, same pattern as `remote_evidence`) |
 | `seniority_hint` | str | `junior` \| `mid` \| `senior` \| `unknown` (heuristic) |
 | `thin_description` | bool | auto-set when `description` < 200 chars after stripping (P21); scoring may down-weight or skip, collectors never drop the job for this alone |
 | `title_caution_flags` | list[str] | ADR-009: ambiguous title words with no rescue word nearby (e.g. `engineer`, `manager`); set by the quality gate (EATP-009), advisory only for the matcher (EATP-013) — **never** a reject reason at the gate |
@@ -55,7 +56,7 @@ new `source_job_id` is recognized as the same posting (fixes P9).
 | `pros` | list[str] | Spanish, responsibilities-focused |
 | `contras` | list[str] | Spanish, only real incompatibilities (may be empty) |
 | `summary` | str | Spanish, one paragraph, why this score |
-| `flags` | list[str] | e.g. `remote_uncertain`, `english_required`, `senior_heavy` |
+| `flags` | list[str] | e.g. `remote_uncertain`, `english_required` (Layer-4 demotion, `job.english_requirement == reject` scored too high), `confirm_english` (EATP-028: `job.english_requirement == indeterminate`, never demotes), `senior_heavy` |
 
 ### The single canonical score → grade mapping (used EVERYWHERE)
 
@@ -78,6 +79,7 @@ number, so it can never look contradictory.
 | `status` | enum | `running` \| `success` \| `paused` \| `error` |
 | `message` | str | human-readable |
 | `counts` | dict | collected / gated / prefiltered / ai_evaluated / shown |
+| `funnel` | dict[str, dict[str, int]] | EATP-028/P28: `{source: {rejection_reason: count}}` — the per-source breakdown of every `quality/filters.py::gate()` rejection reason (`advanced_english_required`, `not_remote:hybrid`, `stale`, `duplicate_within_run`, `cached_recently`, `dismissed_by_kevin`, `excluded_title_or_company`), so a quiet run can be told apart from a stage/source quietly filtering a lot |
 | `source_health` | list[SourceHealth] | ADR-008: per-source `ok\|low\|zero\|error` + reason, from `health/check.py` (EATP-011) |
 | `jobs` | list[ScoredJob] | ranked, best first |
 | `ai_usage` | dict | provider → calls made (quota visibility) |

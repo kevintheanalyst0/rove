@@ -7,10 +7,11 @@ defects Kevin saw in the legacy system:
   removed. Empty `contras` afterward is fine — a genuinely good job doesn't
   need a manufactured downside.
 - Remote / English re-check: independently RE-DERIVED from the job text
-  (not just trusting `job.remote_status`/`job.english_required`, which may
+  (not just trusting `job.remote_status`/`job.english_requirement`, which may
   be stale or the AI may have caught something the gate's regex missed) —
   a job can't be A-grade and non-remote, or A-grade and requiring advanced
-  English the candidate doesn't have.
+  English the candidate doesn't have. Only the `REJECT` tier demotes
+  (EATP-028) — `INDETERMINATE`/ambiguous phrasing never auto-penalizes.
 - Grade (and `fit`) are never touched here directly — reconstructing the
   `ScoredJob` re-runs its own validator, which is the ONE place a score
   becomes a grade/fit (P7). Never trust a label the AI wrote.
@@ -22,8 +23,13 @@ adds one more clamp on `ai_score` as cheap, redundant insurance.
 
 from __future__ import annotations
 
-from career_radar.criteria import Criteria, classify_remote, load_criteria, requires_advanced_english
-from career_radar.models import RemoteStatus, ScoredJob
+from career_radar.criteria import (
+    Criteria,
+    classify_english_requirement_with_evidence,
+    classify_remote,
+    load_criteria,
+)
+from career_radar.models import EnglishRequirement, RemoteStatus, ScoredJob
 
 # A contra naming any of these is a rubric violation regardless of context —
 # CANDIDATE-PROFILE.md is explicit that overqualification/seniority is NEVER
@@ -74,7 +80,12 @@ def _remote_disagrees(job, criteria: Criteria) -> bool:
 
 
 def _english_required(job, criteria: Criteria) -> bool:
-    return requires_advanced_english(job.title, job.description, criteria)
+    """Re-derived, independent of `job.english_requirement` (may be stale, or
+    the AI may have caught something the gate's regex missed) — but only the
+    `REJECT` tier demotes here (EATP-028/P27): `INDETERMINATE` is ambiguous,
+    not a confirmed violation, so it must never auto-penalize a good match."""
+    requirement, _ = classify_english_requirement_with_evidence(job.title, job.description, criteria)
+    return requirement == EnglishRequirement.REJECT
 
 
 def validate(scored: ScoredJob, criteria: Criteria | None = None) -> ScoredJob:

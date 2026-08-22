@@ -7,8 +7,15 @@ from __future__ import annotations
 from career_radar.ai.base import AiResult, Provider
 from career_radar.ai.router import AiRouter
 from career_radar.ai.usage import UsageTracker
-from career_radar.criteria import AdvancedEnglish, Criteria, Matcher, RemoteSignals, ScoreFloors, load_criteria
-from career_radar.models import Grade, Job, RemoteStatus, ScoredJob
+from career_radar.criteria import (
+    Criteria,
+    EnglishRequirementCriteria,
+    Matcher,
+    RemoteSignals,
+    ScoreFloors,
+    load_criteria,
+)
+from career_radar.models import EnglishRequirement, Grade, Job, RemoteStatus, ScoredJob
 from career_radar.profile import load_profile
 from career_radar.scoring import rank_scored_jobs, score_jobs
 from career_radar.scoring.evaluate import build_deferred, evaluate_selected
@@ -25,6 +32,7 @@ def _job(
     description: str = "x" * 250,
     remote_status: RemoteStatus = RemoteStatus.REMOTE,
     days_old: int = 999,
+    english_requirement: EnglishRequirement = EnglishRequirement.COMPATIBLE,
 ) -> Job:
     return Job(
         source="test",
@@ -34,6 +42,7 @@ def _job(
         url=f"http://example.com/{source_job_id}",
         remote_status=remote_status,
         days_old=days_old,
+        english_requirement=english_requirement,
     )
 
 
@@ -54,7 +63,9 @@ def _criteria(
         excluded_companies=[],
         excluded_title_keywords={},
         title_caution_words=title_caution_words or {},
-        advanced_english=AdvancedEnglish(phrases=[], regex=[]),
+        english_requirement=EnglishRequirementCriteria(
+            reject_phrases=[], reject_regex=[], indeterminate_phrases=[], indeterminate_regex=[]
+        ),
         remote_signals=RemoteSignals(
             positive_phrases=["remote", "remoto"],
             hybrid_phrases=["hybrid", "híbrido"],
@@ -251,6 +262,21 @@ def test_build_deferred_never_calls_the_ai():
     assert deferred[0].final_score == 45
 
 
+def test_indeterminate_english_is_flagged_confirm_english_even_without_ai():
+    # P27: a job the AI cap defers (never reaches evaluate_selected) must
+    # still surface the flag — Kevin can't confirm what he never sees.
+    job = _job(english_requirement=EnglishRequirement.INDETERMINATE)
+    [deferred] = build_deferred([job], {job.signature: 45})
+    assert "confirm_english" in deferred.flags
+
+
+def test_indeterminate_english_is_flagged_confirm_english_when_ai_evaluated():
+    job = _job(english_requirement=EnglishRequirement.INDETERMINATE)
+    router = _router({job.signature: AiResult(signature=job.signature, ai_score=77, summary="ok")})
+    [scored] = evaluate_selected([job], {job.signature: 40}, router, PROFILE)
+    assert "confirm_english" in scored.flags
+
+
 # ---------------------------------------------------------------------------
 # Layer 4 — post-validation guards
 # ---------------------------------------------------------------------------
@@ -295,6 +321,22 @@ def test_english_recheck_demotes_and_flags_a_high_score_job_requiring_advanced_e
     validated = validate(scored)
     assert validated.final_score <= 79
     assert "english_required" in validated.flags
+
+
+def test_english_recheck_never_demotes_for_ambiguous_indeterminate_phrasing():
+    # P27: the whole point of the indeterminate tier is that it must NOT be
+    # auto-penalized like a confirmed advanced-English requirement.
+    job = _job(
+        title="Data Analyst",
+        description=(
+            "Puesto 100% remoto. English required for occasional client calls."
+            + "x" * 150
+        ),
+    )
+    scored = ScoredJob(job=job, prefilter_score=50, prefilter_passed=True, ai_evaluated=True, ai_score=95)
+    validated = validate(scored)
+    assert validated.final_score == 95
+    assert "english_required" not in validated.flags
 
 
 def test_contradiction_strip_removes_seniority_and_self_cancelling_contras():

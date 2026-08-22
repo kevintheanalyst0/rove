@@ -16,7 +16,7 @@ import json
 from pathlib import Path
 
 from career_radar import config
-from career_radar.models import Job, RemoteStatus
+from career_radar.models import EnglishRequirement, Job, RemoteStatus
 from career_radar.quality.cache import SignatureCache
 from career_radar.quality.filters import gate
 
@@ -84,17 +84,30 @@ def test_plain_title_with_no_ambiguous_word_has_no_caution_flags():
 
 
 # ---------------------------------------------------------------------------
-# Advanced English
+# English requirement (EATP-028) — only `reject` hard-gates here.
 # ---------------------------------------------------------------------------
 
 
-def test_advanced_english_required_is_rejected_and_flag_is_set_on_the_job():
+def test_advanced_english_required_is_rejected_and_classification_is_set_on_the_job():
     result = gate([_job(description="Remoto 100%. Se requiere inglés avanzado.")])
 
     assert result.kept == []
     job, reason = result.rejected[0]
     assert reason == "advanced_english_required"
-    assert job.english_required is True
+    assert job.english_requirement == EnglishRequirement.REJECT
+    assert job.english_evidence
+
+
+def test_ambiguous_english_phrasing_is_kept_not_rejected():
+    # P27: "English required" never specifies a level — must survive the
+    # gate (Kevin confirms it himself downstream), not be silently dropped.
+    result = gate([_job(description="Remoto 100%. English required for client calls.")])
+
+    assert len(result.kept) == 1
+    assert result.rejected == []
+    kept = result.kept[0]
+    assert kept.english_requirement == EnglishRequirement.INDETERMINATE
+    assert kept.english_evidence
 
 
 # ---------------------------------------------------------------------------

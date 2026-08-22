@@ -82,8 +82,11 @@ Run on every AI result before it's shown. These catch the exact defects Kevin sa
   mentions seniority/overqualification. Empty `contras` is then fine.
 - **Remote re-check:** if the guard's remote signal disagrees with a high AI score,
   demote and flag `remote_uncertain` (a job can't be A-grade and non-remote).
-- **English re-check:** if advanced-English signals exist, cap and flag
-  `english_required`.
+- **English re-check:** if an explicit (`reject`-tier: C1/C2/native/bilingual)
+  English signal exists, cap and flag `english_required`. Ambiguous phrasing
+  (`indeterminate`-tier, EATP-028) never demotes — it's flagged `confirm_english`
+  at assembly time instead, so Kevin can judge it himself rather than the score
+  being auto-penalized for a requirement that was never actually confirmed.
 - **Grade recompute:** always recompute `grade` from `final_score`; never trust a grade
   the AI wrote.
 

@@ -18,8 +18,8 @@ from career_radar.ai.router import AiRouter
 from career_radar.ai.usage import UsageTracker
 from career_radar.collectors.base import Collector, CollectorRegistry
 from career_radar.criteria import (
-    AdvancedEnglish,
     Criteria,
+    EnglishRequirementCriteria,
     Matcher,
     RemoteSignals,
     ScoreFloors,
@@ -79,7 +79,9 @@ def _criteria(*, ai_cap_top_n: int = 50) -> Criteria:
         excluded_companies=[],
         excluded_title_keywords={},
         title_caution_words={},
-        advanced_english=AdvancedEnglish(phrases=[], regex=[]),
+        english_requirement=EnglishRequirementCriteria(
+            reject_phrases=[], reject_regex=[], indeterminate_phrases=[], indeterminate_regex=[]
+        ),
         remote_signals=RemoteSignals(
             positive_phrases=["remote", "remoto"],
             hybrid_phrases=["hybrid", "híbrido"],
@@ -194,6 +196,8 @@ def test_full_run_over_fixtures_yields_a_valid_run_result():
     assert result.counts["collected"] == 2
     assert result.counts["gated_kept"] == 1  # onsite_job rejected by the real remote hard-gate
     assert {health.source for health in result.source_health} == {"occ", "remotive"}
+    # EATP-028/P28: the funnel diagnostic tallies gate.rejected by source+reason.
+    assert result.funnel == {"remotive": {"not_remote:onsite": 1}}
 
     assert config.RESULTS_FILE.exists()
     assert config.STATUS_FILE.exists()

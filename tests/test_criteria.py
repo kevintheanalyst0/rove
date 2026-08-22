@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from career_radar.criteria import (
+    classify_english_requirement_with_evidence,
     classify_remote,
     classify_remote_with_evidence,
     has_excluded_title,
     is_excluded_company,
     load_criteria,
-    requires_advanced_english,
     title_caution_flags,
     title_is_rejected,
 )
-from career_radar.models import RemoteStatus
+from career_radar.models import EnglishRequirement, RemoteStatus
 from career_radar.profile import load_profile
 
 # ---------------------------------------------------------------------------
@@ -113,21 +113,66 @@ def test_title_is_rejected_only_covers_absolute_categories():
 
 
 # ---------------------------------------------------------------------------
-# Advanced English
+# English requirement classification (EATP-028) — three-way, not a bool.
 # ---------------------------------------------------------------------------
 
 
-def test_advanced_english_phrase_flags_true():
-    assert requires_advanced_english("Data Analyst", "Se requiere inglés avanzado")
+def test_explicit_advanced_english_phrase_is_rejected():
+    status, evidence = classify_english_requirement_with_evidence(
+        "Data Analyst", "Se requiere inglés avanzado"
+    )
+    assert status == EnglishRequirement.REJECT
+    assert evidence == ["inglés avanzado"]
 
 
-def test_advanced_english_regex_flags_true():
-    assert requires_advanced_english("Data Analyst", "English level C1 required")
-    assert requires_advanced_english("Data Analyst", "Se requiere TOEFL")
+def test_explicit_advanced_english_regex_is_rejected():
+    status, _ = classify_english_requirement_with_evidence("Data Analyst", "English level C1 required")
+    assert status == EnglishRequirement.REJECT
+    status, _ = classify_english_requirement_with_evidence("Data Analyst", "Se requiere TOEFL")
+    assert status == EnglishRequirement.REJECT
 
 
-def test_intermediate_english_does_not_flag():
-    assert not requires_advanced_english("Data Analyst", "Inglés intermedio deseable, no excluyente")
+def test_native_and_bilingual_are_rejected():
+    status, _ = classify_english_requirement_with_evidence("Data Analyst", "Native English speaker")
+    assert status == EnglishRequirement.REJECT
+    status, _ = classify_english_requirement_with_evidence("Data Analyst", "Fully bilingual required")
+    assert status == EnglishRequirement.REJECT
+
+
+def test_intermediate_english_is_compatible():
+    status, evidence = classify_english_requirement_with_evidence(
+        "Data Analyst", "Inglés intermedio deseable, no excluyente"
+    )
+    assert status == EnglishRequirement.COMPATIBLE
+    assert evidence == []
+
+
+def test_no_english_mention_is_compatible():
+    status, evidence = classify_english_requirement_with_evidence("Data Analyst", "SQL y Power BI")
+    assert status == EnglishRequirement.COMPATIBLE
+    assert evidence == []
+
+
+def test_ambiguous_phrases_are_indeterminate_not_rejected():
+    # P27: these three used to hard-reject under the old bool — none of them
+    # actually specifies a level above B2, so they must land as indeterminate
+    # (kept + flagged for Kevin to confirm) instead of being silently dropped.
+    for description in (
+        "Professional English is a plus",
+        "English required for client calls",
+        "Strong communication skills in English",
+    ):
+        status, evidence = classify_english_requirement_with_evidence("Data Analyst", description)
+        assert status == EnglishRequirement.INDETERMINATE, description
+        assert evidence, description
+
+
+def test_reject_wins_over_indeterminate_when_both_present():
+    status, evidence = classify_english_requirement_with_evidence(
+        "Data Analyst", "English required. Advanced English is a must."
+    )
+    assert status == EnglishRequirement.REJECT
+    assert "advanced english" in evidence
 
 
 # ---------------------------------------------------------------------------

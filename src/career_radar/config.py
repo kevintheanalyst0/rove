@@ -73,6 +73,9 @@ SEARCH_TERMS = [
     "analista de informacion",
     "especialista en datos",
     "analista funcional",
+    # EATP-028 (2026-08-21 backlog): widen the net without drowning it —
+    # measure per source, drop a term if it's mostly noise (see ROADMAP.md).
+    "analista de inteligencia comercial",
 ]
 
 # English terms: for remote-first/global boards (Remotive, RemoteOK, We Work
@@ -85,6 +88,18 @@ ENGLISH_SEARCH_TERMS = [
     "business analyst",
     "bi analyst",
     "analytics analyst",
+    # EATP-028 (2026-08-21 backlog): widen the net without drowning it —
+    # measure per source, drop a term if it's mostly noise (see ROADMAP.md).
+    "power bi developer",
+    "business intelligence developer",
+    "data visualization analyst",
+    "insights analyst",
+    "operations data analyst",
+    "supply chain data analyst",
+    "business systems analyst",
+    "sap data analyst",
+    "automation analyst",
+    "people analytics",
 ]
 
 # Curated ATS company boards (EATP-008) — remote-friendly companies with a

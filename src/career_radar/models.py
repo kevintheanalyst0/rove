@@ -37,6 +37,20 @@ class SeniorityHint(str, Enum):
     UNKNOWN = "unknown"
 
 
+class EnglishRequirement(str, Enum):
+    """EATP-028: was a bare bool (`english_required`) that hard-rejected on
+    any English mention, ambiguous or not. Three-way now, same shape as
+    `RemoteStatus` — `COMPATIBLE` is the default (no signal, or an explicit
+    B2/intermediate mention); `INDETERMINATE` is ambiguous phrasing ("English
+    required", "professional English") that doesn't specify a level — kept
+    visible with a `confirm_english` flag instead of dropped; `REJECT` is an
+    explicit C1/C2/native/bilingual requirement, still a hard gate."""
+
+    COMPATIBLE = "compatible"
+    INDETERMINATE = "indeterminate"
+    REJECT = "reject"
+
+
 class Grade(str, Enum):
     A_PLUS = "A+"
     A = "A"
@@ -176,7 +190,8 @@ class Job(BaseModel):
     posted_at: date | None = None
     days_old: int = 999
     location_raw: str = ""
-    english_required: bool = False
+    english_requirement: EnglishRequirement = EnglishRequirement.COMPATIBLE
+    english_evidence: list[str] = Field(default_factory=list)
     seniority_hint: SeniorityHint = SeniorityHint.UNKNOWN
     thin_description: bool = False
     # ADR-009: advisory only — a caution word (e.g. "engineer", "manager")
@@ -247,6 +262,13 @@ class RunResult(BaseModel):
     status: RunStatus = RunStatus.RUNNING
     message: str = ""
     counts: dict[str, int] = Field(default_factory=dict)
+    # EATP-028 (P28): per-source breakdown of every gate-rejection reason
+    # (`quality/filters.py`'s reason strings, e.g. "advanced_english_required",
+    # "not_remote:hybrid", "stale", "duplicate_within_run", "cached_recently",
+    # "dismissed_by_kevin") — {source: {reason: count}}. Answers "did the
+    # market produce little, or did a specific stage/source quietly filter a
+    # lot" without guessing from the aggregate `counts` alone.
+    funnel: dict[str, dict[str, int]] = Field(default_factory=dict)
     source_health: list[SourceHealth] = Field(default_factory=list)
     jobs: list[ScoredJob] = Field(default_factory=list)
     ai_usage: dict[str, int] = Field(default_factory=dict)
