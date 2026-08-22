@@ -1,7 +1,7 @@
 """Collector framework: shared contract + plumbing every source plugs into.
 
-Site-specific collectors (occ, computrabajo, linkedin, indeed, ...) are built
-in EATP-004-008 on top of `base.py` / `http.py` / `browser.py`.
+Site-specific collectors (occ, computrabajo, indeed, ...) are built in
+EATP-004-008 on top of `base.py` / `http.py` / `browser.py`.
 """
 
 from __future__ import annotations
@@ -12,23 +12,17 @@ from career_radar.collectors.greenhouse import GreenhouseCollector
 from career_radar.collectors.himalayas import HimalayasCollector
 from career_radar.collectors.indeed import IndeedCollector
 from career_radar.collectors.lever import LeverCollector
-from career_radar.collectors.linkedin import LinkedInCollector
 from career_radar.collectors.occ import OCCCollector
 from career_radar.collectors.remoteok import RemoteOKCollector
 from career_radar.collectors.remotive import RemotiveCollector
 from career_radar.collectors.wwr import WWRCollector
 
-# Sources that drive a real Chromium browser (DrissionPage) — slower, and the
-# ones carrying real account/block risk (P23). The orchestrator's 'fast' mode
+# Sources that drive a real Chromium browser (DrissionPage) — slower, and
+# carrying real account/block risk (P23). The orchestrator's 'fast' mode
 # (EATP-014) drops these; 'thorough' (the default) keeps them for full
-# coverage. LinkedIn moved to HTTP-only guest endpoints in EATP-019
-# (2026-08-13) and dropped out of this set, then moved back in EATP-022
-# (2026-08-15) — the guest endpoint's listing was too rate-limited to push
-# faster and LinkedIn's classic browser UI (which broke EATP-019's original
-# version) turned out to have come back. Only *listing* touches the browser
-# again; detail-fetch (`linkedin_api.py`) stays on the anonymous guest
-# endpoint, unaffected either way.
-BROWSER_SOURCES = {"indeed", "linkedin"}
+# coverage. LinkedIn used to be in this set too; removed entirely in EATP-027
+# (fragile for its yield — see ROADMAP.md P26), not just dropped from here.
+BROWSER_SOURCES = {"indeed"}
 
 
 def build_registry() -> CollectorRegistry:
@@ -43,6 +37,5 @@ def build_registry() -> CollectorRegistry:
     registry.register("himalayas", HimalayasCollector)
     registry.register("greenhouse", GreenhouseCollector)
     registry.register("lever", LeverCollector)
-    registry.register("linkedin", LinkedInCollector)
     registry.register("indeed", IndeedCollector)
     return registry

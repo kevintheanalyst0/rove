@@ -35,8 +35,8 @@ directo en el Escritorio, clic derecho sobre `Career Radar.vbs` → *Enviar a* �
 **Una vez adentro:**
 1. Aprieta **"Iniciar búsqueda"**. Vas a ver el spinner con el estado en vivo; cuando
    termine, se muestra el dashboard con los resultados.
-2. Chrome corre minimizado de fondo — no lo vas a ver mientras LinkedIn/Indeed
-   recolectan normalmente. Si LinkedIn o Indeed piden verificación humana, la ventana
+2. Chrome corre minimizado de fondo — no lo vas a ver mientras Indeed recolecta
+   normalmente. Si Indeed pide verificación humana, la ventana
    se sube sola al frente, maximizada — resuélvela ahí (el sistema espera hasta 5
    minutos; si no llegas a tiempo, esa fuente se omite y el resto de la corrida sigue
    igual), y una vez resuelto el aviso en el dashboard desaparece solo.
@@ -51,7 +51,7 @@ los ~20 segundos). Si lo corriste manualmente en una terminal, `Ctrl+C` ahí tam
 Ver `docs/governance/AUTOMATION.md` para la receta documentada (Task Scheduler de
 Windows + `wsl.exe`) por si en algún momento quieres activarla. Hoy queda apagada a
 propósito — cada corrida gasta cuota gratuita de IA, y una corrida automática sin
-supervisión no puede resolver un captcha de LinkedIn/Indeed si aparece.
+supervisión no puede resolver un captcha de Indeed si aparece.
 
 ## Repo map
 

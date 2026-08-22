@@ -17,7 +17,7 @@ from career_radar.models import (
 
 def make_job(**overrides) -> Job:
     defaults = {
-        "source": "linkedin",
+        "source": "indeed",
         "source_job_id": "1",
         "title": "Analista de Datos",
         "company": "Acme",
@@ -35,7 +35,7 @@ def make_job(**overrides) -> Job:
 
 def test_job_requires_core_fields():
     with pytest.raises(ValidationError):
-        Job(source="linkedin")  # missing source_job_id, title, url
+        Job(source="indeed")  # missing source_job_id, title, url
 
 
 def test_job_defaults():

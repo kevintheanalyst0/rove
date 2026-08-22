@@ -46,9 +46,11 @@ the same tactic still works when the site tweaks the fixed-page count.
 - **Computrabajo** (`computrabajo.py`): looks for a specific end-of-real-results HTML
   marker (`<div class="tc mbB pt30 pb30">`) and truncates the page's HTML there before
   parsing cards — anything after that marker is not a real result even mid-page.
-- **LinkedIn** (`linkedin.py`): reads the total-results count from the page header text
-  and stops once `(page-1)*25` reaches it; also stops early if a page returns fewer
-  than 25 cards (`< PAGE_SIZE`) — a partial page means it's the last one. Capped at
+- **LinkedIn** (historical — collector removed entirely in EATP-027; kept here as a
+  documented pagination-detection technique, not a live source): read the
+  total-results count from the page header text and stopped once `(page-1)*25`
+  reached it; also stopped early if a page returned fewer than 25 cards
+  (`< PAGE_SIZE`) — a partial page means it's the last one. Capped at
   `MAX_PAGES_PER_TERM = 10` as a safety net regardless.
 - **Indeed** (`indeed.py`): stops when a page returns zero *new* ids, when a page
   returns fewer than `PAGE_SIZE` (10), **or** when the exact same tuple of ids repeats
@@ -71,7 +73,7 @@ filter.
 |--------|--------------------|---------------|
 | OCC | `/tipo-home-office-remoto/` (URL path segment) | Remote-only at the source |
 | Computrabajo | `-en-remoto` (URL path suffix) | Remote-only at the source |
-| LinkedIn | `f_WT=2` / `f_TPR=r86400` / `f_JT=F` / `sortBy=DD` | Remote / posted ≤24h / full-time / newest-first |
+| LinkedIn *(historical, removed EATP-027)* | `f_WT=2` / `f_TPR=r86400` / `f_JT=F` / `sortBy=DD` | Remote / posted ≤24h / full-time / newest-first |
 | Indeed | `fromage=14` / `sc=0kf:attr(DSQF7);` | Posted ≤14 days / remote attribute filter |
 
 This doesn't replace the remote hard-gate (ADR-002) or recency check downstream — sites
@@ -117,11 +119,12 @@ don't solve them all the same way.
 
 ## 5. Other things worth carrying forward (not raised by Kevin, found while reading legacy code)
 
-- **Rate-limit coordination across parallel browser tabs.** Both LinkedIn and Indeed
-  run several tabs in parallel and coordinate a *global pause* the moment any tab hits
-  a captcha/429-like signal (one thread "wins" the pause, alerts, waits; the rest just
-  wait on the same event) rather than each tab independently retrying and hammering the
-  site harder. Relevant for EATP-005/006 if they keep multi-tab collection.
+- **Rate-limit coordination across parallel browser tabs.** Indeed (and, until its
+  removal in EATP-027, LinkedIn) runs several tabs in parallel and coordinates a
+  *global pause* the moment any tab hits a captcha/429-like signal (one thread "wins"
+  the pause, alerts, waits; the rest just wait on the same event) rather than each tab
+  independently retrying and hammering the site harder. Relevant for any future
+  multi-tab browser collector (EATP-030), not just Indeed.
 - **Don't resurrect the "conditional title rescue" pattern.** Legacy's
   `filters.py::CONDITIONAL_TITLE_RULES` (e.g. reject "coordinator" unless a data/BI
   word is *also* in the title) is exactly the anti-pattern ADR-009 replaced after the
@@ -136,10 +139,12 @@ don't solve them all the same way.
 
 ## 5b. The persistent browser profile starts EMPTY — needs a one-time manual login
 
-Discovered live in EATP-005, not something Kevin flagged in advance: `browser.py`'s
-`CHROME_USER_DATA_DIR` (EATP-003) defaults to a brand-new directory under `data/` —
-unlike legacy, which pointed at an existing, already-logged-in automation profile on
-Kevin's machine. The first live run against LinkedIn with `use_profile=True` returned
+Discovered live in EATP-005 (LinkedIn's own collector, removed entirely in EATP-027 —
+the lesson below stays relevant to Indeed and any future profile-using collector), not
+something Kevin flagged in advance: `browser.py`'s `CHROME_USER_DATA_DIR` (EATP-003)
+defaults to a brand-new directory under `data/` — unlike legacy, which pointed at an
+existing, already-logged-in automation profile on Kevin's machine. The first live run
+against LinkedIn with `use_profile=True` returned
 **zero jobs with no error at all**: LinkedIn didn't redirect to `/login` or show any
 health/error marker — it silently served the logged-out **public** search page instead
 (different markup entirely: `base-search-card__title` instead of

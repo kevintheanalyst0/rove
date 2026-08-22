@@ -58,7 +58,7 @@ the same platform — see CLAUDE.md golden rule 12.
 | `python-dateutil` | Robust date parsing (posting ages, mixed formats) | 003, 004 |
 | `rapidfuzz` | Fast fuzzy matching for dedup + content signatures | 003 |
 | `orjson` | Fast JSON for large files; streaming-friendly | 001+ |
-| `DrissionPage` | Chromium automation for LinkedIn/Indeed listing pages | 004 |
+| `DrissionPage` | Chromium automation for Indeed listing pages (also LinkedIn until its removal in EATP-027) | 004 |
 | `groq` | **Primary** AI provider (free, fast, OpenAI-compatible) | 006 |
 | `google-genai` | Gemini provider (Flash-Lite / Flash) | 006 |
 | `openai` | OpenAI-compatible client (OpenRouter; also works for Groq) | 006 |
@@ -78,7 +78,7 @@ the same platform — see CLAUDE.md golden rule 12.
   planned for EATP-018/015-016 only, but EATP-003 downloaded it early: WSL has no
   trustworthy system Chromium (Ubuntu 24.04's `chromium` is snap-only and its sandboxing
   fights DrissionPage's custom profile dirs), so `collectors/browser.py` resolves to this
-  same standalone binary for the browser-driven collectors (LinkedIn/Indeed). No new
+  same standalone binary for the browser-driven collector (Indeed). No new
   dependency — `playwright` was already in the list; this just fetches its browser asset
   sooner.
 - **AI SDKs:** you don't need all three. Groq alone (via `groq` or the OpenAI-compatible

@@ -48,7 +48,7 @@ AI_CHECKPOINT_FILE = DATA_DIR / "ai_checkpoint.jsonl"
 
 
 def raw_source_file(source: str) -> Path:
-    """Path to a source's raw JSONL file (e.g. 'linkedin' -> data/raw/linkedin.jsonl)."""
+    """Path to a source's raw JSONL file (e.g. 'occ' -> data/raw/occ.jsonl)."""
     return RAW_DIR / f"{source}.jsonl"
 
 

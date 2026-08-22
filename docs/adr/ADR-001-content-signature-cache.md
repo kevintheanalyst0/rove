@@ -1,8 +1,9 @@
 # ADR-001 — Content-signature cache (not site job-ids)
 
 - **Status:** Accepted
-- **Context:** The legacy permanent cache keys on each site's `job_id`. LinkedIn/Indeed
-  mint a **new id daily** for the same reposted vacancy, so the cache never recognizes
+- **Context:** The legacy permanent cache keys on each site's `job_id`. Indeed (and,
+  historically, LinkedIn before its removal in EATP-027) mints a **new id daily** for
+  the same reposted vacancy, so the cache never recognizes
   it and jobs like Capgemini "FBS Analyst" reappear every day (P9).
 - **Decision:** Key the cache and cross-source dedup on a **content signature**:
   `sha1(normalize(company) | normalize(title) | normalize(description)[:400])`, where

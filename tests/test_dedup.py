@@ -85,12 +85,12 @@ def test_genuinely_different_roles_at_the_same_company_never_collapse():
 def test_three_reposts_across_sources_collapse_to_the_first_seen():
     first = _job(source="occ", source_job_id="1")
     second = _job(source="computrabajo", source_job_id="2")
-    third = _job(source="linkedin", source_job_id="3")
+    third = _job(source="indeed", source_job_id="3")
 
     kept, dropped = dedup([first, second, third])
 
     assert kept == [first]
-    assert {job.source for job in dropped} == {"computrabajo", "linkedin"}
+    assert {job.source for job in dropped} == {"computrabajo", "indeed"}
 
 
 def test_empty_description_never_matches_anything():

@@ -474,7 +474,7 @@ def run(
     """Run the full pipeline once and return its `RunResult`.
 
     `mode='thorough'` (default) runs every registered source, including the
-    browser-driven ones (LinkedIn/Indeed) — best coverage, per Kevin (P4: a
+    browser-driven one (Indeed) — best coverage, per Kevin (P4: a
     short list of genuinely good matches beats a long one). `mode='fast'`
     drops the browser sources for a quick HTTP/JSON-only pass. `sources`
     overrides both with an explicit subset (mainly for tests/debugging).

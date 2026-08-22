@@ -8,7 +8,7 @@ filters, cache, scoring, and the UI all speak these — no ad-hoc dicts.
 
 | field | type | notes |
 |-------|------|-------|
-| `source` | str | collector id: `linkedin`, `occ`, `greenhouse`, … |
+| `source` | str | collector id: `occ`, `indeed`, `greenhouse`, … |
 | `source_job_id` | str | the site's own id (volatile — **never** a cache key) |
 | `signature` | str | **content signature** (see below); the stable identity |
 | `title` | str | normalized title |

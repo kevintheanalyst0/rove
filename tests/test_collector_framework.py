@@ -261,11 +261,11 @@ def test_request_manual_intervention_publishes_event_not_input():
     try:
         browser_mod.bus = test_bus
         subscriber = test_bus.subscribe()
-        browser_mod.request_manual_intervention("linkedin", "captcha detected")
+        browser_mod.request_manual_intervention("indeed", "captcha detected")
         event = subscriber.get(timeout=1)
     finally:
         browser_mod.bus = original_bus
 
-    assert event.phase == "collect:linkedin"
+    assert event.phase == "collect:indeed"
     assert event.status == "needs_intervention"
     assert event.message == "captcha detected"

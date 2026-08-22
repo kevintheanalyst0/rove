@@ -21,9 +21,9 @@ in legacy) before *every single* detail fetch, one at a time; with 100+ jobs
 that's minutes of pure deliberate waiting. Rather than drop the pause
 (legacy's zero-pacing approach isn't something to copy back — no evidence it
 was actually safer, just faster), detail-fetching is now parallelized across
-a small worker pool (mirrors `linkedin.py`'s `_MAX_TERM_WORKERS` /
-`linkedin_api.py`'s `fetch_job_details`) — same politeness per request, far
-less total wall-clock time. OCC has no login/session to protect (unlike
+a small worker pool (same shape as the other HTTP collectors' concurrent
+detail-fetch pools) — same politeness per request, far less total wall-clock
+time. OCC has no login/session to protect (unlike
 Indeed), so there's no extra account-risk tradeoff to weigh here.
 
 Live-verified (2026-08-15, all 9 `config.SEARCH_TERMS`): 79.0s for 134 jobs

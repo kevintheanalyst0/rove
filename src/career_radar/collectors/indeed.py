@@ -9,8 +9,9 @@ with regex over raw HTML instead of parsing the `JobPosting` JSON-LD block
 Indeed actually embeds.
 
 Rebuilt: JSON-LD parsing via BeautifulSoup + `json.loads`, and captcha
-handling mirrors LinkedIn's login flow (`collectors/linkedin.py`) instead of
-the original zero-intervention design: Kevin watched a live run through the
+handling uses a non-blocking, shared-episode coordinator (see
+`browser.ManualIntervention`) instead of the original zero-intervention
+design: Kevin watched a live run through the
 EATP-015 runner UI (2026-08-12) and decided he'd rather solve a captcha
 himself than lose Indeed for that run. On captcha it publishes ONE event
 asking him to resolve it in the browser window, then polls (no re-navigation
@@ -157,7 +158,7 @@ _NO_RESULTS_MARKERS = (
 )
 
 # Kevin's call (2026-08-12, after watching a live run): wait for HIM to solve
-# it, same bounded-wait shape as LinkedIn's login flow, not a blind cooldown.
+# it, a bounded wait via the shared episode coordinator, not a blind cooldown.
 _CAPTCHA_WAIT_SECONDS = 300
 _CAPTCHA_POLL_SECONDS = 10
 # EATP-023: before trusting a captcha marker match enough to notify Kevin,
@@ -298,8 +299,7 @@ def _build_job(job_id: str, detail: dict[str, str]) -> Job | None:
 
 
 class _CaptchaCoordination(browser.ManualIntervention):
-    """Indeed's captcha, on the shared episode coordinator — identical logic
-    to LinkedIn's login wall, only the wording and the timeout differ.
+    """Indeed's captcha, on the shared episode coordinator.
 
     Shared across the search tab and every detail tab for one `collect()`
     call: the moment any one of them hits a captcha, all of them wait out
@@ -577,8 +577,7 @@ class IndeedCollector:
         self, tab, url: str, context: str, coord: _CaptchaCoordination
     ) -> bool:
         """Kevin's call (2026-08-12): he'd rather solve a captcha himself in
-        the browser window than have Indeed auto-skip after a short cooldown
-        — mirrors LinkedIn's login wait.
+        the browser window than have Indeed auto-skip after a short cooldown.
 
         EATP-025 (2026-08-18, Kevin, live): this used to `tab.get(url)` on
         every poll, in every tab that hit the captcha. Kevin couldn't

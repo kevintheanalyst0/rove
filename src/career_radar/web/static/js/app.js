@@ -2,7 +2,7 @@
  *
  * States: idle -> working -> (error | done -> results). "working" also
  * renders a dismissible notice banner for needs_intervention events (e.g.
- * LinkedIn login) without leaving the working state, because the run itself
+ * Indeed's captcha) without leaving the working state, because the run itself
  * doesn't stop for those. "done" holds briefly on the checkmark, then fades
  * into "results" — one more state in this same machine, not a second page.
  *
@@ -69,7 +69,6 @@ const GRADE_TONE = { "A+": "good", A: "good", B: "mid", C: "low", D: "low" };
 // web/static/icons/); anything else falls back to a colored monogram —
 // still distinct at a glance, no unofficial logo guessing.
 const SOURCE_ICONS = {
-  linkedin: { kind: "svg", file: "linkedin", color: "#0A66C2" },
   indeed: { kind: "svg", file: "indeed", color: "#2164F3" },
   greenhouse: { kind: "svg", file: "greenhouse", color: "#24A47F" },
   occ: { kind: "letter", letter: "O", color: "#E03B2D" },

@@ -20,7 +20,7 @@ dependencies = [
     "orjson>=3.9",            # fast JSON read/write for large files
 
     # --- Browser-based collectors ---
-    "DrissionPage>=4.1",      # Chromium automation (LinkedIn/Indeed listing pages)
+    "DrissionPage>=4.1",      # Chromium automation (Indeed listing pages)
 
     # --- AI providers ---
     "groq>=0.11",             # primary free provider (OpenAI-compatible)

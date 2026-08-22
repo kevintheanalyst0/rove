@@ -3,6 +3,22 @@
 All notable changes to this project, grouped by build session (`EATP-00X`). Dates are
 the day the work was done; see `ROADMAP.md` for status/complexity/time per project.
 
+## EATP-027 — Remove LinkedIn as a source entirely (2026-08-21)
+- Deleted `collectors/linkedin.py`, `collectors/linkedin_api.py`, their tests, their
+  fixture, and the unused UI icon asset. Dropped `linkedin` from the collector
+  registry and from `BROWSER_SOURCES` (Indeed is now the only browser-driven source).
+- Reworded every comment/docstring in `browser.py`, `indeed.py`, `occ.py`,
+  `pipeline.py`, `config.py`, and the governance docs (`ARCHITECTURE.md`,
+  `AUTOMATION.md`, `DATA-CONTRACTS.md`, `DEPENDENCIES.md`, `SCRAPING-GOTCHAS.md`,
+  `SEARCH-STRATEGY.md`) that described LinkedIn as active or pointed at the now-deleted
+  files — `browser.py`'s actual session/profile/kill logic (shared with Indeed) was
+  left untouched.
+- Decision (P26, Kevin's 2026-08-21 job-search backlog): the collector had been the
+  most fragile in the system (CAPTCHA, login walls, geo/rate limits — see EATP-005,
+  019, 020, 022) for a shrinking share of good matches; not worth the upkeep any
+  longer. Full history stays in git; nothing kept as a dormant option.
+- 377 tests passing after removal; no behavior change to any other collector.
+
 ## [Unreleased] — EATP-018 — QA, hardening, automation & GitHub publish (2026-08-12)
 - End-to-end verification via the real web UI: 232 collected -> 48 gated -> 48
   AI-evaluated -> 48 final. Indeed's captcha resolved manually with the Chrome window

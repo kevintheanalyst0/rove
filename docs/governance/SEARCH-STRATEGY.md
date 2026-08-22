@@ -35,8 +35,10 @@ Rules:
 
 **Tier 2 — Useful but crowded (keep, refactor in EATP-004/005).**
 - **OCC**, **Computrabajo** — HTTP/JSON, fast, Spanish market. Keep.
-- **LinkedIn** — huge coverage but crowded and application-tracking is weak for Kevin.
-  Keep as a source of *signal*, not the centerpiece.
+- ~~**LinkedIn**~~ — huge coverage but crowded and application-tracking is weak for
+  Kevin, plus the most fragile/high-maintenance collector in the whole system
+  (CAPTCHA, login walls, geo/rate limits). Removed entirely in EATP-027 — the
+  maintenance cost stopped being worth its yield (ROADMAP.md P26).
 
 **Tier 3 — Keep and optimize (captcha-heavy).**
 - **Indeed** — valuable listings but aggressive bot detection (P5). **Kept as a
@@ -68,9 +70,12 @@ A job must pass ALL of these to reach the AI (details in EVALUATION-RUBRIC.md + 
 
 This is what turns "search more" into "search more, and better".
 
-## Anti-competition note (Kevin's LinkedIn concern)
+## Anti-competition note (historical — Kevin's original LinkedIn concern)
 
-LinkedIn rarely surfaces Kevin's applications partly because those postings get hundreds
-of applicants fast. Tier-1 ATS/remote boards typically have far fewer applicants per
-posting, so the *same effort* yields better odds. The system should make Tier-1 the
-default habit, with LinkedIn as supplementary coverage.
+This was the original reasoning for prioritizing Tier-1 over LinkedIn even while
+LinkedIn was still a source: LinkedIn rarely surfaced Kevin's applications, partly
+because those postings get hundreds of applicants fast. Tier-1 ATS/remote boards
+typically have far fewer applicants per posting, so the *same effort* yields better
+odds. LinkedIn was removed entirely in EATP-027, so this is no longer a live
+trade-off — kept here as the historical rationale for why Tier-1 is the default
+habit.

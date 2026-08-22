@@ -72,7 +72,26 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-024** | Pausar/Cancelar reliability + Indeed browser visibility | — | ✅ | 023 | Medium | ~1h25 (2026-08-16) |
 | **EATP-025** | Dead-browser hang fix + migration out of WSL to native Windows | — | ✅ | 024 | High | ~2h30 (2026-08-17/18) |
 | **EATP-026** | API surface hardening + adversarial input tests (Security Hardening initiative) | — | ✅ | — | Light-Medium | ~1h20 (2026-08-19) |
+| **EATP-027** | Remove LinkedIn as a source entirely | — | ✅ | 026 | Medium | ~35 min (2026-08-21) |
+| **EATP-028** | English-requirement classification (reject/compatible/indeterminate) + per-run funnel diagnostic + expanded search terms | — | ⬜ | 027 | Medium | TBD |
+| **EATP-029** | Cache observability — "Ver cacheadas" view + manual reset | — | ⬜ | 028 | Light-med | TBD |
+| **EATP-030** | New sources — LaPieza, Hireline, WeRemoto, RemotoJOB (+ Glassdoor viability spike) | — | ⬜ | 029 | Medium-High | TBD |
 
+> **EATP-027 through 030** come from a job-search improvement backlog Kevin had
+> drafted with ChatGPT and pasted into Notion (Career Radar page, 2026-08-21),
+> then designed down to size in a Claude Code conversation before any charter was
+> written. Two things were cut from ChatGPT's original version during that design
+> pass: (1) all whitelist-based enterprise ATS platforms (Ashby, SmartRecruiters,
+> Recruitee, Teamtailor, Breezy HR, BambooHR, Workday, Eightfold, iCIMS, Jobvite,
+> Oracle/Taleo, SAP SuccessFactors, Dayforce, ADP) — same operating model as
+> Greenhouse/Lever (`config.ATS_COMPANIES`), which means a hand-maintained company
+> watchlist per platform forever; Kevin decided that's not worth it for platforms
+> he isn't already invested in, while Greenhouse/Lever stay exactly as they are
+> since they're sunk cost and already working; (2) Get on Board was in ChatGPT's
+> list too, but it's already a documented dead end from EATP-008 (see Backlog
+> below) — no discoverable public API. **EATP-030 must spike each new source's
+> real endpoint viability before writing a full collector, same lesson.**
+>
 > **Career Radar closed out 2026-08-15** (EATP-023), reopened for EATP-024
 > (2026-08-16) and again for EATP-025 (2026-08-17/18).
 
@@ -175,7 +194,15 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 | **P23** | *Scraping ToS / account-ban risk* | EATP-003, 005, 006 |
 | **P24** | *Title-only judgment buries good jobs / waves through bad ones (ADR-009)* | EATP-002 (done), 003-008, 009, 013 |
 | P25 | Fraudulent/ghost companies mass-posting to harvest data (esp. LinkedIn) | EATP-002 (blocklist, done), 009, 013 |
+| P26 | LinkedIn collector is fragile and high-maintenance (CAPTCHA, login walls, geo/rate limits) for the yield it produces | EATP-027 |
+| P27 | Ambiguous English-requirement phrasing ("professional English", "English required", "fluent") gets hard-rejected today with no distinction from genuinely explicit C1/C2/native requirements | EATP-028 |
+| P28 | No per-run funnel diagnostic (collected/duplicate/stale/non-remote/English-rejected/cache-hidden/prefiltered/sent-to-Gemini by source) | EATP-028 |
+| P29 | 30-day signature cache suppresses repeats but isn't inspectable or manually resettable | EATP-029 |
+| P30 | Source coverage still thin outside the current 10 collectors; untested LatAm-market boards | EATP-030 |
 
+> P26-P30 are from the 2026-08-21 job-search backlog (Kevin + ChatGPT, trimmed in a
+> Claude Code design conversation — see the note above the project table).
+>
 > Bold = problems we surfaced that Kevin didn't list. P25 isn't bold — it's Kevin's own,
 > just recalled later than the original P1-P16 pass.
 >

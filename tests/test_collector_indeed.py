@@ -1,6 +1,6 @@
 """Tests for the Indeed collector.
 
-Split the same way as `test_collector_linkedin.py`: pure decision logic
+Split by concern: pure decision logic
 (URL building, captcha/no-results detection, JSON-LD parsing, job
 construction) is tested directly with plain strings and real fixture data —
 no browser at all. `collect()`'s orchestration, including the captcha

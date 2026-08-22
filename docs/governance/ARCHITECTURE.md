@@ -60,7 +60,7 @@ src/career_radar/
 │   ├── base.py              # Collector protocol + registry                      [003]
 │   ├── browser.py           # stealthy Chromium helpers                          [003]
 │   ├── http.py              # shared httpx session + pacing                      [003]
-│   ├── occ computrabajo linkedin indeed   (refactored)               [004-006]
+│   ├── occ computrabajo indeed   (refactored; linkedin removed EATP-027)  [004-006]
 │   └── remotive.py wwr.py remoteok.py greenhouse.py lever.py ...   (new)         [007-008]
 ├── ai/
 │   ├── base.py              # Provider protocol                                  [012]

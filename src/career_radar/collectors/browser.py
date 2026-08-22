@@ -1,4 +1,5 @@
-"""Stealthier Chromium base for browser-driven collectors (LinkedIn, Indeed).
+"""Stealthier Chromium base for browser-driven collectors (Indeed, and any
+future source built the same way).
 
 WSL has no system Chromium package worth trusting (Ubuntu 24.04 only offers
 `chromium` as a snap, which sandboxes file access in ways that fight
@@ -183,10 +184,10 @@ def _clear_session_restore_state(user_data_dir: str) -> None:
     Chrome finishing its own "this was a clean exit" write — every profile
     directory this project has produced was stuck at `exit_type: "Crashed"`
     (checked directly in `Default/Preferences`). Combined with a *shared*
-    profile across collectors (Kevin's call, so Indeed/LinkedIn logins both
-    persist), Chrome's crash-recovery then restores whatever tabs were open
-    last time on the *next* launch — Kevin observed a stray LinkedIn tab
-    still open during an Indeed run. Clearing the restore snapshot before
+    profile across collectors (Kevin's call, so logins persist across runs),
+    Chrome's crash-recovery then restores whatever tabs were open last time on
+    the *next* launch — Kevin observed a stray tab from a previous collector's
+    run still open during an Indeed run. Clearing the restore snapshot before
     every launch means each collector always starts with a blank window,
     regardless of how the previous one exited."""
     sessions_dir = Path(user_data_dir) / "Default" / "Sessions"
@@ -228,8 +229,8 @@ def build_options(*, use_profile: bool = True, headless: bool = False) -> Chromi
     # blocklisted driver. EATP-025 (2026-08-17): two live runs in a row hit
     # a harder failure than context-loss-with-blank-paint — the whole Chrome
     # process died mid-session (confirmed via `ps`: zombie, no other chrome
-    # process left at all), hanging LinkedIn's/Indeed's collectors forever
-    # (see `run_bounded` below for why "forever" and not "erroring out").
+    # process left at all), hanging the collector forever (see `run_bounded`
+    # below for why "forever" and not "erroring out").
     # `--disable-gpu` removes the GPU process from the picture entirely —
     # Chromium falls back to full software rendering from launch, never
     # touching the driver Chrome's own histogram already distrusts. Slower
@@ -297,7 +298,7 @@ def close_page(page: ChromiumPage, timeout: float = 20.0) -> None:
     `self._run_cdp('Browser.close')` every other DrissionPage call uses, and
     that call has no timeout either. Against a browser that's already dead
     it blocks forever, exactly like a mid-run `tab.get()` does. That's what
-    kept hanging LinkedIn after the collector's own work was already safely
+    kept hanging Indeed after the collector's own work was already safely
     bounded, and it's why the run's thread never ended even once the
     collecting was done.
 
@@ -369,9 +370,8 @@ def start_cancellation_watcher(giveup: threading.Event) -> None:
 
 
 # Generous — normal listing/detail-fetch work for a tab pool finishes in
-# well under this (linkedin.py's own live numbers: 61-165s for the whole
-# 4-tab listing phase). Only a browser that's actually died mid-`func`
-# should ever hit it.
+# well under this. Only a browser that's actually died mid-`func` should
+# ever hit it.
 _STUCK_WORKER_TIMEOUT_SECONDS = 180.0
 
 
@@ -436,11 +436,10 @@ def build_page(
         _active_pids.add(page.process_id)
     if not headless:
         if start_minimized:
-            # EATP-023 (2026-08-15, Kevin's call): a source that almost never
-            # needs him (LinkedIn) or only needs him at one specific moment
-            # (Indeed's captcha) shouldn't steal focus on every launch —
-            # start minimized, `bring_to_front()` raises it exactly when
-            # there's actually something for him to do.
+            # EATP-023 (2026-08-15, Kevin's call): a source that only needs
+            # him at one specific moment (Indeed's captcha) shouldn't steal
+            # focus on every launch — start minimized, `bring_to_front()`
+            # raises it exactly when there's actually something for him to do.
             page.set.window.mini()
         else:
             # Kevin's call (2026-08-13): he needs to read/solve a captcha in

@@ -8,7 +8,7 @@ it. **It is not wired up.** Nothing in this repo runs on a schedule today.
 
 - **AI quota.** Every run spends part of the free daily AI quota (`docs/governance/AI-PROVIDERS.md`).
   An unattended daily run competes with any manual runs Kevin does the same day.
-- **Manual captcha/login.** LinkedIn and Indeed can ask for human verification
+- **Manual captcha/login.** Indeed can ask for human verification
   mid-run (`collectors/browser.py: request_manual_intervention`). A run started by
   Windows Task Scheduler with nobody watching can't solve that — it just waits up to
   5 minutes and skips that source (see EATP-006 checklist notes).
@@ -16,7 +16,7 @@ it. **It is not wired up.** Nothing in this repo runs on a schedule today.
 Given those two constraints, an unattended daily run is safe to leave running
 unsupervised **only** in the sense that it won't crash or corrupt data (the
 orchestrator is checkpointed/resumable, CLAUDE.md golden rule 3) — but some days it
-will silently under-collect from LinkedIn/Indeed if a captcha comes up while Kevin's
+will silently under-collect from Indeed if a captcha comes up while Kevin's
 away. That trade-off is his call, which is why this stays opt-in.
 
 ## The recipe, if Kevin wants it
