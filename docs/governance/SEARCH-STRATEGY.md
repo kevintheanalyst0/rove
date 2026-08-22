@@ -5,18 +5,9 @@ guiding idea: **spend effort where the signal is high and the competition is low
 
 ## Search terms (Spanish-first)
 
-Primary (Spanish, no accents so URLs stay clean):
-```
-analista de datos, analista de negocios, analista de inteligencia de negocios,
-analista bi, analista power bi, analista de reportes, analista de informacion,
-especialista en datos, analista funcional, analista de business intelligence
-```
-Secondary (English, for remote-LatAm boards that post in English):
-```
-data analyst, business intelligence analyst, reporting analyst, business analyst,
-bi analyst, analytics analyst
-```
-Rules:
+Kept in `config.py`'s `SEARCH_TERMS` (Spanish) / `ENGLISH_SEARCH_TERMS` (English) —
+this doc doesn't duplicate the live list (EATP-028 expanded both; check `config.py`
+for the current set rather than trusting a copy pasted here). Rules:
 - Run Spanish terms on Spanish/LatAm sources; English terms on remote-first/global
   boards.
 - Keep terms in `config` (single source), not per-collector.
@@ -24,14 +15,21 @@ Rules:
 
 ## Source tiers (by signal quality)
 
-**Tier 1 — High signal, API-friendly, low competition (prioritize; new in EATP-007/008).**
-- **ATS boards** with public JSON: **Greenhouse**, **Lever**, **Ashby**, **Workable**,
-  **Recruitee**. Many remote-friendly companies expose clean job JSON with no captcha.
-  These are where "the good jobs Kevin is missing" often live.
+**Tier 1 — High signal, API-friendly, low competition (prioritize).**
+- **ATS boards** with public JSON, curated per-company watchlist (`config.ATS_COMPANIES`,
+  EATP-007/008): **Greenhouse**, **Lever**. Many remote-friendly companies expose clean
+  job JSON with no captcha. Enterprise/whitelist-only ATS platforms beyond these two
+  (Ashby, Workable, Recruitee, SmartRecruiters, Workday, ...) were deliberately cut from
+  scope in the 2026-08-21 backlog design (EATP-027 ROADMAP note) — a hand-maintained
+  company list per platform, forever, wasn't worth it for platforms Kevin isn't already
+  invested in.
 - **Remote-first boards:** **Remotive**, **We Work Remotely**, **RemoteOK**,
   **Himalayas** — several have JSON/RSS feeds; strong remote guarantee.
-- **LatAm tech boards:** **Get on Board (getonbrd)**, **Torre** — remote-friendly,
-  Spanish-market, lower competition than LinkedIn.
+- **LatAm job boards, sitemap/category-discovered + JSON-LD detail** (EATP-030):
+  **Hireline**, **WeRemoto**, **RemotoJob** — no company watchlist needed, real
+  market-wide postings. ~~Get on Board~~, ~~Torre~~ (EATP-008), ~~LaPieza~~ (EATP-030)
+  investigated and dropped: all three are client-rendered SPAs with no discoverable
+  API/sitemap/JSON-LD — see ROADMAP.md Backlog before re-attempting any of them.
 
 **Tier 2 — Useful but crowded (keep, refactor in EATP-004/005).**
 - **OCC**, **Computrabajo** — HTTP/JSON, fast, Spanish market. Keep.

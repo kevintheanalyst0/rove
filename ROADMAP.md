@@ -75,7 +75,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-027** | Remove LinkedIn as a source entirely | — | ✅ | 026 | Medium | ~35 min (2026-08-21) |
 | **EATP-028** | English-requirement classification (reject/compatible/indeterminate) + per-run funnel diagnostic + expanded search terms | — | ✅ | 027 | Medium | ~30 min (2026-08-21) |
 | **EATP-029** | Cache observability — "Ver cacheadas" view + manual reset | — | ✅ | 028 | Light-med | ~40 min (2026-08-21) |
-| **EATP-030** | New sources — LaPieza, Hireline, WeRemoto, RemotoJOB (+ Glassdoor viability spike) | — | ⬜ | 029 | Medium-High | TBD |
+| **EATP-030** | New sources — Hireline, WeRemoto, RemotoJob shipped; LaPieza + Glassdoor spiked and dropped (see Backlog) | — | ✅ | 029 | Medium-High | ~1h40 (2026-08-21) |
 
 > **EATP-027 through 030** come from a job-search improvement backlog Kevin had
 > drafted with ChatGPT and pasted into Notion (Career Radar page, 2026-08-21),
@@ -259,3 +259,10 @@ with its own equivalent project. Only the Career Radar items are listed here.
   Torre's search endpoint ignores every query/pagination param sent and always returns
   the same static ~10-result snapshot. Revisit only if a real endpoint is found —
   don't re-attempt the same guesses.
+- **LaPieza / Glassdoor as real sources** (EATP-030 spiked live, 2026-08-21, didn't
+  ship): LaPieza is a client-rendered Next.js app — no `__NEXT_DATA__`, no JSON-LD job
+  data, no sitemap; same dead end as Get on Board. Glassdoor returned a 403 anti-bot
+  wall on the very first request, no different from LinkedIn's fragility (the exact
+  reason LinkedIn was removed in EATP-027) — never attempted with browser automation,
+  on purpose. Revisit only if a real endpoint surfaces; don't re-attempt the same
+  guesses, and don't reach for a headless browser to force either one.

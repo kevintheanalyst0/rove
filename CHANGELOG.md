@@ -3,6 +3,30 @@
 All notable changes to this project, grouped by build session (`EATP-00X`). Dates are
 the day the work was done; see `ROADMAP.md` for status/complexity/time per project.
 
+## EATP-030 — New sources: Hireline, WeRemoto, RemotoJob (2026-08-21)
+- Added three HTTP-only collectors sharing one shape new to this repo: no
+  search API, but every posting discoverable via a sitemap or category page,
+  with a standard schema.org `JobPosting` JSON-LD block on each detail page.
+  No company watchlist needed (unlike Greenhouse/Lever) — real market-wide
+  postings.
+- New shared helpers in `collectors/parsing.py`: `extract_job_posting_ld_json`
+  (picks the right block out of several unrelated JSON-LD types per page,
+  tolerant of a raw-newline gotcha confirmed live on RemotoJob) and
+  `slug_to_text` (prefilters a sitemap-discovered URL by its slug before
+  spending a detail request on it).
+- Live-verified against the real sites (not just against fixtures): Hireline
+  and WeRemoto both returned real, current, on-profile postings.
+- LaPieza and Glassdoor were spiked and dropped: LaPieza is a client-rendered
+  SPA with no discoverable API (same dead end as Get on Board, EATP-008);
+  Glassdoor returned a 403 anti-bot wall immediately (same fragility class as
+  LinkedIn — not force-built with browser automation, on purpose). Recorded
+  in `ROADMAP.md`'s Backlog so a future session doesn't re-attempt either.
+- Fixed stale claims in `SEARCH-STRATEGY.md` (Ashby/Workable/Get on
+  Board/Torre were still listed as current sources despite being cut/dead-
+  ended earlier) and pointed its search-terms section at `config.py` instead
+  of a copy that will drift again.
+- 408 tests passing (13 net new).
+
 ## EATP-029 — Cache observability: "Ver cacheadas" + manual reset (2026-08-21)
 - `SignatureRecord` gains `title`/`company`/`source` (display-only; suppression
   still keys on `signature` alone) so the cache is finally human-readable.

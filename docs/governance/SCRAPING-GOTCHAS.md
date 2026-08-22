@@ -223,3 +223,44 @@ The rule for EATP-004-010, resolving the ambiguity:
 - Site-native search filters (§3 of this file) are a third, separate thing — a URL
   query param, not app logic — and don't count as either of the above; keep using them
   freely, they reduce volume before any of this even applies.
+
+## 8. Sitemap/category discovery + JSON-LD `JobPosting` detail (EATP-030)
+
+A fourth collector shape, distinct from the three already in this repo (Greenhouse/
+Lever's per-company watchlist API; OCC/Computrabajo/Indeed's server-side search;
+Remotive/RemoteOK/WWR/Himalayas's client-side-filtered feed): **no search API at
+all, but a discoverable list of every current posting's URL** (a sitemap, or a
+category-listing page), with each posting's own page embedding a standard
+schema.org `JobPosting` JSON-LD block — a real, if less obvious, structured-data
+source. Confirmed live for Hireline, WeRemoto, RemotoJob; LaPieza and Get on
+Board/Torre (§ROADMAP.md Backlog) are the dead-end version of this same shape —
+always spike for a sitemap/JSON-LD/RSS before assuming a board needs a browser.
+
+- **The discovery step gives you a URL, not a title** — there's no cheap
+  pre-filter signal except the URL's own slug. `parsing.py::slug_to_text` +
+  `matches_any_term` turn "responsable-de-plataforma-sap" into a matchable phrase
+  before spending a detail request on it. Skipping this and fetching every listed
+  posting is both impolite and slow once a board lists hundreds of them (RemotoJob:
+  200+ per sitemap file).
+- **A page normally embeds several unrelated JSON-LD blocks** (`WebSite`,
+  `Organization`, ...) alongside the one that matters — `parsing.py`'s
+  `extract_job_posting_ld_json` filters by `@type == "JobPosting"` rather than
+  trusting "the first `<script>` tag found."
+- **At least one site's `JobPosting` JSON contains a raw, unescaped control
+  character** (RemotoJob: a literal newline inside a description string) — breaks
+  Python's default strict `json.loads`. `extract_job_posting_ld_json` always parses
+  with `strict=False`, which tolerates this the way the `json` module is designed
+  to, rather than hand-rolling a cleanup regex.
+- **Description formatting still varies per site** even though the JSON-LD shape is
+  standard: Hireline uses literal HTML entities with no real tags (`html.unescape()`
+  only); RemotoJob embeds real HTML (needs `BeautifulSoup(...).get_text()`);
+  WeRemoto is already plain text. This is exactly why the shared helper stops at
+  "hand me the parsed dict" — each collector's own `_build_job` still owns its
+  site's text-cleaning quirk, same as Greenhouse/Lever/Remotive already do.
+- **A sitemap doesn't have to list job postings to still be a real, scrapable
+  board.** WeRemoto's `sitemap.xml` only covers blog/event pages — its job postings
+  are server-rendered HTML behind fixed category pages instead
+  (`/categoria-de-trabajo/<slug>`), no sitemap needed. Don't treat "no jobs in the
+  sitemap" as proof of a dead end (that's a separate check from "is this
+  client-rendered with nothing in the initial HTML at all", which is what actually
+  killed LaPieza/Get on Board) — look at the page body itself before giving up.

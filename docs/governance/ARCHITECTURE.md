@@ -61,7 +61,8 @@ src/career_radar/
 │   ├── browser.py           # stealthy Chromium helpers                          [003]
 │   ├── http.py              # shared httpx session + pacing                      [003]
 │   ├── occ computrabajo indeed   (refactored; linkedin removed EATP-027)  [004-006]
-│   └── remotive.py wwr.py remoteok.py greenhouse.py lever.py ...   (new)         [007-008]
+│   ├── remotive.py wwr.py remoteok.py greenhouse.py lever.py ...   (new)         [007-008]
+│   └── hireline.py weremoto.py remotojob.py   (sitemap/category + JSON-LD)  [030]
 ├── ai/
 │   ├── base.py              # Provider protocol                                  [012]
 │   ├── providers/           # groq.py, gemini.py, openrouter.py, ...             [012]
