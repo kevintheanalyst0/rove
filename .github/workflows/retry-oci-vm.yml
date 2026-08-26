@@ -27,6 +27,14 @@ jobs:
           OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
           OCI_REGION: ${{ secrets.OCI_REGION }}
         run: |
+          # SUPPRESS_LABEL_WARNING: without this, every oci call prints an
+          # "increase security of your API key" warning to stderr — harmless,
+          # but a bug in an earlier version of this workflow let that text
+          # leak into a `2>&1`-captured variable and get mistaken for a real
+          # instance id (a bogus "already running" false-positive). Setting
+          # this for every later step, not just fixing that one command, so
+          # the same class of bug can't recur elsewhere in this file.
+          echo "SUPPRESS_LABEL_WARNING=True" >> "$GITHUB_ENV"
           mkdir -p ~/.oci
           printf '%s' "$OCI_PRIVATE_KEY" > ~/.oci/oci_api_key.pem
           chmod 600 ~/.oci/oci_api_key.pem
@@ -49,7 +57,7 @@ jobs:
           RESULT=$(oci compute instance list \
             --compartment-id "$OCI_TENANCY" \
             --display-name rove-vm --lifecycle-state RUNNING \
-            --query 'data[0].id' --raw-output 2>&1) || RESULT=""
+            --query 'data[0].id' --raw-output 2>/dev/null) || RESULT=""
           if [ -n "$RESULT" ] && [ "$RESULT" != "null" ]; then
             echo "already_running=true" >> "$GITHUB_OUTPUT"
             echo "instance_id=$RESULT" >> "$GITHUB_OUTPUT"
