@@ -21,11 +21,11 @@ from pathlib import Path
 import httpx
 import pytest
 
-from career_radar import cancellation, config
-from career_radar.collectors.base import Collector, CollectorRegistry, CollectorStatus
-from career_radar.collectors.greenhouse import GreenhouseCollector
-from career_radar.collectors.lever import LeverCollector
-from career_radar.models import RemoteStatus
+from rove import cancellation, config
+from rove.collectors.base import Collector, CollectorRegistry, CollectorStatus
+from rove.collectors.greenhouse import GreenhouseCollector
+from rove.collectors.lever import LeverCollector
+from rove.models import RemoteStatus
 
 FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "ats_jobs.json").read_text(encoding="utf-8"))
 
@@ -41,7 +41,7 @@ _OFF_TOPIC = {
 @pytest.fixture(autouse=True)
 def _no_real_sleep(monkeypatch):
     # gentle_pause()'s own sleep, and tenacity's retry backoff sleep.
-    monkeypatch.setattr("career_radar.collectors.http.time.sleep", lambda seconds: None)
+    monkeypatch.setattr("rove.collectors.http.time.sleep", lambda seconds: None)
     monkeypatch.setattr("tenacity.nap.time.sleep", lambda seconds: None)
 
 

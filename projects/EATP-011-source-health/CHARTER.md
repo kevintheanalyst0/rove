@@ -13,7 +13,7 @@ Proactive P20 (no source-health detection); supports R12 (unattended running) an
 |------|-----|
 | `CLAUDE.md` | Operating rules. |
 | `docs/governance/DATA-CONTRACTS.md` | RunResult counts + per-source usage. |
-| `src/career_radar/collectors/base.py` | The result/health envelope (EATP-003). |
+| `src/rove/collectors/base.py` | The result/health envelope (EATP-003). |
 | `docs/adr/ADR-008-source-health.md` | Health-check rationale. |
 
 ## Dependencies
@@ -32,7 +32,7 @@ Proactive P20 (no source-health detection); supports R12 (unattended running) an
 - Notifications (018).
 
 ## Deliverables
-- src/career_radar/health/check.py
+- src/rove/health/check.py
 - tests/test_source_health.py
 
 ## Key design decisions & constraints

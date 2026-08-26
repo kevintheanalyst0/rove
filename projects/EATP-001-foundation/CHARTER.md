@@ -40,7 +40,7 @@ Enables all. Directly supports R12 (clean base) and the event bus behind R11.
 - Web (015).
 
 ## Deliverables
-- src/career_radar/{config,models,storage,events}.py
+- src/rove/{config,models,storage,events}.py
 - tests/test_models.py, tests/test_storage.py
 - Green pytest.
 

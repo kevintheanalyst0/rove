@@ -1,6 +1,6 @@
 # Search Strategy
 
-How Career Radar finds *more* jobs **and** *better* jobs (Kevin's P2/P3/P4/P15). The
+How Rove finds *more* jobs **and** *better* jobs (Kevin's P2/P3/P4/P15). The
 guiding idea: **spend effort where the signal is high and the competition is low.**
 
 ## Search terms (Spanish-first)

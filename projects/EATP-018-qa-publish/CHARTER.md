@@ -14,7 +14,7 @@ P16 (GitHub), R12 (minimize manual actions), final P13/P14 check, overall harden
 | `CLAUDE.md` | Operating rules — esp. 10 git/publish. |
 | `ROADMAP.md` | Confirm all prior projects are done. |
 | `docs/governance/ARCHITECTURE.md` | Confirm built system matches the design. |
-| `src/career_radar/web/server.py` | The UI to visually verify (015-016). |
+| `src/rove/web/server.py` | The UI to visually verify (015-016). |
 | `.gitignore` | Confirm secrets/data/personal artifacts excluded before publishing. |
 
 ## Dependencies
@@ -56,5 +56,5 @@ P16 (GitHub), R12 (minimize manual actions), final P13/P14 check, overall harden
 1 session (~2-3 h).
 
 ## Open questions for Kevin
-- ~~GitHub: public or private, and repo name (default career-radar)?~~ **Resuelto 2026-08-12: público, `career-radar`.**
+- ~~GitHub: public or private, and repo name (default rove)?~~ **Resuelto 2026-08-12: público, `rove`.**
 - ~~Want the daily auto-run + notification, and if so which channel?~~ **Resuelto 2026-08-12: Kevin no quiere la notificación de match — se documenta el scheduler pero no se construye ningún hook de notificación.**

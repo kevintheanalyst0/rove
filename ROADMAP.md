@@ -1,6 +1,6 @@
-# ROADMAP — Career Radar
+# ROADMAP — Rove
 
-Career Radar is the rebuild of **JobMatchEngine**: a remote-first job-discovery engine
+Rove is the rebuild of **JobMatchEngine**: a remote-first job-discovery engine
 for Kevin. The build is split into sequential projects (`EATP-001` … `EATP-018` were the
 original launch scope; `EATP-019+` are post-launch work opened after Kevin started using
 the product),
@@ -78,7 +78,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-030** | New sources — Hireline, WeRemoto, RemotoJob shipped; LaPieza + Glassdoor spiked and dropped (see Backlog) | — | ✅ | 029 | Medium-High | ~1h40 (2026-08-21) |
 
 > **EATP-027 through 030** come from a job-search improvement backlog Kevin had
-> drafted with ChatGPT and pasted into Notion (Career Radar page, 2026-08-21),
+> drafted with ChatGPT and pasted into Notion (Rove page, 2026-08-21),
 > then designed down to size in a Claude Code conversation before any charter was
 > written. Two things were cut from ChatGPT's original version during that design
 > pass: (1) all whitelist-based enterprise ATS platforms (Ashby, SmartRecruiters,
@@ -92,7 +92,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 > below) — no discoverable public API. **EATP-030 must spike each new source's
 > real endpoint viability before writing a full collector, same lesson.**
 >
-> **Career Radar closed out 2026-08-15** (EATP-023), reopened for EATP-024
+> **Rove closed out 2026-08-15** (EATP-023), reopened for EATP-024
 > (2026-08-16) and again for EATP-025 (2026-08-17/18).
 
 > **EATP-025** started as "LinkedIn hangs the run" and ended as a platform move.
@@ -104,7 +104,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 > What kept killing Chrome in the first place was WSLg's virtualized GPU. Kevin
 > then pointed out the fact that reframed everything: **legacy ran natively on
 > Windows, never under WSL** — so its stability never validated any of these
-> settings here. The project moved to `D:\Development\Career Radar` on native
+> settings here. The project moved to `D:\Development\Rove` on native
 > Windows (Python 3.12 via `uv`). The WSL copy stays as a backup.
 >
 > The move immediately surfaced two real Windows bugs the WSL-only test runs could
@@ -112,23 +112,23 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 > crashed the "Cancelar" button), and `Path.read_text()` without an explicit
 > encoding reads cp1252 there, which breaks on any accented Spanish text.
 >
-> **Update, 2026-08-19:** the WSL copy (`~/Projects/career-radar`) was deleted.
+> **Update, 2026-08-19:** the WSL copy (`~/Projects/rove`) was deleted.
 > During EATP-026 planning it caused a real mix-up — a design/build session targeted
 > it by mistake, unaware of this migration, since it looked current. Kevin decided
 > the confusion risk outweighed keeping it as a backup; this native-Windows repo
-> (`D:\Development\Career Radar`) is now the only copy. Before deleting, `.env` was
+> (`D:\Development\Rove`) is now the only copy. Before deleting, `.env` was
 > confirmed identical and `data/` confirmed to have nothing the Windows copy didn't
 > already have (Windows had strictly more: real run history, results, cache).
 >
 > **This repo's `origin` was pointing at that now-deleted WSL path** (that's how it
 > got cloned during the EATP-025 migration) — fetching from it started failing
 > immediately after the deletion. Repointed `origin` straight to GitHub
-> (`git@github.com:kevintheanalyst0/career-radar.git`) instead. Local is currently
+> (`git@github.com:kevintheanalyst0/rove.git`) instead. Local is currently
 > **4 commits ahead of GitHub** (a3b0b38, 29bcd25, 333a871, a4f7fe4) — not pushed
 > automatically; push only with Kevin's explicit go-ahead, per CLAUDE.md §10.
 
 > **EATP-026** opened 2026-08-19 as part of the cross-repo "Security Hardening —
-> Portfolio, Career Radar y Snippets" initiative (tracked in Notion; Portfolio and
+> Portfolio, Rove y Snippets" initiative (tracked in Notion; Portfolio and
 > Snippets have their own equivalent projects in their own repos). Independent of
 > 001-025 — no dependency either way. Built and verified in this native-Windows repo.
 > See `docs/adr/ADR-010-origin-host-validation-strategy.md` and the SEC-#
@@ -224,9 +224,9 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 ### Security Hardening initiative (separate id space: SEC-#)
 
 Not part of the P#/R# job-search backlog above — tracked separately because it's a
-cross-repo initiative (Notion: "Security Hardening — Portfolio, Career Radar y
+cross-repo initiative (Notion: "Security Hardening — Portfolio, Rove y
 Snippets", 2026-08-19) that also touches the `portfolio` and `snippets` repos, each
-with its own equivalent project. Only the Career Radar items are listed here.
+with its own equivalent project. Only the Rove items are listed here.
 
 | # | Item | Origin | Solved in |
 |---|------|--------|-----------|

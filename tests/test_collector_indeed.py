@@ -17,8 +17,8 @@ from queue import Empty
 
 import pytest
 
-from career_radar import config, events
-from career_radar.collectors.indeed import (
+from rove import config, events
+from rove.collectors.indeed import (
     IndeedCollector,
     _build_job,
     _CaptchaCoordination,
@@ -31,7 +31,7 @@ from career_radar.collectors.indeed import (
     parse_detail_page,
     parse_job_ld,
 )
-from career_radar.models import RemoteStatus
+from rove.models import RemoteStatus
 
 FIXTURES = json.loads(
     (Path(__file__).parent / "fixtures" / "indeed_jobs.json").read_text(encoding="utf-8")
@@ -438,12 +438,12 @@ def _fake_clock(monkeypatch):
     def fake_sleep(seconds: float) -> None:
         clock["t"] += seconds
 
-    monkeypatch.setattr("career_radar.collectors.indeed.time.sleep", fake_sleep)
+    monkeypatch.setattr("rove.collectors.indeed.time.sleep", fake_sleep)
     monkeypatch.setattr(
-        "career_radar.collectors.indeed.time.monotonic", lambda: clock["t"]
+        "rove.collectors.indeed.time.monotonic", lambda: clock["t"]
     )
     monkeypatch.setattr(
-        "career_radar.collectors.browser.human_pause", lambda *a, **k: None
+        "rove.collectors.browser.human_pause", lambda *a, **k: None
     )
     # `indeed.py` and `browser.py` both do a plain `import time` — that's
     # the SAME module object, so patching `indeed.time.sleep` above already
@@ -453,8 +453,8 @@ def _fake_clock(monkeypatch):
     # adding to it (whichever `setattr` runs last wins on the shared
     # object) — froze the fake clock at 0 and broke the deadline math in
     # exactly the way that looked like a real regression.
-    monkeypatch.setattr("career_radar.collectors.indeed._CAPTCHA_WAIT_SECONDS", 20)
-    monkeypatch.setattr("career_radar.collectors.indeed._CAPTCHA_POLL_SECONDS", 10)
+    monkeypatch.setattr("rove.collectors.indeed._CAPTCHA_WAIT_SECONDS", 20)
+    monkeypatch.setattr("rove.collectors.indeed._CAPTCHA_POLL_SECONDS", 10)
 
 
 def test_collect_yields_real_fixture_jobs_across_search_and_detail(monkeypatch):

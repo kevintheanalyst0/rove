@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rove</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true">
+    <span class="a1"></span><span class="a2"></span><span class="a3"></span><span class="a4"></span><span class="a5"></span>
+  </div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <circle cx="20" cy="20" r="18" stroke="url(#radarGradSide)" stroke-width="1.4" opacity="0.5"/>
+        <circle cx="20" cy="20" r="12" stroke="url(#radarGradSide)" stroke-width="1.4" opacity="0.75"/>
+        <circle cx="20" cy="20" r="6" stroke="url(#radarGradSide)" stroke-width="1.7"/>
+        <circle cx="20" cy="20" r="2.2" fill="url(#radarGradSide)"/>
+        <path d="M20 20 L32 9" stroke="url(#radarGradSide)" stroke-width="1.7" stroke-linecap="round"/>
+        <defs>
+          <linearGradient id="radarGradSide" x1="4" y1="4" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#B89CFF"/>
+            <stop offset="1" stop-color="#20C879"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <div>
+        <p class="brand-name">Rove</p>
+        <p class="brand-tag">Búsqueda inteligente</p>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <h3>Estado</h3>
+      <div class="status-line ok" id="sideStatusLine">&#10003; Corrida exitosa</div>
+      <p class="status-meta" id="sideStatusMeta"></p>
+    </div>
+
+    <div class="side-card">
+      <h3>Resumen</h3>
+      <div class="summary-num" id="sideTotal">0</div>
+      <div class="summary-label" id="sideTotalLabel"></div>
+      <div class="cat-bars" id="sideCatBars"></div>
+    </div>
+
+    <div class="side-card">
+      <h3>Fuentes</h3>
+      <div class="source-list" id="sideSources"></div>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+    <div class="rerun-card" id="sideRerunBtn" role="button" tabindex="0">
+      <div class="rerun-ico">&#8635;</div>
+      <div class="rerun-text">
+        <p class="rerun-title">Buscar de nuevo</p>
+        <p class="rerun-sub">Iniciar una nueva búsqueda</p>
+      </div>
+      <span class="rerun-arrow">&#8594;</span>
+    </div>
+    <button class="text-btn text-btn-side" id="sideClearCacheBtn" type="button">Limpiar caché</button>
+    <button class="text-btn text-btn-side" id="sideViewCacheBtn" type="button">Ver cacheadas</button>
+  </aside>
+
+  <main>
+    <div id="runnerCard">
+
+      <section class="state active" data-state="idle">
+        <div class="runner-brand">
+          <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            <circle cx="20" cy="20" r="18" stroke="url(#radarGradMain)" stroke-width="1.4" opacity="0.5"/>
+            <circle cx="20" cy="20" r="12" stroke="url(#radarGradMain)" stroke-width="1.4" opacity="0.75"/>
+            <circle cx="20" cy="20" r="6" stroke="url(#radarGradMain)" stroke-width="1.7"/>
+            <circle cx="20" cy="20" r="2.2" fill="url(#radarGradMain)"/>
+            <path d="M20 20 L32 9" stroke="url(#radarGradMain)" stroke-width="1.7" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="radarGradMain" x1="4" y1="4" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#B89CFF"/>
+                <stop offset="1" stop-color="#20C879"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <p class="brand-name">Rove</p>
+        </div>
+        <p class="runner-sub">Busca y evalúa vacantes remotas por ti. Un clic y te avisa cuando esté listo.</p>
+        <button class="pill-btn" id="startBtn" type="button">Iniciar búsqueda &#8594;</button>
+        <button class="text-btn" id="startFreshBtn" type="button" hidden>Empezar de nuevo (sin retomar)</button>
+        <button class="text-btn" id="viewLastBtn" type="button" hidden>Ver dashboard de la última corrida</button>
+        <button class="text-btn" id="clearCacheBtn" type="button">Limpiar caché</button>
+      </section>
+
+      <section class="state" data-state="working">
+        <div class="cr-spinner" aria-label="Trabajando">
+          <span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <p class="cr-status" id="statusText">Iniciando…</p>
+        <div class="bar-wrap">
+          <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+          <span class="bar-pct" id="barPct">0%</span>
+        </div>
+        <div class="notice" id="noticeBanner" hidden>
+          <span class="notice-icon">&#9888;</span>
+          <p class="notice-text" id="noticeText"></p>
+        </div>
+        <div class="working-actions">
+          <button class="text-btn" id="cancelBtn" type="button">Pausar</button>
+          <button class="text-btn" id="discardBtn" type="button">Cancelar</button>
+        </div>
+      </section>
+
+      <section class="state" data-state="error">
+        <div class="icon-ring err">&#10005;</div>
+        <p class="state-title">Se interrumpió la corrida</p>
+        <p class="state-detail" id="errorMessage"></p>
+        <button class="pill-btn" id="retryBtn" type="button">Reanudar</button>
+        <button class="text-btn" id="freshRetryBtn" type="button">Empezar de nuevo (sin retomar)</button>
+      </section>
+
+      <section class="state" data-state="done">
+        <div class="icon-ring ok">&#10003;</div>
+        <p class="state-title">Listo</p>
+        <p class="state-detail" id="doneMessage" style="color: var(--text);"></p>
+      </section>
+
+    </div>
+
+    <section class="state results-state" data-state="results">
+      <div class="surface">
+        <header class="topbar">
+          <div>
+            <h1>Resultados</h1>
+            <p class="meta" id="resultsMeta"></p>
+          </div>
+          <button type="button" class="pill-action" id="topRerunBtn">&#8635; Actualizar resultados</button>
+        </header>
+
+        <div class="filters">
+          <input class="filter-input" id="searchInput" type="search" placeholder="Buscar por título o empresa…">
+
+          <div class="dropdown" id="gradeDropdown">
+            <button class="dropdown-btn" type="button">
+              <span id="gradeDropdownLabel">Todos los grados</span> <span class="chev">&#9662;</span>
+            </button>
+            <div class="dropdown-menu">
+              <button class="dropdown-item active" type="button" data-value="">Todos los grados</button>
+              <button class="dropdown-item" type="button" data-value="A+">A+</button>
+              <button class="dropdown-item" type="button" data-value="A">A</button>
+              <button class="dropdown-item" type="button" data-value="B">B</button>
+              <button class="dropdown-item" type="button" data-value="C">C</button>
+              <button class="dropdown-item" type="button" data-value="D">D</button>
+            </div>
+          </div>
+
+          <div class="dropdown" id="sourceDropdown">
+            <button class="dropdown-btn" type="button">
+              <span id="sourceDropdownLabel">Todas las fuentes</span> <span class="chev">&#9662;</span>
+            </button>
+            <div class="dropdown-menu" id="sourceDropdownMenu">
+              <button class="dropdown-item active" type="button" data-value="">Todas las fuentes</button>
+            </div>
+          </div>
+
+          <label class="filter-check checked"><input type="checkbox" id="hideDismissedToggle" checked><span class="checkbox">&#10003;</span>Ocultar descartadas</label>
+        </div>
+
+        <div class="results-grid" id="resultsGrid"></div>
+        <p class="results-empty" id="resultsEmpty" hidden>Ninguna vacante coincide con estos filtros.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="overlay" id="overlay">
+    <div class="modal" id="modalBody"></div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

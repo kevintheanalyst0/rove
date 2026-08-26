@@ -1,6 +1,6 @@
 # Automation — daily scheduled run (documented, not activated)
 
-Career Radar runs on demand: Kevin opens the web UI and clicks "Iniciar". This file
+Rove runs on demand: Kevin opens the web UI and clicks "Iniciar". This file
 documents how to add a **daily unattended run** on top of that, for if/when Kevin wants
 it. **It is not wired up.** Nothing in this repo runs on a schedule today.
 
@@ -30,20 +30,20 @@ away. That trade-off is his call, which is why this stays opt-in.
 #!/usr/bin/env bash
 cd "$(dirname "$0")/.."
 source .venv/bin/activate
-python -c "from career_radar.pipeline import run; run(mode='thorough')"
+python -c "from rove.pipeline import run; run(mode='thorough')"
 ```
 
 **2. Windows Task Scheduler**, running that script inside WSL once a day:
 
 - Program/script: `wsl.exe`
-- Arguments: `-d Ubuntu -- bash -lc "/home/kevin/Projects/career-radar/scripts/run_once.sh >> /home/kevin/Projects/career-radar/data/cron.log 2>&1"`
+- Arguments: `-d Ubuntu -- bash -lc "/home/kevin/Projects/rove/scripts/run_once.sh >> /home/kevin/Projects/rove/data/cron.log 2>&1"`
 - Trigger: daily, at a time Kevin is likely to be at his computer (so he can solve a
   captcha if one comes up) — e.g. weekday mornings.
 - "Run whether user is logged on or not" should stay **unchecked**: WSLg needs an
   active Windows session to show the Chromium window for captcha/login prompts.
 
 **3. Checking results.** `data/results.json` and `data/status.json`
-  (`career_radar.config.RESULTS_FILE` / `STATUS_FILE`) are updated in place by every
+  (`rove.config.RESULTS_FILE` / `STATUS_FILE`) are updated in place by every
   run, scheduled or manual. Opening the web UI after a scheduled run shows it exactly
   like a manual one — no separate "scheduled results" view needed.
 

@@ -35,7 +35,7 @@ P4, P6, P7 (right criteria); feeds P8 remote signals and P10 matcher.
 
 ## Deliverables
 - profile + criteria data files
-- src/career_radar/{profile,criteria}.py
+- src/rove/{profile,criteria}.py
 - tests/test_criteria.py
 
 ## Key design decisions & constraints

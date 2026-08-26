@@ -15,7 +15,7 @@ P5 (captchas) — this project's core purpose; P1, P13.
 | `docs/governance/SEARCH-STRATEGY.md` | Terms, recency, gentle pacing, Indeed remote filter. |
 | `docs/governance/DATA-CONTRACTS.md` | Job shape. |
 | `docs/governance/SCRAPING-GOTCHAS.md` | Indeed's pagination loop-detection, rate-limit tab coordination, duplicate-job pitfalls. |
-| `src/career_radar/collectors/{base,browser}.py` | Framework + stealth base (EATP-003). |
+| `src/rove/collectors/{base,browser}.py` | Framework + stealth base (EATP-003). |
 | `legacy/jobmatch/collectors/indeed.py` | Reference: JSON-LD parsing, remote attr (DSQF7), captcha points, tab threading. |
 | `tests/fixtures/indeed_jobs.json` | Real records for tests. |
 
@@ -36,7 +36,7 @@ P5 (captchas) — this project's core purpose; P1, P13.
 - Gate/AI/UI.
 
 ## Deliverables
-- src/career_radar/collectors/indeed.py
+- src/rove/collectors/indeed.py
 - tests/test_collector_indeed.py (incl. captcha-detection path)
 
 ## Key design decisions & constraints

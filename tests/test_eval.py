@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pytest
 
-from career_radar import config
-from career_radar.eval import labels as labels_store
-from career_radar.eval import report as report_mod
-from career_radar.eval.labels import BadReason, Label
+from rove import config
+from rove.eval import labels as labels_store
+from rove.eval import report as report_mod
+from rove.eval.labels import BadReason, Label
 
 
 @pytest.fixture(autouse=True)

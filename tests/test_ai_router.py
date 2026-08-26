@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import pytest
 
-from career_radar import config
-from career_radar.ai.base import AiResult, Provider, ProviderError, QuotaExceededError
-from career_radar.ai.router import AiRouter
-from career_radar.ai.usage import UsageTracker
-from career_radar.models import Job
-from career_radar.profile import load_profile
+from rove import config
+from rove.ai.base import AiResult, Provider, ProviderError, QuotaExceededError
+from rove.ai.router import AiRouter
+from rove.ai.usage import UsageTracker
+from rove.models import Job
+from rove.profile import load_profile
 
 
 @pytest.fixture(autouse=True)

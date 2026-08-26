@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from career_radar import cancellation
-from career_radar.collectors import browser
+from rove import cancellation
+from rove.collectors import browser
 
 
 @pytest.fixture(autouse=True)
@@ -19,7 +19,7 @@ def _no_real_windows_foreground_calls(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _reset_cancellation_flag():
-    """The "Cancelar" button's flag (career_radar/cancellation.py) is a
+    """The "Cancelar" button's flag (rove/cancellation.py) is a
     single process-wide `threading.Event` — without this, a test that calls
     `cancellation.request()` (or `/cancel`) would leak a "cancelled" state
     into every test that runs after it in the same pytest process."""

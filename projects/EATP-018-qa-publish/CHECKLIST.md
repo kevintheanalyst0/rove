@@ -20,10 +20,10 @@
       gitignored and never committed (`git log --all -- .env` empty)
 
 ### Phase 4 — Publish
-- [x] Kevin approval — público, nombre `career-radar` (2026-08-12, chat)
+- [x] Kevin approval — público, nombre `rove` (2026-08-12, chat)
 - [x] init/clean — audited: `.env`/`data/` (incl. browser_profile, cookies) gitignored
       and never committed; `legacy/` has no secrets; no stray files in `git status`
-- [x] push to GitHub — https://github.com/kevintheanalyst0/career-radar (public)
+- [x] push to GitHub — https://github.com/kevintheanalyst0/rove (public)
 - [x] ROADMAP all done + notes
 
 ## Time log
@@ -44,5 +44,5 @@ Wrote `docs/governance/AUTOMATION.md` for an opt-in daily scheduled run (Kevin c
 activate later); explicitly did not build a match-notification hook per Kevin's call.
 Replaced the previous session's misleading README/CHANGELOG drafts (which claimed
 finished work — Playwright checks, notification hook, GitHub publish — that had never
-actually happened) with an honest account. Publishing to GitHub (public, `career-radar`)
+actually happened) with an honest account. Publishing to GitHub (public, `rove`)
 next, with Kevin's explicit approval.

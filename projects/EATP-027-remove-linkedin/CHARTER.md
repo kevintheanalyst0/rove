@@ -2,7 +2,7 @@
 
 ## Objective
 
-Cut LinkedIn out of Career Radar completely: no collector, no config entry, no UI
+Cut LinkedIn out of Rove completely: no collector, no config entry, no UI
 affordance, no docs describing it as a live source. Not disabled, not kept as a
 dormant option — gone, with the history staying in git. This is Kevin's own call
 (2026-08-21 backlog, P0 in the original ChatGPT draft): the collector has been the
@@ -18,20 +18,20 @@ matches, and its upkeep cost stopped being worth it.
 
 Read only these — do not read the rest of the repo:
 
-- `src/career_radar/collectors/__init__.py` — registry wiring + `BROWSER_SOURCES`.
-- `src/career_radar/collectors/linkedin.py` — being deleted; skim to confirm nothing
+- `src/rove/collectors/__init__.py` — registry wiring + `BROWSER_SOURCES`.
+- `src/rove/collectors/linkedin.py` — being deleted; skim to confirm nothing
   outside it depends on a helper defined here.
-- `src/career_radar/collectors/linkedin_api.py` — being deleted; same check.
-- `src/career_radar/collectors/browser.py` — shared with Indeed; only comments/
+- `src/rove/collectors/linkedin_api.py` — being deleted; same check.
+- `src/rove/collectors/browser.py` — shared with Indeed; only comments/
   docstrings mentioning LinkedIn get trimmed, the actual session/profile/kill logic
   stays untouched since Indeed depends on it.
-- `src/career_radar/collectors/indeed.py` — has comments pointing at
+- `src/rove/collectors/indeed.py` — has comments pointing at
   `linkedin.py` as "mirrors X" reference; these need rewording once that file is
   gone (don't point comments at a deleted file).
-- `src/career_radar/collectors/occ.py` — same kind of dangling comment reference.
-- `src/career_radar/pipeline.py` — one comment mentioning LinkedIn/Indeed as "the
+- `src/rove/collectors/occ.py` — same kind of dangling comment reference.
+- `src/rove/pipeline.py` — one comment mentioning LinkedIn/Indeed as "the
   browser-driven ones"; reword to Indeed only.
-- `src/career_radar/web/static/js/app.js` — has a `linkedin` entry in the source
+- `src/rove/web/static/js/app.js` — has a `linkedin` entry in the source
   icon/color map (~line 72) and a comment about not blocking the UI on LinkedIn
   login (~line 5) that should generalize to "browser-driven collectors" (i.e. Indeed).
 - `tests/test_collector_linkedin.py`, `tests/test_collector_linkedin_api.py` —

@@ -15,5 +15,5 @@ especially:
 - `jobmatch/pipeline/{process,state,ai}.py` — resumable batches, quota pause, retries.
 - `app.py`, `assets/style.css` — the existing dark/violet look for reference.
 
-**Reuse the knowledge, not the structure.** The rebuild lives in `src/career_radar/`
+**Reuse the knowledge, not the structure.** The rebuild lives in `src/rove/`
 following the charters; it does not import from `legacy/`.

@@ -5,9 +5,9 @@ introduce: reordering, omitting, duplicating, or inventing an id.
 
 from __future__ import annotations
 
-from career_radar.ai.base import AiResult
-from career_radar.ai.parse import match_ai_results
-from career_radar.models import Job
+from rove.ai.base import AiResult
+from rove.ai.parse import match_ai_results
+from rove.models import Job
 
 
 def _job(source_job_id: str, title: str) -> Job:

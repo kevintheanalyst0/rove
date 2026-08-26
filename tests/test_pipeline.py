@@ -12,20 +12,20 @@ from collections.abc import Iterator
 
 import pytest
 
-from career_radar import cancellation, config, pipeline
-from career_radar.ai.base import AiResult, Provider
-from career_radar.ai.router import AiRouter
-from career_radar.ai.usage import UsageTracker
-from career_radar.collectors.base import Collector, CollectorRegistry
-from career_radar.criteria import (
+from rove import cancellation, config, pipeline
+from rove.ai.base import AiResult, Provider
+from rove.ai.router import AiRouter
+from rove.ai.usage import UsageTracker
+from rove.collectors.base import Collector, CollectorRegistry
+from rove.criteria import (
     Criteria,
     EnglishRequirementCriteria,
     Matcher,
     RemoteSignals,
     ScoreFloors,
 )
-from career_radar.models import Job, RemoteStatus, RunStatus
-from career_radar.profile import load_profile
+from rove.models import Job, RemoteStatus, RunStatus
+from rove.profile import load_profile
 
 PROFILE = load_profile()
 
@@ -213,8 +213,8 @@ def test_dismissed_job_is_excluded_from_the_run():
     """EATP-016: a job Kevin marked 'no me interesa' on the dashboard never
     reappears — tracking.dismissed_signatures() feeds gate() the same way
     EATP-010's cache already does."""
-    from career_radar.tracking import store as tracking_store
-    from career_radar.tracking.store import TrackingAction
+    from rove.tracking import store as tracking_store
+    from rove.tracking.store import TrackingAction
 
     job = _job(source="occ", source_job_id="1")
     tracking_store.record_action(job.signature, TrackingAction.DISMISSED)
@@ -235,7 +235,7 @@ def test_cache_hidden_job_is_tallied_in_the_funnel_by_source():
     """EATP-029/P29: a job the 30-day signature cache suppresses must show up
     in `result.funnel` as `cached_recently` under its own source — this is
     the whole point of the funnel existing (P28), verified end to end."""
-    from career_radar.quality.cache import SignatureCache
+    from rove.quality.cache import SignatureCache
 
     job = _job(source="occ", source_job_id="1")
     cache = SignatureCache()
@@ -259,7 +259,7 @@ def test_new_signatures_excludes_a_job_already_in_history():
     NEW again, even though it still passes the (separate) recency cache."""
     from datetime import UTC, datetime
 
-    from career_radar.history import store as history_store
+    from rove.history import store as history_store
 
     job = _job(source="occ", source_job_id="1")
     history_store.record_run([job], datetime.now(UTC))

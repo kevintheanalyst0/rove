@@ -13,11 +13,11 @@ P13 (speed), P14 (knobs), R12 (fewer manual steps); enables R11 via events; wire
 |------|-----|
 | `CLAUDE.md` | Operating rules — esp. 3 memory/crash safety. |
 | `docs/governance/ARCHITECTURE.md` | End-to-end data flow. |
-| `src/career_radar/events.py` | Event bus (EATP-001). |
-| `src/career_radar/quality/*` | gate + dedup + cache (009-010). |
-| `src/career_radar/collectors/base.py` | registry of sources (003-008). |
-| `src/career_radar/health/check.py` | source health (011). |
-| `src/career_radar/scoring/*` | prefilter+evaluate+validate (013). |
+| `src/rove/events.py` | Event bus (EATP-001). |
+| `src/rove/quality/*` | gate + dedup + cache (009-010). |
+| `src/rove/collectors/base.py` | registry of sources (003-008). |
+| `src/rove/health/check.py` | source health (011). |
+| `src/rove/scoring/*` | prefilter+evaluate+validate (013). |
 | `legacy/jobmatch/pipeline/{process,state}.py` | Reference: resumable batches + pause-on-quota + status persistence. |
 
 ## Dependencies
@@ -39,7 +39,7 @@ P13 (speed), P14 (knobs), R12 (fewer manual steps); enables R11 via events; wire
 - Packaging/scheduling (018).
 
 ## Deliverables
-- src/career_radar/pipeline.py
+- src/rove/pipeline.py
 - data/{status,results}.json writers
 - tests/test_pipeline.py
 

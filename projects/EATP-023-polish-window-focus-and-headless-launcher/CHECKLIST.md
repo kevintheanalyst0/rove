@@ -38,7 +38,7 @@
       later (matches the 20s grace + poll interval). Also verified a
       reconnect within the grace period (models a page refresh) does NOT
       trigger shutdown — server still alive after 30s.
-- [x] `Career Radar.vbs` replaces `Career Radar.bat` (removed, along with its
+- [x] `Rove.vbs` replaces `Rove.bat` (removed, along with its
       now-orphaned `.ico`s from EATP-020) — hidden `WScript.Shell.Run`,
       fire-and-forget; also eliminates the UNC-path CMD warning Kevin saw,
       since there's no `cmd.exe` in the path anymore
@@ -135,7 +135,7 @@
       the proven `msedge --app=URL`. That ID was never confirmed installed
       on Kevin's machine — this is almost certainly why he couldn't open the
       app at all ("parece que ya está activa la ventana pero no sale nada").
-      Reverted to `--app=URL` as the default; `CAREER_RADAR_EDGE_APP_ID` env
+      Reverted to `--app=URL` as the default; `ROVE_EDGE_APP_ID` env
       var still available to opt back in once the PWA install + ID are
       actually live-verified.
 - [x] **Taskbar icon, actually solved (2026-08-16)**: turned out Career
@@ -156,7 +156,7 @@
       `127.0.0.1-4FF64651_pfncv7bjx4w4g!App`. Kevin confirmed live: this
       window showed the correct icon, the `--app=`/`--app-id=` ones moments
       before did not. `run_web.sh` updated to use this by default
-      (`CAREER_RADAR_APP_AUMID` env var to override if Kevin ever
+      (`ROVE_APP_AUMID` env var to override if Kevin ever
       reinstalls the app and gets a new AUMID); the old `--app=URL` path
       kept only as a fallback if the var is ever cleared. Also explains why
       `--app-id` alone "didn't open anything" originally: separately, the
@@ -170,7 +170,7 @@
 - [x] **New: "Cancelar" button (2026-08-16, Kevin's request)**. Found live
       while diagnosing the above: a stuck/ghost Chrome window left a run
       hung at `running: true` with no way to stop it short of killing the
-      whole server. New `career_radar/cancellation.py` — one process-wide
+      whole server. New `rove/cancellation.py` — one process-wide
       `threading.Event`, reset at the start of every `pipeline.run()`.
       Two-pronged so it works whether a collector is blocked *between*
       calls or *inside* one: (1) cooperative — `pipeline.py` checks it at
@@ -258,7 +258,7 @@
       lab-confirmed)**: `is_captcha_page`'s bare `"captcha"` substring
       matched anywhere in the *entire page HTML* — almost certainly the
       false-alarm source (e.g. a defensive reCAPTCHA badge Indeed may embed
-      on ordinary pages). Confirmed this isn't a career-radar regression:
+      on ordinary pages). Confirmed this isn't a rove regression:
       legacy had the identical bare-word check and Kevin confirmed the same
       false-alarm behavior there. Split the check: full HTML body only
       trusts specific phrases now ("security check", "verifica que eres
@@ -298,7 +298,7 @@
       test asserted on the removed calls, since they only checked the
       needs_intervention/intervention_resolved event pair, which stayed).
 
-### Phase 3 — Verify & close (career-radar as a whole)
+### Phase 3 — Verify & close (rove as a whole)
 - [x] `pytest` green (345 passed)
 - [ ] ROADMAP status → ✅ for EATP-023; whole project marked closed
 - [ ] Session notes written

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from career_radar.models import (
+from rove.models import (
     Fit,
     Grade,
     Job,

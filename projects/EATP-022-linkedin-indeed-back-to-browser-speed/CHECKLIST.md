@@ -62,7 +62,7 @@ other sources), directly contradicting EATP-019's finding that LinkedIn's
 UI redesign broke scraping — turns out that redesign got reverted (or was a
 temporary A/B test) sometime after 2026-08-13, and nobody re-checked before
 building EATP-019/020/021's whole guest-HTTP-endpoint workaround on top of
-a stale finding. Live-confirmed with career-radar's own existing isolated
+a stale finding. Live-confirmed with rove's own existing isolated
 profile (no need for Kevin's personal Chrome, no new account risk) —
 reverted LinkedIn's listing back to real-browser search, kept detail-fetch
 on the safe anonymous guest endpoint. Result: 8-9x faster than the guest

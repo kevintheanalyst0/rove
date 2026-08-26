@@ -38,7 +38,7 @@ P1 (methodology/efficiency); sets up P5 (Indeed) and R11/R12 (no terminal input(
 - AI (012).
 
 ## Deliverables
-- src/career_radar/collectors/{base,http,browser}.py
+- src/rove/collectors/{base,http,browser}.py
 - tests/test_collector_framework.py
 
 ## Key design decisions & constraints

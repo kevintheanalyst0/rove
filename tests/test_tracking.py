@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from career_radar import config
-from career_radar.tracking import store
-from career_radar.tracking.store import TrackingAction
+from rove import config
+from rove.tracking import store
+from rove.tracking.store import TrackingAction
 
 
 @pytest.fixture(autouse=True)

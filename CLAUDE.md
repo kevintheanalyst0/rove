@@ -24,7 +24,7 @@ código va en inglés.**
 
 ## 1. Mission
 
-Career Radar is a **personal, remote-first job-discovery engine for Kevin.** Its job
+Rove is a **personal, remote-first job-discovery engine for Kevin.** Its job
 is to surface **genuinely relevant, genuinely remote** Data Analyst / BI / Business
 Analyst vacancies in the Spanish-speaking / LatAm market, evaluate them with AI, and
 present the results in a clean local web UI — **with as few manual steps as possible.**

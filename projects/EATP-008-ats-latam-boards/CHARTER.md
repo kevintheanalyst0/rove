@@ -16,7 +16,7 @@ P2, P3, P4, P6, P15.
 | `docs/adr/ADR-005-source-strategy.md` | Why these sources. |
 | `docs/governance/SCRAPING-GOTCHAS.md` | Recommended-jobs cards, pagination end-signals, site filter params, duplicate-job pitfalls — check every new source for these even without legacy precedent. |
 | `docs/governance/DATA-CONTRACTS.md` | Job shape. |
-| `src/career_radar/collectors/{base,http}.py` | Framework (EATP-003). |
+| `src/rove/collectors/{base,http}.py` | Framework (EATP-003). |
 
 ## Dependencies
 - **Projects:** EATP-003.
@@ -34,7 +34,7 @@ P2, P3, P4, P6, P15.
 - Gate/AI/UI.
 
 ## Deliverables
-- src/career_radar/collectors/{greenhouse,lever,getonbrd,torre}.py (+ ashby/workable if time)
+- src/rove/collectors/{greenhouse,lever,getonbrd,torre}.py (+ ashby/workable if time)
 - ats_companies list in config
 - tests/test_collectors_ats_latam.py
 

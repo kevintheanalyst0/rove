@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from career_radar.ai.base import AiResult
-from career_radar.ai.parse import (
+from rove.ai.base import AiResult
+from rove.ai.parse import (
     coerce_result,
     extract_json,
     match_ai_results,

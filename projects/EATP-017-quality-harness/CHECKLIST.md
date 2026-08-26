@@ -30,7 +30,7 @@ Labeling flow reutiliza el modal de detalle del dashboard (EATP-016): botones "B
 chips de razón (no remoto/fuera de campo/inglés/otro), persistidos en `data/eval/labels.jsonl`
 (mismo patrón append-only que `tracking/store.py`). `eval/report.py` calcula
 `precision@shown` + desglose de falsos positivos por razón y compara contra un baseline
-guardado en `data/eval/baseline.json` (se corre como script: `python -m career_radar.eval.report`,
+guardado en `data/eval/baseline.json` (se corre como script: `python -m rove.eval.report`,
 `--set-baseline` para reanclar después de un ajuste). Bug encontrado y corregido durante
 verificación manual: una corrida sin ninguna etiqueta no debe fijar un baseline vacío
 (bloquearía que el primer baseline real se guarde). Falta que Kevin etiquete una docena+

@@ -62,7 +62,7 @@ def render_header():
             <div>
 
                 <div class="hero-title">
-                    Career Radar
+                    Rove
                 </div>
 
                 <div class="hero-subtitle">
@@ -77,7 +77,7 @@ def render_header():
 
 
 st.set_page_config(
-    page_title="Career Radar",
+    page_title="Rove",
     page_icon="📊",
     layout="wide"
 )

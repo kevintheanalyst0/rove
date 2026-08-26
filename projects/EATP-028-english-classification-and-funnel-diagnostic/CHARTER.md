@@ -26,24 +26,24 @@ prefiltered/sent-to-Gemini, by source) and expand the search-term list.
 
 ## Context to load
 
-- `src/career_radar/criteria.py` — `requires_advanced_english()` (~line 146) and
+- `src/rove/criteria.py` — `requires_advanced_english()` (~line 146) and
   the `AdvancedEnglish` model (~line 72); this is what becomes 3-way.
 - `criteria.toml` — the `[advanced_english]` table (~lines 94-112): today's
   `phrases`/`regex` lists conflate explicit (C1/C2/native/bilingual) with
   ambiguous ("professional english", "english required", "fluent", "strong
   communication skills") — these need to split into two tiers. Also where the
   new search terms get added.
-- `src/career_radar/quality/filters.py` (~line 54-56) — where the reject fires
+- `src/rove/quality/filters.py` (~line 54-56) — where the reject fires
   today; needs a third path for "indeterminate" that keeps the job visible with
   a tag instead of dropping it.
-- `src/career_radar/scoring/validate.py` (~line 77) — other caller of
+- `src/rove/scoring/validate.py` (~line 77) — other caller of
   `requires_advanced_english()`.
-- `src/career_radar/scoring/prefilter.py` — check whether it also needs to know
+- `src/rove/scoring/prefilter.py` — check whether it also needs to know
   about the indeterminate tier or only the hard filter does.
-- `src/career_radar/pipeline.py` — where per-source/per-stage counts already
+- `src/rove/pipeline.py` — where per-source/per-stage counts already
   exist (if any) for the funnel diagnostic; check `RunResult`/`events.py` for
   the right place to accumulate and expose these counts.
-- `src/career_radar/web/static/js/app.js` + whatever template renders results —
+- `src/rove/web/static/js/app.js` + whatever template renders results —
   where the "Confirmar inglés" tag and the exact matched phrase need to show.
 - `docs/governance/DATA-CONTRACTS.md` — update if the job/result shape gains a
   field (e.g. `english_requirement: reject | compatible | indeterminate` +

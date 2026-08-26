@@ -7,7 +7,7 @@
   can issue a simple cross-origin `POST` to `http://127.0.0.1:8000/run` (or `/cancel`,
   `/reset`, `/track`, `/eval/label`) with no CORS preflight, because the server currently
   has no `CORSMiddleware`, no `TrustedHostMiddleware`, and no explicit `Host`/`Origin`
-  check at all (verified against `src/career_radar/web/server.py` during the Security
+  check at all (verified against `src/rove/web/server.py` during the Security
   Hardening audit, 2026-08-19). Several of these routes have real side effects: `/run`
   starts a scrape, `/cancel` kills the running automation browser mid-flight, `/reset`
   discards run state. This is a CSRF/DNS-rebinding-class gap — flagged by the AI during
@@ -16,7 +16,7 @@
 - **Decision:** Validate both the `Host` **and** `Origin` headers on every mutating
   request (`/run`, `/cancel`, `/reset`, `/track`, `/eval/label`) against an explicit
   allowlist matching only what the local frontend actually uses (`127.0.0.1:<port>` and
-  `localhost:<port>`, port from `CAREER_RADAR_PORT`/default `8000`). Reject with `403`
+  `localhost:<port>`, port from `ROVE_PORT`/default `8000`). Reject with `403`
   otherwise. An explicit per-request check (or a small dependency) is preferred over
   Starlette's generic `TrustedHostMiddleware` alone, because `TrustedHostMiddleware`
   only checks `Host`, not `Origin` — and `Origin` is what actually distinguishes "this

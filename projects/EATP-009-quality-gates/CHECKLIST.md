@@ -32,7 +32,7 @@ Turned out lighter than the charter's 2-2.5h estimate: EATP-002 had already buil
 `criteria.py`'s pure classification functions (`title_is_rejected`,
 `title_caution_flags`, `requires_advanced_english`, `classify_remote`) — this session's
 real job was wiring them into a single `gate(jobs) -> GateResult` entry point
-(`src/career_radar/quality/filters.py`) plus two small additions:
+(`src/rove/quality/filters.py`) plus two small additions:
 
 - `criteria.classify_remote_with_evidence()` — new sibling of `classify_remote()`
   (unchanged signature/behavior, all its existing tests still pass) that returns the

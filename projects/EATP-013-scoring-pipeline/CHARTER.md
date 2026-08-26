@@ -16,8 +16,8 @@ P4, P6, P7 (criteria + grade), P10 (matcher purpose), P11/P17 (validation + id-s
 | `docs/governance/CANDIDATE-PROFILE.md` | The values the rubric encodes. |
 | `docs/governance/DATA-CONTRACTS.md` | ScoredJob + the ONE grade mapping. |
 | `docs/adr/ADR-009-title-is-a-signal-not-a-verdict.md` | Matcher/AI must judge full text; title_caution_flags feed the score, they don't gate it. |
-| `src/career_radar/ai/base.py` | The AI layer this calls (EATP-012). |
-| `src/career_radar/criteria.py` | Weights/floors/signals (EATP-002). |
+| `src/rove/ai/base.py` | The AI layer this calls (EATP-012). |
+| `src/rove/criteria.py` | Weights/floors/signals (EATP-002). |
 | `legacy/jobmatch/pipeline/matcher.py` | Reference: old ranking-only matcher. |
 | `legacy/jobmatch/pipeline/process.py` | Reference: old orchestration + the positional mapping to avoid. |
 
@@ -39,7 +39,7 @@ P4, P6, P7 (criteria + grade), P10 (matcher purpose), P11/P17 (validation + id-s
 - UI (015-016).
 
 ## Deliverables
-- src/career_radar/scoring/{prefilter,evaluate,validate}.py
+- src/rove/scoring/{prefilter,evaluate,validate}.py
 - the finalized batch prompt
 - tests/test_scoring.py
 

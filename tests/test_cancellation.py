@@ -1,4 +1,4 @@
-"""career_radar/cancellation.py — the process-wide flag behind the
+"""rove/cancellation.py — the process-wide flag behind the
 "Cancelar" button. Pure threading.Event wrapper, tested directly. The
 autouse `_reset_cancellation_flag` fixture (conftest.py) keeps this state
 from leaking between tests.
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from career_radar import cancellation
+from rove import cancellation
 
 
 def test_not_requested_by_default():

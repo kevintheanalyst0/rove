@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from career_radar.ai.usage import ProviderUsage, UsageTracker
+from rove.ai.usage import ProviderUsage, UsageTracker
 
 
 def test_fresh_tracker_reports_nothing_exhausted():

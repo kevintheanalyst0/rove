@@ -14,13 +14,13 @@ window or to what gets suppressed.
 
 ## Context to load
 
-- `src/career_radar/quality/cache.py` — `SignatureCache`, `SignatureRecord`;
+- `src/rove/quality/cache.py` — `SignatureCache`, `SignatureRecord`;
   read/write path.
 - `docs/adr/ADR-001-content-signature-cache.md` — the existing design rationale;
   this project must not contradict it, only add visibility.
 - Wherever EATP-028's funnel diagnostic ends up living (pipeline/events) — the
   cache-hidden count plugs into the same diagnostic.
-- `src/career_radar/web/` (backend routes) + `app.js` / templates — where a new
+- `src/rove/web/` (backend routes) + `app.js` / templates — where a new
   read-only "Ver cacheadas" view and a manual-reset action need to live.
 - `docs/governance/DATA-CONTRACTS.md` — if the cache-hidden count becomes part
   of a documented response shape.

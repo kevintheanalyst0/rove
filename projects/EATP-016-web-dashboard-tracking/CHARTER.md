@@ -14,9 +14,9 @@ P7 UX (consistent grades), P8 UX (remote-only default), and proactive P18 (new-s
 | `CLAUDE.md` | Operating rules. |
 | `docs/governance/DESIGN-SYSTEM.md` | Dashboard spec + tokens. |
 | `docs/adr/ADR-007-run-history-and-tracking.md` | Tracking + 'new since last' design. |
-| `src/career_radar/history/store.py` | Run history for 'new' (EATP-010). |
-| `src/career_radar/web/server.py` | Backend to extend (EATP-015). |
-| `src/career_radar/models.py` | ScoredJob + grade mapping (EATP-001). |
+| `src/rove/history/store.py` | Run history for 'new' (EATP-010). |
+| `src/rove/web/server.py` | Backend to extend (EATP-015). |
+| `src/rove/models.py` | ScoredJob + grade mapping (EATP-001). |
 
 ## Dependencies
 - **Projects:** EATP-010, EATP-014, EATP-015.

@@ -15,7 +15,7 @@ P1, P2 (LinkedIn coverage), P13 (gentler/faster), P23 (account-ban safety).
 | `docs/governance/SEARCH-STRATEGY.md` | Terms + tiers. |
 | `docs/governance/DATA-CONTRACTS.md` | Job shape. |
 | `docs/governance/SCRAPING-GOTCHAS.md` | LinkedIn's "recommended for you" cards, rate-limit tab coordination, duplicate-job pitfalls. |
-| `src/career_radar/collectors/{base,browser,http}.py` | Framework (EATP-003). |
+| `src/rove/collectors/{base,browser,http}.py` | Framework (EATP-003). |
 | `legacy/jobmatch/collectors/linkedin.py` | Reference: listing scroll, page health (429), pause coordination. |
 | `legacy/jobmatch/collectors/linkedin_api.py` | Reference: guest job-detail endpoint. |
 | `tests/fixtures/linkedin_jobs.json` | Real records for tests. |
@@ -38,7 +38,7 @@ P1, P2 (LinkedIn coverage), P13 (gentler/faster), P23 (account-ban safety).
 - Gate/AI.
 
 ## Deliverables
-- src/career_radar/collectors/linkedin.py (+ guest api helper)
+- src/rove/collectors/linkedin.py (+ guest api helper)
 - tests/test_collector_linkedin.py
 
 ## Key design decisions & constraints

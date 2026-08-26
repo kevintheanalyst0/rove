@@ -19,8 +19,8 @@ import queue
 import threading
 import time
 
-from career_radar.collectors.indeed import IndeedCollector
-from career_radar.events import bus
+from rove.collectors.indeed import IndeedCollector
+from rove.events import bus
 
 
 def _watch_events(stop: threading.Event) -> None:

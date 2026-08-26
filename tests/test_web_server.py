@@ -13,11 +13,11 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 
-from career_radar import cancellation, config
-from career_radar.events import EventBus
-from career_radar.quality.cache import SignatureCache
-from career_radar.storage import write_json
-from career_radar.web.server import (
+from rove import cancellation, config
+from rove.events import EventBus
+from rove.quality.cache import SignatureCache
+from rove.storage import write_json
+from rove.web.server import (
     _SHUTDOWN_GRACE_SECONDS,
     _should_shutdown,
     _stream_events,
@@ -30,7 +30,7 @@ def _make_client(pipeline_run, reset_run_data=lambda: None) -> tuple[TestClient,
     bus = EventBus()
     app = create_app(event_bus=bus, pipeline_run=pipeline_run, reset_run_data=reset_run_data)
     # EATP-026: base_url matches what run_web.sh actually binds to (127.0.0.1:8000,
-    # the CAREER_RADAR_PORT default), so TestClient's Host header passes the
+    # the ROVE_PORT default), so TestClient's Host header passes the
     # same-origin check in server.py instead of the httpx default "testserver".
     return TestClient(app, base_url="http://127.0.0.1:8000"), bus
 
@@ -40,7 +40,7 @@ def test_index_serves_html() -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "Career Radar" in response.text
+    assert "Rove" in response.text
 
 
 def test_static_assets_served() -> None:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from career_radar.criteria import (
+from rove.criteria import (
     classify_english_requirement_with_evidence,
     classify_remote,
     classify_remote_with_evidence,
@@ -10,8 +10,8 @@ from career_radar.criteria import (
     title_caution_flags,
     title_is_rejected,
 )
-from career_radar.models import EnglishRequirement, RemoteStatus
-from career_radar.profile import load_profile
+from rove.models import EnglishRequirement, RemoteStatus
+from rove.profile import load_profile
 
 # ---------------------------------------------------------------------------
 # Loaders validate

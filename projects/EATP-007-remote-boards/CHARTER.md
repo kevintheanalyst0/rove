@@ -16,7 +16,7 @@ P2, P3, P4, P6, P15 (broader AND better; less competition).
 | `docs/adr/ADR-005-source-strategy.md` | Keep Indeed; ADD these high-signal sources. |
 | `docs/governance/SCRAPING-GOTCHAS.md` | Recommended-jobs cards, pagination end-signals, site filter params, duplicate-job pitfalls — check every new source for these even without legacy precedent. |
 | `docs/governance/DATA-CONTRACTS.md` | Job shape. |
-| `src/career_radar/collectors/{base,http}.py` | Framework (EATP-003). |
+| `src/rove/collectors/{base,http}.py` | Framework (EATP-003). |
 
 ## Dependencies
 - **Projects:** EATP-003.
@@ -33,7 +33,7 @@ P2, P3, P4, P6, P15 (broader AND better; less competition).
 - Gate/AI/UI.
 
 ## Deliverables
-- src/career_radar/collectors/{remotive,remoteok,wwr,himalayas}.py
+- src/rove/collectors/{remotive,remoteok,wwr,himalayas}.py
 - tests/test_collectors_remote_boards.py
 
 ## Key design decisions & constraints

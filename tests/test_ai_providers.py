@@ -8,12 +8,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from career_radar import config
-from career_radar.ai.base import ProviderError, QuotaExceededError
-from career_radar.ai.providers.gemini import GeminiProvider
-from career_radar.ai.providers.groq import GroqProvider
-from career_radar.models import Job
-from career_radar.profile import load_profile
+from rove import config
+from rove.ai.base import ProviderError, QuotaExceededError
+from rove.ai.providers.gemini import GeminiProvider
+from rove.ai.providers.groq import GroqProvider
+from rove.models import Job
+from rove.profile import load_profile
 
 
 @pytest.fixture(autouse=True)

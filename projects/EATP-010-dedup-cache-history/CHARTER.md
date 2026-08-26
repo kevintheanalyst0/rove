@@ -16,7 +16,7 @@ P9 (daily reposts), P15 (duplicates), and the proactive P18 (no run history / no
 | `docs/adr/ADR-007-run-history-and-tracking.md` | Run history + tracking rationale. |
 | `docs/governance/DATA-CONTRACTS.md` | signature() + cache/history file shapes. |
 | `docs/governance/SCRAPING-GOTCHAS.md` | §4: three distinct duplicate cases — same-run cross-term, and the hard one (reworded title, same job): weight company+description over title, never require a title match. |
-| `src/career_radar/quality/filters.py` | The gate this composes with (EATP-009). |
+| `src/rove/quality/filters.py` | The gate this composes with (EATP-009). |
 | `legacy/jobmatch/collectors/utils.py` | Reference: difflib dedup to replace with rapidfuzz. |
 
 ## Dependencies
@@ -36,8 +36,8 @@ P9 (daily reposts), P15 (duplicates), and the proactive P18 (no run history / no
 - Matcher/AI.
 
 ## Deliverables
-- src/career_radar/quality/{dedup,cache}.py
-- src/career_radar/history/store.py
+- src/rove/quality/{dedup,cache}.py
+- src/rove/history/store.py
 - tests/test_dedup.py, test_cache.py, test_history.py
 
 ## Key design decisions & constraints

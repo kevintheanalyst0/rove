@@ -16,9 +16,9 @@ from urllib.parse import urlparse
 import httpx
 import pytest
 
-from career_radar import config
-from career_radar.collectors.computrabajo import _END_MARKER, ComputrabajoCollector
-from career_radar.models import RemoteStatus
+from rove import config
+from rove.collectors.computrabajo import _END_MARKER, ComputrabajoCollector
+from rove.models import RemoteStatus
 
 FIXTURES = json.loads(
     (Path(__file__).parent / "fixtures" / "computrabajo_jobs.json").read_text(encoding="utf-8")
@@ -81,7 +81,7 @@ def _make_transport(fixtures: list[dict]) -> httpx.MockTransport:
 
 @pytest.fixture(autouse=True)
 def _no_real_sleep(monkeypatch):
-    monkeypatch.setattr("career_radar.collectors.http.time.sleep", lambda seconds: None)
+    monkeypatch.setattr("rove.collectors.http.time.sleep", lambda seconds: None)
     monkeypatch.setattr("tenacity.nap.time.sleep", lambda seconds: None)
 
 

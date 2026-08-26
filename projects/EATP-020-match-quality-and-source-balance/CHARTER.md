@@ -22,8 +22,8 @@ lever/remoteok silently yielding 0), and the ADR-002/P8 remote-eligibility logic
 never built).
 
 ## Diagnosis (from the real run — `data/results.json`, started 2026-08-14T00:16Z)
-- **Launcher**: `Career Radar - Ejecutar busqueda.bat` sets
-  `CAREER_RADAR_AUTOSTART=1`, which makes `scripts/run_web.sh` POST `/run` before
+- **Launcher**: `Rove - Ejecutar busqueda.bat` sets
+  `ROVE_AUTOSTART=1`, which makes `scripts/run_web.sh` POST `/run` before
   opening the browser at all (see the script's own comment block). This was a
   deliberate EATP-019 design choice to save Kevin a click — but in practice it means
   he never sees the idle screen or the cache-reset button, which is worse. Confirmed
@@ -71,14 +71,14 @@ never built).
 |------|-----|
 | `CLAUDE.md` | Operating rules (always). |
 | `scripts/run_web.sh` | Autostart behavior (Phase 1). |
-| `Career Radar - Ejecutar busqueda.bat`, `Career Radar - Ver resultados.bat` | The two launchers (Phase 1). |
-| `src/career_radar/web/static/index.html` + `web/static/js/` | Idle screen / buttons (Phase 1, if the fix needs UI changes). |
+| `Rove - Ejecutar busqueda.bat`, `Rove - Ver resultados.bat` | The two launchers (Phase 1). |
+| `src/rove/web/static/index.html` + `web/static/js/` | Idle screen / buttons (Phase 1, if the fix needs UI changes). |
 | `criteria.toml` | Where `advanced_english`-style phrase lists live — geo/eligibility list goes here too (Phase 2). |
-| `src/career_radar/quality/filters.py` | `gate()` — where the new eligibility check plugs in (Phase 2). |
-| `src/career_radar/collectors/linkedin.py` | `location_raw` capture, listing loop to parallelize (Phase 2 & 4). |
-| `src/career_radar/collectors/linkedin_api.py` | Existing `ThreadPoolExecutor` pattern to mirror for listing (Phase 4). |
-| `src/career_radar/collectors/lever.py`, `collectors/remoteok.py` | Diagnose the two zero-yield sources (Phase 3). |
-| `src/career_radar/config.py` | `ATS_COMPANIES`, `SEARCH_TERMS` — grow curated lists (Phase 3). |
+| `src/rove/quality/filters.py` | `gate()` — where the new eligibility check plugs in (Phase 2). |
+| `src/rove/collectors/linkedin.py` | `location_raw` capture, listing loop to parallelize (Phase 2 & 4). |
+| `src/rove/collectors/linkedin_api.py` | Existing `ThreadPoolExecutor` pattern to mirror for listing (Phase 4). |
+| `src/rove/collectors/lever.py`, `collectors/remoteok.py` | Diagnose the two zero-yield sources (Phase 3). |
+| `src/rove/config.py` | `ATS_COMPANIES`, `SEARCH_TERMS` — grow curated lists (Phase 3). |
 | `docs/governance/EVALUATION-RUBRIC.md`, `docs/adr/ADR-002-remote-hard-gate.md` | Pattern to mirror for the new hard gate (Phase 2). |
 | `docs/governance/SCRAPING-GOTCHAS.md` | Known per-source quirks, before touching any collector. |
 | `data/results.json` (already inspected this session) | The evidence base for this whole charter. |

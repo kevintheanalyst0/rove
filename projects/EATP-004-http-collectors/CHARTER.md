@@ -15,7 +15,7 @@ P1 (clean methodology), P13 (fast HTTP path), P21 (description quality).
 | `docs/governance/DATA-CONTRACTS.md` | Job shape to emit. |
 | `docs/governance/SEARCH-STRATEGY.md` | Terms + recency. |
 | `docs/governance/SCRAPING-GOTCHAS.md` | Recommended-jobs cards, pagination end-signals, site filter params, duplicate-job pitfalls (Kevin's legacy incidents). |
-| `src/career_radar/collectors/base.py` | Framework to plug into (EATP-003). |
+| `src/rove/collectors/base.py` | Framework to plug into (EATP-003). |
 | `legacy/jobmatch/collectors/occ.py` | Reference: OCC JSON endpoints (oferta.occ.com.mx). |
 | `legacy/jobmatch/collectors/computrabajo.py` | Reference: Computrabajo cards + description API. |
 | `tests/fixtures/{occ,computrabajo}_jobs.json` | Real records for tests. |
@@ -37,7 +37,7 @@ P1 (clean methodology), P13 (fast HTTP path), P21 (description quality).
 - Gate/AI (later).
 
 ## Deliverables
-- src/career_radar/collectors/{occ,computrabajo}.py
+- src/rove/collectors/{occ,computrabajo}.py
 - tests/test_collector_occ.py, test_collector_computrabajo.py
 
 ## Key design decisions & constraints

@@ -1,4 +1,4 @@
-# Changelog — Career Radar
+# Changelog — Rove
 
 All notable changes to this project, grouped by build session (`EATP-00X`). Dates are
 the day the work was done; see `ROADMAP.md` for status/complexity/time per project.

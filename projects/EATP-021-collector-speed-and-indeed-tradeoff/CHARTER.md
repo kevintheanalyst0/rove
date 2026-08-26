@@ -46,9 +46,9 @@ tradeoff.
 |------|-----|
 | `CLAUDE.md` | Operating rules (always). |
 | `projects/EATP-020-match-quality-and-source-balance/CHECKLIST.md` | Full diagnosis + numbers this charter builds on — read Phase 4-6. |
-| `src/career_radar/pipeline.py` | `_collect_stage` — confirms collector run order, where to instrument timing/process checks. |
-| `src/career_radar/collectors/browser.py` | Chrome launch/`quit()` — prime suspect for the leak. |
-| `src/career_radar/collectors/indeed.py` | Detail-tab pool (`_DETAIL_WORKERS=2`), captcha coordination, `is_captcha_page` markers. |
+| `src/rove/pipeline.py` | `_collect_stage` — confirms collector run order, where to instrument timing/process checks. |
+| `src/rove/collectors/browser.py` | Chrome launch/`quit()` — prime suspect for the leak. |
+| `src/rove/collectors/indeed.py` | Detail-tab pool (`_DETAIL_WORKERS=2`), captcha coordination, `is_captcha_page` markers. |
 | `docs/adr/ADR-008-source-health.md` | If timing/health data needs a new field to persist past checkpoint clearing. |
 
 ## Dependencies

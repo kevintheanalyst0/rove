@@ -18,11 +18,11 @@ silent source failure), which this extends.
 | File | Why |
 |------|-----|
 | `CLAUDE.md` | Operating rules (always). |
-| `src/career_radar/collectors/browser.py` | Chrome launch options — window size/fullscreen. |
-| `src/career_radar/collectors/indeed.py` | Captcha coordination bug (Phase 5). |
-| `src/career_radar/collectors/linkedin.py` | Silent-empty diagnosis (Phase 6). |
-| `src/career_radar/web/server.py` + `web/static/` | Cache-reset button (Phase 3). |
-| `src/career_radar/config.py` | Data file paths, `CHROME_USER_DATA_DIR`. |
+| `src/rove/collectors/browser.py` | Chrome launch options — window size/fullscreen. |
+| `src/rove/collectors/indeed.py` | Captcha coordination bug (Phase 5). |
+| `src/rove/collectors/linkedin.py` | Silent-empty diagnosis (Phase 6). |
+| `src/rove/web/server.py` + `web/static/` | Cache-reset button (Phase 3). |
+| `src/rove/config.py` | Data file paths, `CHROME_USER_DATA_DIR`. |
 | `docs/governance/AUTOMATION.md` | Existing WSL/`wsl.exe` launch pattern to reuse for Phase 2. |
 
 ## Dependencies

@@ -14,7 +14,7 @@ finding from EATP-019 Phase 6 (see Diagnosis) and extends P13 (run speed).
 ## Diagnosis (live-verified 2026-08-15, don't re-derive)
 - **LinkedIn's "AI job search" redesign has been reverted (or was a temporary A/B test) since
   EATP-019 Phase 6 (2026-08-13).** Live-tested just now against `https://www.linkedin.com/jobs/search/`
-  using career-radar's own existing isolated profile (`data/browser_profile/`, not Kevin's
+  using rove's own existing isolated profile (`data/browser_profile/`, not Kevin's
   personal Chrome) — the page stayed on `/jobs/search/` (no redirect to the broken
   `/jobs/search-results/` UI) and served the classic markup (`data-occludable-job-id` present,
   real job ids). **This was not a profile-trust issue — our own safe, isolated profile sees the
@@ -39,9 +39,9 @@ finding from EATP-019 Phase 6 (see Diagnosis) and extends P13 (run speed).
 | `CLAUDE.md` | Operating rules (always). |
 | `legacy/jobmatch/collectors/linkedin.py` + `legacy/jobmatch/collectors/linkedin_api.py` | The real-browser search logic to port back (scrolling, card extraction, multi-tab). |
 | `/mnt/d/Development/JobMatchEngine/jobmatch/collectors/indeed.py` | Legacy's actual tab-count/pacing numbers (the original project, not the copy under `legacy/` — same content, referenced live during diagnosis). |
-| `src/career_radar/collectors/linkedin.py` + `linkedin_api.py` | Current HTTP-guest-endpoint implementation — being replaced for listing, detail-fetch stays. |
-| `src/career_radar/collectors/indeed.py` | Current browser-based implementation — tab count/pacing being tuned, captcha UX staying as-is. |
-| `src/career_radar/collectors/browser.py` | Shared browser launch/profile/pacing helpers. |
+| `src/rove/collectors/linkedin.py` + `linkedin_api.py` | Current HTTP-guest-endpoint implementation — being replaced for listing, detail-fetch stays. |
+| `src/rove/collectors/indeed.py` | Current browser-based implementation — tab count/pacing being tuned, captcha UX staying as-is. |
+| `src/rove/collectors/browser.py` | Shared browser launch/profile/pacing helpers. |
 | `docs/adr/ADR-009-title-is-a-signal-not-a-verdict.md`, `docs/governance/SCRAPING-GOTCHAS.md` | Constraints that still apply regardless of which approach fetches the page. |
 | `projects/EATP-019-post-launch-fixes/CHECKLIST.md` (Phase 6) | Why the guest-endpoint rewrite happened — read so the new LinkedIn code doesn't reintroduce solved problems (captcha/login-wall handling, account-ban avoidance). |
 

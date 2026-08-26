@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from career_radar.history.store import (
+from rove.history.store import (
     known_signatures,
     mark_new,
     record_run,
     run_history_file,
 )
-from career_radar.models import Job
+from rove.models import Job
 
 
 def _job(**overrides) -> Job:

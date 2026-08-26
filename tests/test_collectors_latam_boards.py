@@ -18,18 +18,18 @@ import json
 import httpx
 import pytest
 
-from career_radar import cancellation, config
-from career_radar.collectors.base import Collector, CollectorRegistry, CollectorStatus
-from career_radar.collectors.hireline import HirelineCollector
-from career_radar.collectors.parsing import extract_job_posting_ld_json, slug_to_text
-from career_radar.collectors.remotojob import RemotoJobCollector
-from career_radar.collectors.weremoto import WeremotoCollector
-from career_radar.models import RemoteStatus
+from rove import cancellation, config
+from rove.collectors.base import Collector, CollectorRegistry, CollectorStatus
+from rove.collectors.hireline import HirelineCollector
+from rove.collectors.parsing import extract_job_posting_ld_json, slug_to_text
+from rove.collectors.remotojob import RemotoJobCollector
+from rove.collectors.weremoto import WeremotoCollector
+from rove.models import RemoteStatus
 
 
 @pytest.fixture(autouse=True)
 def _no_real_sleep(monkeypatch):
-    monkeypatch.setattr("career_radar.collectors.http.time.sleep", lambda seconds: None)
+    monkeypatch.setattr("rove.collectors.http.time.sleep", lambda seconds: None)
     monkeypatch.setattr("tenacity.nap.time.sleep", lambda seconds: None)
 
 

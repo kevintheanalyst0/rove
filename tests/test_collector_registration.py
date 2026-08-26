@@ -8,15 +8,15 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from career_radar import config
-from career_radar.collectors.base import Collector, CollectorRegistry, CollectorStatus
-from career_radar.collectors.computrabajo import ComputrabajoCollector
-from career_radar.collectors.occ import OCCCollector
+from rove import config
+from rove.collectors.base import Collector, CollectorRegistry, CollectorStatus
+from rove.collectors.computrabajo import ComputrabajoCollector
+from rove.collectors.occ import OCCCollector
 
 
 @pytest.fixture(autouse=True)
 def _no_real_sleep(monkeypatch):
-    monkeypatch.setattr("career_radar.collectors.http.time.sleep", lambda seconds: None)
+    monkeypatch.setattr("rove.collectors.http.time.sleep", lambda seconds: None)
     monkeypatch.setattr("tenacity.nap.time.sleep", lambda seconds: None)
 
 

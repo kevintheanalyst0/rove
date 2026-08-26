@@ -9,8 +9,8 @@ import sys
 import threading
 import time
 
-from career_radar import cancellation, events
-from career_radar.collectors import browser
+from rove import cancellation, events
+from rove.collectors import browser
 
 
 def test_clear_manual_intervention_publishes_resolved_for_the_same_phase():

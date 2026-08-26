@@ -1,7 +1,7 @@
 # Data Contracts
 
 One shape for a vacancy, one shape for a scored vacancy, one shape for a run result.
-Implemented as pydantic models in `src/career_radar/models.py` (EATP-001). Collectors,
+Implemented as pydantic models in `src/rove/models.py` (EATP-001). Collectors,
 filters, cache, scoring, and the UI all speak these — no ad-hoc dicts.
 
 ## `Job` — a normalized vacancy (collector output)

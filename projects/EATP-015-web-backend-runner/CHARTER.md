@@ -14,8 +14,8 @@ R11 (no terminal; spinner + status), R12 (one-click run).
 | `CLAUDE.md` | Operating rules. |
 | `docs/governance/DESIGN-SYSTEM.md` | Tokens + the dots-spinner spec + live status. |
 | `docs/adr/ADR-004-web-ui-over-terminal.md` | Why FastAPI + SSE, not Streamlit. |
-| `src/career_radar/pipeline.py` | The run() the server triggers (EATP-014). |
-| `src/career_radar/events.py` | Progress events to stream via SSE (EATP-001). |
+| `src/rove/pipeline.py` | The run() the server triggers (EATP-014). |
+| `src/rove/events.py` | Progress events to stream via SSE (EATP-001). |
 | `legacy/assets/style.css` | Reference: Kevin's dark/violet look. |
 
 ## Dependencies
@@ -35,7 +35,7 @@ R11 (no terminal; spinner + status), R12 (one-click run).
 - Scheduling/notifications (018).
 
 ## Deliverables
-- src/career_radar/web/server.py + web/static (runner)
+- src/rove/web/server.py + web/static (runner)
 - launch script
 - route/SSE smoke tests
 

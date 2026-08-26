@@ -21,12 +21,12 @@ Kevin's P#/R# backlog.
 |------|-----|
 | `CLAUDE.md` | Operating rules (always). |
 | `projects/EATP-023-polish-window-focus-and-headless-launcher/CHECKLIST.md` | Full history of every window-focus/visibility attempt already tried and how each one failed — read this FIRST, before trying another "bring the window forward" trick, to avoid repeating dead ends (CDP activate/max/normal dance, `document.title` marker + `powershell.exe` `SetForegroundWindow`, WM_CLOSE on a ghost window, `shell:AppsFolder` activation). |
-| `src/career_radar/web/static/js/app.js` | Pausar/Cancelar button wiring, SSE event handling, state machine. |
-| `src/career_radar/web/server.py` | `/cancel`, `/run`, `/status` routes; `state`/`lock`; the background `_worker`. |
-| `src/career_radar/cancellation.py` | The cooperative cancellation flag + `RunCancelled`. |
-| `src/career_radar/collectors/browser.py` | `build_page`, `kill_all_browsers`, `bring_to_front`, `_force_windows_foreground` — all the window-management machinery built/tried so far. |
-| `src/career_radar/collectors/indeed.py` | Current (reverted) window behavior: opens maximized at creation, no raise-on-captcha logic. |
-| `src/career_radar/pipeline.py` | `RunStatus.PAUSED`, checkpoint semantics (`resume`), what "cancelling" currently actually does end to end. |
+| `src/rove/web/static/js/app.js` | Pausar/Cancelar button wiring, SSE event handling, state machine. |
+| `src/rove/web/server.py` | `/cancel`, `/run`, `/status` routes; `state`/`lock`; the background `_worker`. |
+| `src/rove/cancellation.py` | The cooperative cancellation flag + `RunCancelled`. |
+| `src/rove/collectors/browser.py` | `build_page`, `kill_all_browsers`, `bring_to_front`, `_force_windows_foreground` — all the window-management machinery built/tried so far. |
+| `src/rove/collectors/indeed.py` | Current (reverted) window behavior: opens maximized at creation, no raise-on-captcha logic. |
+| `src/rove/pipeline.py` | `RunStatus.PAUSED`, checkpoint semantics (`resume`), what "cancelling" currently actually does end to end. |
 
 ## Dependencies
 - **Projects:** EATP-023 (✅, but see Objective — this project exists because of its

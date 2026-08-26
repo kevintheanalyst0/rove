@@ -15,10 +15,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from career_radar import config
-from career_radar.models import EnglishRequirement, Job, RemoteStatus
-from career_radar.quality.cache import SignatureCache
-from career_radar.quality.filters import gate
+from rove import config
+from rove.models import EnglishRequirement, Job, RemoteStatus
+from rove.quality.cache import SignatureCache
+from rove.quality.filters import gate
 
 FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "latest_jobs.json").read_text(encoding="utf-8"))
 

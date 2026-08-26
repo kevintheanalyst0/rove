@@ -6,7 +6,7 @@ before closing out the whole project: (1) LinkedIn's Chrome window shouldn't ste
 focus since it almost never needs him, (2) Indeed's Chrome window should stay out of
 the way too, but jump to the front the moment it actually needs him (a captcha), and
 (3) the visible CMD terminal the `.bat` launcher opens contradicts the whole point of
-building a polished web UI in the first place — Career Radar should feel like a real
+building a polished web UI in the first place — Rove should feel like a real
 product, not a local script with a console window behind it.
 
 ## Problems solved
@@ -18,11 +18,11 @@ still opened one.
 ## Context to load (already loaded/built this session — no separate session needed)
 | File | Why |
 |------|-----|
-| `src/career_radar/collectors/browser.py` | Window state (`start_minimized`, `bring_to_front`). |
-| `src/career_radar/collectors/indeed.py`, `linkedin.py` | Where `bring_to_front` gets called — exactly when a captcha/login-wall fires. |
-| `src/career_radar/web/server.py` | Auto-shutdown watcher (tab-close detection). |
-| `src/career_radar/events.py` | `EventBus.subscriber_count()`. |
-| `Career Radar.vbs`, `scripts/run_web.sh` | The hidden launcher. |
+| `src/rove/collectors/browser.py` | Window state (`start_minimized`, `bring_to_front`). |
+| `src/rove/collectors/indeed.py`, `linkedin.py` | Where `bring_to_front` gets called — exactly when a captcha/login-wall fires. |
+| `src/rove/web/server.py` | Auto-shutdown watcher (tab-close detection). |
+| `src/rove/events.py` | `EventBus.subscriber_count()`. |
+| `Rove.vbs`, `scripts/run_web.sh` | The hidden launcher. |
 
 ## Dependencies
 - **Projects:** EATP-022 (done).
@@ -38,7 +38,7 @@ still opened one.
    randomized tiny sizes) the window, called exactly once, at the moment a
    captcha/login-wall is first detected (`_wait_for_captcha_resolution` /
    `_wait_for_login`) — never on every launch.
-2. **No visible terminal** — `Career Radar.vbs` replaces `Career Radar.bat`, launching
+2. **No visible terminal** — `Rove.vbs` replaces `Rove.bat`, launching
    the same `wsl.exe` command via `WScript.Shell.Run(..., 0, False)` (hidden window
    style, fire-and-forget). This also incidentally fixes the UNC-path warning Kevin
    saw (`cmd.exe` can't set its CWD to a `\\wsl.localhost\...` path) — the `.vbs`
@@ -60,7 +60,7 @@ scoring/collector logic itself.
 - `server.py` + `events.py`: auto-shutdown watcher, `enable_auto_shutdown` defaulting
   to **off** (only the real production `app` turns it on — too dangerous a default for
   any test process).
-- `Career Radar.vbs` (replaces `Career Radar.bat`), README updated.
+- `Rove.vbs` (replaces `Rove.bat`), README updated.
 
 ## Key design decisions & constraints
 - `enable_auto_shutdown` must default to `False` in `create_app()` — a bug that

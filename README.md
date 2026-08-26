@@ -1,4 +1,4 @@
-# Career Radar
+# Rove
 
 A personal, **remote-first job-discovery engine** for Kevin — the rebuild of
 *JobMatchEngine*. It collects Data Analyst / BI / Business Analyst vacancies from
@@ -11,9 +11,9 @@ apply to beats a long one he has to wade through.
 ## Cómo correrlo (Kevin)
 
 **La forma fácil — un acceso** (está en esta misma carpeta,
-`D:\Development\Career Radar\`):
+`D:\Development\Rove\`):
 
-- **`Career Radar.vbs`** — abre el navegador siempre en la misma pantalla de inicio,
+- **`Rove.vbs`** — abre el navegador siempre en la misma pantalla de inicio,
   con tres botones: **Iniciar búsqueda**, **Limpiar caché** y **Ver dashboard de la
   última corrida** (este último solo aparece si ya hay una corrida previa). Nunca
   arranca nada por su cuenta — vos elegís qué hacer cada vez que lo abrís.
@@ -21,14 +21,14 @@ apply to beats a long one he has to wade through.
 No se abre ninguna ventana de consola (EATP-023) — el servidor corre invisible y se
 apaga solo cuando cerrás la pestaña del navegador (esperá unos 20 segundos; si volvés
 a abrir la página rápido, como al refrescarla, no se apaga). Si querés un acceso
-directo en el Escritorio, clic derecho sobre `Career Radar.vbs` → *Enviar a* →
+directo en el Escritorio, clic derecho sobre `Rove.vbs` → *Enviar a* →
 *Escritorio (crear acceso directo)*.
 
 **La forma manual** (si el `.vbs` no te funciona, o querés ver qué está pasando):
-1. Abre PowerShell o CMD en esta carpeta (`D:\Development\Career Radar`).
+1. Abre PowerShell o CMD en esta carpeta (`D:\Development\Rove`).
 2. Levanta el servidor:
    ```bat
-   .venv\Scripts\python.exe -m uvicorn career_radar.web.server:app --host 127.0.0.1 --port 8000
+   .venv\Scripts\python.exe -m uvicorn rove.web.server:app --host 127.0.0.1 --port 8000
    ```
 3. Abre `http://127.0.0.1:8000` en el navegador.
 
@@ -56,7 +56,7 @@ supervisión no puede resolver un captcha de Indeed si aparece.
 ## Repo map
 
 ```
-career-radar/
+rove/
 ├── CLAUDE.md              ← how Claude Code operates in this repo
 ├── ROADMAP.md              ← the 18-project build plan + status dashboard
 ├── CHANGELOG.md             ← what shipped, grouped by EATP project
@@ -71,7 +71,7 @@ career-radar/
 ├── projects/
 │   ├── _TEMPLATE/            ← charter + checklist templates
 │   └── EATP-001 … 018/       ← one folder per project (charter + checklist)
-├── src/career_radar/         ← the package
+├── src/rove/         ← the package
 ├── tests/                    ← tests + fixtures (real job records, trimmed)
 ├── data/                     ← runtime data (gitignored)
 └── legacy/                   ← the original JobMatchEngine, read-only reference

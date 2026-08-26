@@ -7,8 +7,8 @@ the decision is company + description only — title is never read.
 
 from __future__ import annotations
 
-from career_radar.models import Job
-from career_radar.quality.dedup import dedup
+from rove.models import Job
+from rove.quality.dedup import dedup
 
 _DESCRIPTION = (
     "Buscamos un Analista de Datos remoto para construir dashboards en Power BI, "

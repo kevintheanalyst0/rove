@@ -7,10 +7,10 @@ BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$BASE_DIR"
 
 HOST="127.0.0.1"
-PORT="${CAREER_RADAR_PORT:-8000}"
+PORT="${ROVE_PORT:-8000}"
 URL="http://${HOST}:${PORT}/"
 
-"$BASE_DIR/.venv/bin/python" -m uvicorn career_radar.web.server:app \
+"$BASE_DIR/.venv/bin/python" -m uvicorn rove.web.server:app \
   --host "$HOST" --port "$PORT" --log-level warning &
 SERVER_PID=$!
 trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT INT TERM
@@ -24,13 +24,13 @@ for _ in $(seq 1 50); do
   sleep 0.2
 done
 
-# Career Radar is installed as a PWA in Kevin's Edge (edge://apps). Its Shell
+# Rove is installed as a PWA in Kevin's Edge (edge://apps). Its Shell
 # app identity (AUMID) — found via `(New-Object -ComObject Shell.Application
 # ).NameSpace('shell:AppsFolder').Items()` — activates it exactly the way
 # Windows does when Kevin opens it from Start or a pinned taskbar icon.
 #
 # This matters because raw `msedge --app=URL` / `--app-id=X` (tried first,
-# 2026-08-15/16) never show Career Radar's own taskbar icon, even with the
+# 2026-08-15/16) never show Rove's own taskbar icon, even with the
 # PWA genuinely installed: Edge is already running in the background
 # (`--no-startup-window`), so both of those just forward the request via
 # Chromium's single-instance IPC into a new popup *inside that same existing
@@ -43,9 +43,15 @@ done
 # `explorer.exe`'s own exit code is unreliable here (nonzero even on a
 # successful activation) — don't chain it to a fallback with `&&`, that
 # would silently open a second, redundant window every single launch.
-# Overridable (edge://apps → app → Detalles) in case Kevin ever reinstalls
-# the app and Windows assigns a new AUMID.
-APP_AUMID="${CAREER_RADAR_APP_AUMID:-127.0.0.1-4FF64651_pfncv7bjx4w4g!App}"
+# No default here (unlike the old Career Radar launcher this was forked
+# from): that AUMID belonged to the Career Radar PWA's Shell identity, not
+# Rove's — reusing it would try to activate an app that doesn't exist under
+# this name. Once Rove is installed as its own PWA (edge://apps), find its
+# real AUMID the same way (`(New-Object -ComObject Shell.Application
+# ).NameSpace('shell:AppsFolder').Items()`) and set ROVE_APP_AUMID to it.
+# Until then this falls through to the generic `msedge --app=` launch below
+# — works, just without the dedicated taskbar icon.
+APP_AUMID="${ROVE_APP_AUMID:-}"
 
 open_browser() {
   if grep -qi microsoft /proc/version 2>/dev/null; then
@@ -69,7 +75,7 @@ open_browser() {
     open "$URL" >/dev/null 2>&1 && return 0
   fi
   "$BASE_DIR/.venv/bin/python" -m webbrowser "$URL" >/dev/null 2>&1 && return 0
-  echo "Career Radar está corriendo en $URL — ábrelo manualmente en tu navegador."
+  echo "Rove está corriendo en $URL — ábrelo manualmente en tu navegador."
 }
 
 open_browser
@@ -79,5 +85,5 @@ open_browser
 # down once Kevin closes the browser tab (see server.py's tab-close
 # watcher). This echo only matters if someone's running the script directly
 # in a real terminal for debugging.
-echo "Career Radar corriendo en $URL — se apaga solo al cerrar la pestaña del navegador."
+echo "Rove corriendo en $URL — se apaga solo al cerrar la pestaña del navegador."
 wait "$SERVER_PID"

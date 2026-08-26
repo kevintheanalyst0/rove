@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from career_radar.collectors import browser  # noqa: E402
+from rove.collectors import browser  # noqa: E402
 
 
 def main() -> int:

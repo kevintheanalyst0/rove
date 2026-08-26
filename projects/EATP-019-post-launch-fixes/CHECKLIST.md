@@ -9,9 +9,9 @@
 
 ### Phase 2 — Self-serve launcher (no Claude Code needed)
 - [x] Windows-side double-click scripts — **two**, mirroring legacy (Kevin's feedback):
-      `Career Radar - Ejecutar busqueda.bat` (auto-starts a full run) and
-      `Career Radar - Ver resultados.bat` (opens the dashboard only, no new run).
-      Both reuse `scripts/run_web.sh` from EATP-015; added `CAREER_RADAR_AUTOSTART=1`
+      `Rove - Ejecutar busqueda.bat` (auto-starts a full run) and
+      `Rove - Ver resultados.bat` (opens the dashboard only, no new run).
+      Both reuse `scripts/run_web.sh` from EATP-015; added `ROVE_AUTOSTART=1`
       env var to it that POSTs `/run` once the server's up, before opening the browser.
 - [x] Short doc note in README (both `.bat`s as the primary path, manual steps kept as fallback)
 - [x] Verified: autostart POST confirmed via `/status` (`running: true`); noticed

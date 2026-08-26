@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from career_radar.collectors.base import CollectorResult, CollectorStatus
-from career_radar.health.check import (
+from rove.collectors.base import CollectorResult, CollectorStatus
+from rove.health.check import (
     _yields_file,
     check_sources,
     classify_source,
     record_yields,
     yield_baseline,
 )
-from career_radar.models import SourceHealthStatus
-from career_radar.storage import read_jsonl
+from rove.models import SourceHealthStatus
+from rove.storage import read_jsonl
 
 _NOW = datetime(2026, 1, 15, tzinfo=UTC)
 

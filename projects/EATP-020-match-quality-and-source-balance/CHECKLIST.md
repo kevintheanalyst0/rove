@@ -6,7 +6,7 @@
 ### Phase 1 — Launcher UX (no silent autostart)
 - [x] Resolved with Kevin: one launcher, 3-button landing screen (Iniciar
       búsqueda / Limpiar caché / Ver dashboard de la última corrida)
-- [x] `Career Radar.bat` (single file, replaces the two old ones + their
+- [x] `Rove.bat` (single file, replaces the two old ones + their
       `.ico`s, all removed); `run_web.sh` autostart branch deleted
 - [x] `index.html`: added `viewLastBtn` (hidden by default) next to
       `startBtn`/`clearCacheBtn` on the idle screen
@@ -70,7 +70,7 @@
       dismissed shown), all 33 D's appear when "D" is explicitly selected,
       zero console errors, `#remoteOnlyToggle` confirmed gone from the DOM.
 
-### Phase 4 — Kevin's real verification run (2026-08-14/15, double-clicked `Career Radar.bat`)
+### Phase 4 — Kevin's real verification run (2026-08-14/15, double-clicked `Rove.bat`)
 Real run: 20.2 min total, 475 collected, 20 final. Greenhouse jumped 14→43
 (the +7 companies worked). New findings from this run, triaged live:
 - [x] **OCC 6 min vs. legacy's 1.5 min** — real bug, fixed (see Phase 5 below).

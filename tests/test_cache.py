@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from career_radar.quality.cache import SignatureCache
+from rove.quality.cache import SignatureCache
 
 
 def test_empty_cache_has_never_seen_anything():

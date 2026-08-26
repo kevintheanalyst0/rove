@@ -14,8 +14,8 @@ Proactive P22 (no way to measure if quality improved); validates P4, P6, P15.
 | `CLAUDE.md` | Operating rules. |
 | `docs/governance/EVALUATION-RUBRIC.md` | What 'good' means (the target). |
 | `docs/governance/CANDIDATE-PROFILE.md` | Kevin's definition of a good job. |
-| `src/career_radar/pipeline.py` | Produces the runs we evaluate (EATP-014). |
-| `src/career_radar/history/store.py` | Where results/history live (EATP-010). |
+| `src/rove/pipeline.py` | Produces the runs we evaluate (EATP-014). |
+| `src/rove/history/store.py` | Where results/history live (EATP-010). |
 
 ## Dependencies
 - **Projects:** EATP-013, EATP-014.
@@ -33,7 +33,7 @@ Proactive P22 (no way to measure if quality improved); validates P4, P6, P15.
 - Model training (out of scope).
 
 ## Deliverables
-- src/career_radar/eval/report.py + a minimal labeling entry point
+- src/rove/eval/report.py + a minimal labeling entry point
 - tests/test_eval.py
 - a baseline metrics snapshot
 

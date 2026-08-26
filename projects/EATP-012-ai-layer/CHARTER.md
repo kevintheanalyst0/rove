@@ -37,7 +37,7 @@ P11 (malformed JSON), P12 (Gemini 20/day; 503 charged; free cloud alt), and proa
 - Prompt final wording lives with the rubric (013) but a working default ships here.
 
 ## Deliverables
-- src/career_radar/ai/{base,router,parse}.py + ai/providers/*.py
+- src/rove/ai/{base,router,parse}.py + ai/providers/*.py
 - tests/test_ai_router.py, test_ai_parse.py, test_ai_idmatch.py (mocked)
 
 ## Key design decisions & constraints

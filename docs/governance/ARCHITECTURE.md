@@ -1,4 +1,4 @@
-# Architecture — Career Radar (target)
+# Architecture — Rove (target)
 
 The target system, top to bottom. Each layer maps to one or more EATP projects. This is
 the "what we're building toward"; charters own the "how, this session".
@@ -44,7 +44,7 @@ the "what we're building toward"; charters own the "how, this session".
 ## Package layout (target, built by Claude Code)
 
 ```
-src/career_radar/
+src/rove/
 ├── __init__.py
 ├── config.py                # single source of truth (env + constants)          [001]
 ├── models.py                # Job, ScoredJob, RunResult (pydantic)               [001]

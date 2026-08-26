@@ -11,12 +11,12 @@ from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
-from career_radar import config
-from career_radar.events import EventBus
-from career_radar.models import Job, RunResult, RunStatus, ScoredJob
-from career_radar.storage import write_json
-from career_radar.tracking.store import TrackingAction
-from career_radar.web.server import create_app
+from rove import config
+from rove.events import EventBus
+from rove.models import Job, RunResult, RunStatus, ScoredJob
+from rove.storage import write_json
+from rove.tracking.store import TrackingAction
+from rove.web.server import create_app
 
 
 def _make_client() -> TestClient:

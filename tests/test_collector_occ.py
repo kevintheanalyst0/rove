@@ -14,10 +14,10 @@ from pathlib import Path
 import httpx
 import pytest
 
-from career_radar import cancellation, config
-from career_radar.collectors import occ as occ_mod
-from career_radar.collectors.occ import OCCCollector
-from career_radar.models import RemoteStatus
+from rove import cancellation, config
+from rove.collectors import occ as occ_mod
+from rove.collectors.occ import OCCCollector
+from rove.models import RemoteStatus
 
 FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "occ_jobs.json").read_text(encoding="utf-8"))
 
@@ -66,7 +66,7 @@ def _make_transport(fixtures: list[dict]) -> httpx.MockTransport:
 @pytest.fixture(autouse=True)
 def _no_real_sleep(monkeypatch):
     # gentle_pause()'s own sleep, and tenacity's retry backoff sleep.
-    monkeypatch.setattr("career_radar.collectors.http.time.sleep", lambda seconds: None)
+    monkeypatch.setattr("rove.collectors.http.time.sleep", lambda seconds: None)
     monkeypatch.setattr("tenacity.nap.time.sleep", lambda seconds: None)
 
 

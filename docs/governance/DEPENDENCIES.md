@@ -6,9 +6,9 @@ Code must follow.
 
 ## Runtime environment (EATP-025, 2026-08-18)
 
-**The project runs natively on Windows, at `D:\Development\Career Radar`.** It was
+**The project runs natively on Windows, at `D:\Development\Rove`.** It was
 built under WSL through EATP-024; the WSL copy at
-`/home/kevin/Projects/career-radar` is kept only as a backup and is no longer the
+`/home/kevin/Projects/rove` is kept only as a backup and is no longer the
 one that runs.
 
 Why it moved: every browser-layer failure of EATP-023/024/025 traced to WSLg's

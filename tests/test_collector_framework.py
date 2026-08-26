@@ -10,15 +10,15 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from career_radar.collectors import browser as browser_mod
-from career_radar.collectors.base import (
+from rove.collectors import browser as browser_mod
+from rove.collectors.base import (
     CollectorRegistry,
     CollectorStatus,
     run_collector,
 )
-from career_radar.collectors.http import RetryableHTTPError, build_client, get
-from career_radar.events import EventBus
-from career_radar.models import Job
+from rove.collectors.http import RetryableHTTPError, build_client, get
+from rove.events import EventBus
+from rove.models import Job
 
 
 class FakeCollector:

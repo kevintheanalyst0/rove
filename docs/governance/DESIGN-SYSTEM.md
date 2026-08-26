@@ -79,7 +79,7 @@ alternate) in `--blob-1/2/3` — this is what the glass panel is translucent *ag
 without it the blur has nothing colorful to pick up and just looks like dim grey glass.
 Freeze the drift under `prefers-reduced-motion: reduce`. Buttons and the progress bar
 use the `--accent-1 -> --accent-2` gradient, not a flat color, to stay consistent with
-the same "glass with color behind it" idea. See `src/career_radar/web/static/css/style.css`
+the same "glass with color behind it" idea. See `src/rove/web/static/css/style.css`
 (EATP-015) for the reference implementation.
 
 ## The runner (Windows-style working spinner) — the P/R11 requirement

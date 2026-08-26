@@ -4,10 +4,10 @@ AI is always mocked via a scripted `Provider`; never a live call (CLAUDE.md §7)
 
 from __future__ import annotations
 
-from career_radar.ai.base import AiResult, Provider
-from career_radar.ai.router import AiRouter
-from career_radar.ai.usage import UsageTracker
-from career_radar.criteria import (
+from rove.ai.base import AiResult, Provider
+from rove.ai.router import AiRouter
+from rove.ai.usage import UsageTracker
+from rove.criteria import (
     Criteria,
     EnglishRequirementCriteria,
     Matcher,
@@ -15,12 +15,12 @@ from career_radar.criteria import (
     ScoreFloors,
     load_criteria,
 )
-from career_radar.models import EnglishRequirement, Grade, Job, RemoteStatus, ScoredJob
-from career_radar.profile import load_profile
-from career_radar.scoring import rank_scored_jobs, score_jobs
-from career_radar.scoring.evaluate import build_deferred, evaluate_selected
-from career_radar.scoring.prefilter import prefilter_score, run_prefilter
-from career_radar.scoring.validate import strip_contradictions, validate, validate_all
+from rove.models import EnglishRequirement, Grade, Job, RemoteStatus, ScoredJob
+from rove.profile import load_profile
+from rove.scoring import rank_scored_jobs, score_jobs
+from rove.scoring.evaluate import build_deferred, evaluate_selected
+from rove.scoring.prefilter import prefilter_score, run_prefilter
+from rove.scoring.validate import strip_contradictions, validate, validate_all
 
 PROFILE = load_profile()
 

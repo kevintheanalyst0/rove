@@ -22,13 +22,13 @@ and move on.
 
 ## Context to load
 
-- `src/career_radar/collectors/base.py`, `http.py` — the collector protocol
+- `src/rove/collectors/base.py`, `http.py` — the collector protocol
   new HTTP-only sources plug into (same shape as `remotive.py`/`wwr.py`/
   `remoteok.py` — simplest reference examples, not Greenhouse/Lever which are
   the watchlist-per-company shape this project explicitly avoids).
-- `src/career_radar/collectors/remotive.py` or `wwr.py` — pick whichever is the
+- `src/rove/collectors/remotive.py` or `wwr.py` — pick whichever is the
   cleanest structural template for a market-search HTTP collector.
-- `src/career_radar/collectors/__init__.py` — registry wiring for whatever ships.
+- `src/rove/collectors/__init__.py` — registry wiring for whatever ships.
 - `ROADMAP.md` Backlog section — the Get on Board / Torre dead-end note; read
   before spiking anything.
 - `criteria.toml` — how existing collectors' results feed into filtering

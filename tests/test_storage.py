@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from career_radar import storage
+from rove import storage
 
 # ---------------------------------------------------------------------------
 # read_json / write_json
