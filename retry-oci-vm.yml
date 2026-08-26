@@ -1,0 +1,122 @@
+name: Retry OCI VM launch
+
+# EATP-032: Oracle's Always Free capacity in mx-queretaro-1 is exhausted as
+# of 2026-08-26 — this keeps trying every 15 minutes, independent of Kevin's
+# laptop, until a slot frees up. Idempotent: if rove-vm is already RUNNING,
+# every fire after that is a harmless no-op. Safe to leave enabled
+# indefinitely; disable/delete this file once the VM is up for good.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  retry-launch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install OCI CLI
+        run: pip install --quiet oci-cli
+
+      - name: Set up OCI credentials
+        env:
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+          OCI_REGION: ${{ secrets.OCI_REGION }}
+        run: |
+          mkdir -p ~/.oci
+          printf '%s' "$OCI_PRIVATE_KEY" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+          cat > ~/.oci/config << EOF
+          [DEFAULT]
+          user=$OCI_USER
+          fingerprint=$OCI_FINGERPRINT
+          tenancy=$OCI_TENANCY
+          region=$OCI_REGION
+          key_file=~/.oci/oci_api_key.pem
+          EOF
+          chmod 600 ~/.oci/config
+
+      - name: Check if rove-vm is already running (idempotency)
+        id: check
+        env:
+          OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+        run: |
+          set -o pipefail
+          RESULT=$(oci compute instance list \
+            --compartment-id "$OCI_TENANCY" \
+            --display-name rove-vm --lifecycle-state RUNNING \
+            --query 'data[0].id' --raw-output 2>&1) || RESULT=""
+          if [ -n "$RESULT" ] && [ "$RESULT" != "null" ]; then
+            echo "already_running=true" >> "$GITHUB_OUTPUT"
+            echo "instance_id=$RESULT" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_running=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report existing instance
+        if: steps.check.outputs.already_running == 'true'
+        env:
+          OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+        run: |
+          IP=$(oci compute instance list-vnics \
+            --instance-id "${{ steps.check.outputs.instance_id }}" \
+            --query 'data[0]."public-ip"' --raw-output)
+          echo "### rove-vm ya está corriendo" >> "$GITHUB_STEP_SUMMARY"
+          echo "IP pública: \`$IP\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Nada que hacer — este workflow ya cumplió su función. Puede desactivarse." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Try ARM shape (A1.Flex — usually more free capacity)
+        if: steps.check.outputs.already_running == 'false'
+        id: arm
+        continue-on-error: true
+        env:
+          OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+        run: |
+          oci compute instance launch \
+            --availability-domain "VGHh:MX-QUERETARO-1-AD-1" \
+            --compartment-id "$OCI_TENANCY" \
+            --shape "VM.Standard.A1.Flex" --shape-config '{"ocpus":1,"memoryInGBs":6}' \
+            --image-id ocid1.image.oc1.mx-queretaro-1.aaaaaaaaw2vjumtkmeshgug2pewx43g4ajb22ew3is5pfue47jvjsjt2djsq \
+            --subnet-id ocid1.subnet.oc1.mx-queretaro-1.aaaaaaaauve64etkk4y6ywugyubmsptcz7g66wljl5tgx3vzg3ayhhidfnra \
+            --assign-public-ip true --display-name rove-vm \
+            --ssh-authorized-keys-file <(echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC+xij0JwZQHg/q5Qro1+HvoZE+KHAPbEvWNlsAw3mDQ rove-vm') \
+            --wait-for-state RUNNING
+
+      - name: Try AMD shape (E2.1.Micro) if ARM failed
+        if: steps.check.outputs.already_running == 'false' && steps.arm.outcome == 'failure'
+        id: amd
+        continue-on-error: true
+        env:
+          OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+        run: |
+          oci compute instance launch \
+            --availability-domain "VGHh:MX-QUERETARO-1-AD-1" \
+            --compartment-id "$OCI_TENANCY" \
+            --shape "VM.Standard.E2.1.Micro" \
+            --image-id ocid1.image.oc1.mx-queretaro-1.aaaaaaaaikfs26sh4fwy74sfx7qnni42yjjen26yza6deyuwnldbxodoesdq \
+            --subnet-id ocid1.subnet.oc1.mx-queretaro-1.aaaaaaaauve64etkk4y6ywugyubmsptcz7g66wljl5tgx3vzg3ayhhidfnra \
+            --assign-public-ip true --display-name rove-vm \
+            --ssh-authorized-keys-file <(echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC+xij0JwZQHg/q5Qro1+HvoZE+KHAPbEvWNlsAw3mDQ rove-vm') \
+            --wait-for-state RUNNING
+
+      - name: Report launch result
+        if: steps.check.outputs.already_running == 'false'
+        env:
+          OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+        run: |
+          if [ "${{ steps.arm.outcome }}" = "success" ] || [ "${{ steps.amd.outcome }}" = "success" ]; then
+            ID=$(oci compute instance list --compartment-id "$OCI_TENANCY" \
+              --display-name rove-vm --lifecycle-state RUNNING \
+              --query 'data[0].id' --raw-output)
+            IP=$(oci compute instance list-vnics --instance-id "$ID" \
+              --query 'data[0]."public-ip"' --raw-output)
+            echo "### rove-vm lanzada con éxito" >> "$GITHUB_STEP_SUMMARY"
+            echo "IP pública: \`$IP\`" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Sin capacidad todavía" >> "$GITHUB_STEP_SUMMARY"
+            echo "Ambos shapes fallaron esta vez (probablemente 'Out of host capacity'). Se reintenta en 15 min." >> "$GITHUB_STEP_SUMMARY"
+          fi
