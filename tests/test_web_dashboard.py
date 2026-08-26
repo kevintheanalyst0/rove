@@ -111,6 +111,89 @@ def test_track_action_enum_values_match_the_wire_strings():
 
 
 # ---------------------------------------------------------------------------
+# Accumulated inbox (EATP-031): GET /inbox
+# ---------------------------------------------------------------------------
+
+
+def test_inbox_empty_when_nothing_accumulated_yet(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "INBOX_FILE", tmp_path / "inbox.jsonl")
+    monkeypatch.setattr(config, "TRACKING_FILE", tmp_path / "tracking.jsonl")
+
+    response = _make_client().get("/inbox")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "buckets": {"hoy": [], "ayer": [], "esta_semana": [], "mas_viejo": []},
+        "total": 0,
+    }
+
+
+def test_inbox_returns_an_accumulated_job_bucketed_as_today(tmp_path, monkeypatch):
+    from rove.inbox import store as inbox_store
+
+    monkeypatch.setattr(config, "INBOX_FILE", tmp_path / "inbox.jsonl")
+    monkeypatch.setattr(config, "TRACKING_FILE", tmp_path / "tracking.jsonl")
+
+    scored = _scored_job("sig-1")
+    inbox_store.append_run([scored], datetime.now(UTC))
+
+    response = _make_client().get("/inbox")
+    data = response.json()
+
+    assert data["total"] == 1
+    assert len(data["buckets"]["hoy"]) == 1
+    assert data["buckets"]["hoy"][0]["signature"] == "sig-1"
+    assert data["buckets"]["hoy"][0]["scored"]["job"]["title"] == "Analista de Datos"
+
+
+def test_inbox_excludes_a_job_kevin_already_tracked(tmp_path, monkeypatch):
+    from rove.inbox import store as inbox_store
+
+    monkeypatch.setattr(config, "INBOX_FILE", tmp_path / "inbox.jsonl")
+    monkeypatch.setattr(config, "TRACKING_FILE", tmp_path / "tracking.jsonl")
+
+    inbox_store.append_run(
+        [_scored_job("sig-1"), _scored_job("sig-2")], datetime.now(UTC)
+    )
+
+    client = _make_client()
+    client.post("/track", json={"signature": "sig-1", "action": "dismissed"})
+
+    data = client.get("/inbox").json()
+
+    signatures = {job["signature"] for bucket in data["buckets"].values() for job in bucket}
+    assert signatures == {"sig-2"}
+    assert data["total"] == 1
+
+
+def test_inbox_orders_each_bucket_best_score_first(tmp_path, monkeypatch):
+    from rove.inbox import store as inbox_store
+    from rove.models import Job, ScoredJob
+
+    monkeypatch.setattr(config, "INBOX_FILE", tmp_path / "inbox.jsonl")
+    monkeypatch.setattr(config, "TRACKING_FILE", tmp_path / "tracking.jsonl")
+
+    def _scored(signature: str, score: int) -> ScoredJob:
+        job = Job(
+            source="occ", source_job_id=signature, signature=signature,
+            title="Data Analyst", company="Acme", description="x" * 250,
+            url=f"https://example.com/{signature}",
+        )
+        return ScoredJob(
+            job=job, prefilter_score=score, prefilter_passed=True,
+            ai_evaluated=True, ai_score=score,
+        )
+
+    inbox_store.append_run(
+        [_scored("low", 60), _scored("high", 95)], datetime.now(UTC)
+    )
+
+    data = _make_client().get("/inbox").json()
+
+    assert [job["signature"] for job in data["buckets"]["hoy"]] == ["high", "low"]
+
+
+# ---------------------------------------------------------------------------
 # Match-quality labeling (EATP-017): GET /eval/labels, POST /eval/label
 # ---------------------------------------------------------------------------
 

@@ -36,6 +36,7 @@ import threading
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +52,7 @@ from rove.eval import labels as eval_labels_store
 from rove.eval.labels import BadReason, Label
 from rove.events import EventBus, ProgressEvent
 from rove.events import bus as default_bus
+from rove.inbox import store as inbox_store
 from rove.pipeline import reset_all_run_data
 from rove.pipeline import run as run_pipeline
 from rove.quality.cache import SignatureCache
@@ -104,6 +106,23 @@ def _verify_same_origin(request: Request) -> None:
 # connection over a session. Polling instead means the worst case is one
 # thread blocked for at most this long (CLAUDE.md golden rule 3).
 _EVENTS_POLL_SECONDS = 1.0
+
+# EATP-031 — inbox day buckets, in Kevin's local calendar day
+# (config.KEVIN_TIMEZONE), not the server's.
+def _inbox_bucket(first_seen_at: datetime, now: datetime | None = None) -> str:
+    """Pure decision logic, tested directly — no I/O involved."""
+    now = now or datetime.now(UTC)
+    seen_local = first_seen_at.astimezone(config.KEVIN_TIMEZONE).date()
+    now_local = now.astimezone(config.KEVIN_TIMEZONE).date()
+    delta_days = (now_local - seen_local).days
+    if delta_days <= 0:
+        return "hoy"
+    if delta_days == 1:
+        return "ayer"
+    if delta_days <= 7:
+        return "esta_semana"
+    return "mas_viejo"
+
 
 # EATP-023 — auto-shutdown when the last browser tab goes away (see module
 # docstring). Grace period survives a page refresh (EventSource reconnects
@@ -401,6 +420,30 @@ def create_app(
             for signature, action in tracking_store.latest_actions().items()
         }
         return JSONResponse({"result": result, "tracking": tracking})
+
+    @app.get("/inbox")
+    def get_inbox() -> JSONResponse:
+        """EATP-031: every job accumulated across runs that Kevin hasn't
+        applied or dismissed yet, grouped by the day he first saw it — in
+        HIS timezone (`config.KEVIN_TIMEZONE`), not the server's UTC clock,
+        so "Hoy" means his today. Best-score-first within each bucket
+        (north star: quality over volume, README.md)."""
+        resolved = set(tracking_store.latest_actions().keys())
+        entries = inbox_store.open_entries(resolved)
+        buckets: dict[str, list[dict[str, Any]]] = {
+            "hoy": [], "ayer": [], "esta_semana": [], "mas_viejo": [],
+        }
+        for entry in entries:
+            buckets[_inbox_bucket(entry.first_seen_at)].append(
+                {
+                    "signature": entry.signature,
+                    "first_seen_at": entry.first_seen_at.isoformat(),
+                    "scored": entry.scored.model_dump(mode="json"),
+                }
+            )
+        for items in buckets.values():
+            items.sort(key=lambda item: item["scored"]["final_score"], reverse=True)
+        return JSONResponse({"buckets": buckets, "total": len(entries)})
 
     @app.post("/track", dependencies=[Depends(_verify_same_origin)])
     def track(request: TrackRequest) -> JSONResponse:

@@ -44,7 +44,6 @@ const resultsMeta = document.getElementById("resultsMeta");
 const resultsGrid = document.getElementById("resultsGrid");
 const resultsEmpty = document.getElementById("resultsEmpty");
 const searchInput = document.getElementById("searchInput");
-const hideDismissedToggle = document.getElementById("hideDismissedToggle");
 
 const sideStatusLine = document.getElementById("sideStatusLine");
 const sideStatusMeta = document.getElementById("sideStatusMeta");
@@ -85,8 +84,17 @@ const iconCache = {};
 // phase -> last intervention message still pending for that phase.
 let notices = {};
 
-// One entry per job: { scored, isNew, action: 'applied'|'dismissed'|null, evalLabel: {label,reason}|null }
+// One entry per job accumulated in the inbox (EATP-031):
+// { scored, bucket: 'hoy'|'ayer'|'esta_semana'|'mas_viejo', evalLabel: {label,reason}|null }
+// An entry only ever exists here while it's unresolved — once Kevin applies
+// or dismisses it, /inbox stops returning it at all.
+const BUCKET_ORDER = ["hoy", "ayer", "esta_semana", "mas_viejo"];
+const BUCKET_LABELS = { hoy: "Hoy", ayer: "Ayer", esta_semana: "Esta semana", mas_viejo: "Más viejo" };
 let allJobs = [];
+// Last run's /results payload, kept only for the sidebar's "last run"
+// diagnostics line — re-used by trackAction so re-rendering the sidebar
+// after a mark doesn't need a fresh network round-trip.
+let lastResult = null;
 let filters = { grade: "", source: "" };
 
 // EATP-017: match-quality labeling — reason chips shown once Kevin marks a
@@ -364,52 +372,43 @@ function populateSourceDropdown() {
   }
 }
 
-// ---- checkboxes: keep the custom checkmark in sync with the real input ----
-
-function syncCheckbox(input) {
-  input.closest(".filter-check").classList.toggle("checked", input.checked);
-}
-hideDismissedToggle.addEventListener("change", () => syncCheckbox(hideDismissedToggle));
-
 // ---- sidebar ----
 
-function renderSidebar(result) {
+function renderSidebar(inboxJobs, result) {
   if (!result) {
     sideStatusLine.textContent = "Sin corridas todavía";
     sideStatusLine.className = "status-line";
     sideStatusMeta.textContent = "";
-    sideTotal.textContent = "0";
-    sideTotalLabel.textContent = "";
-    sideCatBars.innerHTML = "";
-    sideSources.innerHTML = "";
-    return;
+  } else {
+    const ok = result.status === "success";
+    sideStatusLine.textContent = ok ? "✓ Corrida exitosa" : "✕ Corrida con errores";
+    sideStatusLine.className = "status-line " + (ok ? "ok" : "err");
+
+    const providers = Object.keys(result.ai_usage || {});
+    const aiLine = providers.length
+      ? `IA: <strong>${escapeHtml(providers.join(", "))}</strong> · ${result.counts?.ai_evaluated ?? 0} evaluadas en la última corrida`
+      : "";
+    sideStatusMeta.innerHTML = `${escapeHtml(formatDateTime(result.finished_at))}${aiLine ? "<br>" + aiLine : ""}`;
   }
 
-  const ok = result.status === "success";
-  sideStatusLine.textContent = ok ? "✓ Corrida exitosa" : "✕ Corrida con errores";
-  sideStatusLine.className = "status-line " + (ok ? "ok" : "err");
-
-  const providers = Object.keys(result.ai_usage || {});
-  const aiLine = providers.length
-    ? `IA: <strong>${escapeHtml(providers.join(", "))}</strong> · ${result.counts?.ai_evaluated ?? 0} evaluadas`
-    : "";
-  sideStatusMeta.innerHTML = `${escapeHtml(formatDateTime(result.finished_at))}${aiLine ? "<br>" + aiLine : ""}`;
-
-  const jobs = result.jobs || [];
+  // EATP-031: everything below describes the accumulated inbox, not just
+  // the last run — the number Kevin sees here must match what's in the grid.
+  const jobs = inboxJobs.map((entry) => entry.scored);
   sideTotal.textContent = String(jobs.length);
-  sideTotalLabel.textContent = result.counts?.collected ? `de ${result.counts.collected} recolectadas` : "";
+  sideTotalLabel.textContent = "pendientes en tu bandeja";
 
   // Excelentes/Buenas/Regulares/Bajas (Kevin's taxonomy) map onto our real
   // grades; Evaluadas is a different metric (made it to AI scoring at all),
   // not a grade tier — shown here because it's the fifth row of his spec.
   const gradeCounts = { "A+": 0, A: 0, B: 0, C: 0, D: 0 };
   jobs.forEach((scored) => { gradeCounts[scored.grade] = (gradeCounts[scored.grade] || 0) + 1; });
+  const evaluatedCount = jobs.filter((scored) => scored.ai_evaluated).length;
   const categories = [
     { name: "Excelentes", count: gradeCounts["A+"], from: "var(--green)", to: "var(--mint)" },
     { name: "Buenas", count: gradeCounts.A, from: "#59D9A0", to: "var(--mint)" },
     { name: "Regulares", count: gradeCounts.B, from: "var(--yellow)", to: "#F4A94B" },
     { name: "Bajas", count: gradeCounts.C + gradeCounts.D, from: "var(--red)", to: "#F4A0C8" },
-    { name: "Evaluadas", count: result.counts?.ai_evaluated ?? 0, from: "var(--lavender)", to: "var(--lavender-soft)" },
+    { name: "Evaluadas", count: evaluatedCount, from: "var(--lavender)", to: "var(--lavender-soft)" },
   ];
   const maxCount = Math.max(1, ...categories.map((c) => c.count));
   sideCatBars.innerHTML = categories.map((c) => `
@@ -435,19 +434,16 @@ function renderSidebar(result) {
 
 // ---- cards ----
 
-function renderCard({ scored, isNew, action }) {
+function renderCard({ scored }) {
   const job = scored.job;
   const badges = [`<span class="grade-pill tone-${gradeTone(scored.grade)}">${escapeHtml(scored.grade)}</span>`];
   if (job.remote_status === "remote") badges.push('<span class="badge badge-remote">Remoto</span>');
-  if (isNew) badges.push('<span class="badge badge-new">Nuevo</span>');
   if ((scored.flags || []).includes("confirm_english")) {
     badges.push('<span class="badge badge-confirm-english">Confirmar inglés</span>');
   }
-  if (action === "applied") badges.push('<span class="badge badge-applied">Aplicada</span>');
-  if (action === "dismissed") badges.push('<span class="badge badge-dismissed">Descartada</span>');
 
   return `
-    <article class="job-card${action === "dismissed" ? " is-dismissed" : ""}" data-signature="${escapeHtml(job.signature)}">
+    <article class="job-card" data-signature="${escapeHtml(job.signature)}">
       <div class="job-card-top">${badges.join("")}</div>
       <h3 class="job-title">${escapeHtml(job.title)}</h3>
       <p class="job-meta">${escapeHtml(job.company)} · ${escapeHtml(job.source)} · ${formatAge(job.days_old)}</p>
@@ -458,25 +454,22 @@ function renderCard({ scored, isNew, action }) {
     </article>`;
 }
 
-function renderResultsMeta(result) {
-  if (!result) {
-    resultsMeta.textContent = "";
-    return;
-  }
-  const total = (result.jobs || []).length;
-  const collected = result.counts && result.counts.collected;
-  const parts = [`${total} vacante${total === 1 ? "" : "s"}`];
-  if (collected) parts.push(`de ${collected} recolectadas`);
-  const when = formatDateTime(result.finished_at);
-  if (when) parts.push(when);
+function renderResultsMeta(inboxData, result) {
+  // EATP-031: the headline number is the accumulated inbox total — how
+  // many jobs are actually pending Kevin's decision, across every run he
+  // hasn't caught up on yet. The last-run timestamp is still useful context
+  // (when did this last refresh), so it stays as a secondary detail.
+  const total = (inboxData && inboxData.total) || 0;
+  const parts = [`${total} pendiente${total === 1 ? "" : "s"}`];
+  const when = result && formatDateTime(result.finished_at);
+  if (when) parts.push(`última corrida: ${when}`);
   resultsMeta.textContent = parts.join(" · ");
 }
 
 function applyFiltersAndRender() {
   const search = searchInput.value.trim().toLowerCase();
-  const hideDismissed = hideDismissedToggle.checked;
 
-  const visible = allJobs.filter(({ scored, action }) => {
+  const visible = allJobs.filter(({ scored }) => {
     const job = scored.job;
     if (filters.grade && scored.grade !== filters.grade) return false;
     // D is hidden unless Kevin explicitly picks it from the grade dropdown —
@@ -484,13 +477,17 @@ function applyFiltersAndRender() {
     // view with (EATP-020, Kevin's call).
     if (!filters.grade && scored.grade === "D") return false;
     if (filters.source && job.source !== filters.source) return false;
-    if (hideDismissed && action === "dismissed") return false;
     if (search && !`${job.title} ${job.company}`.toLowerCase().includes(search)) return false;
     return true;
   });
 
-  // Already best-first from the pipeline's ranking — preserve that order.
-  resultsGrid.innerHTML = visible.map(renderCard).join("");
+  // EATP-031: section header per day-bucket (Hoy/Ayer/...), best-score-first
+  // within each — /inbox already returns entries in that order.
+  resultsGrid.innerHTML = BUCKET_ORDER.map((bucket) => {
+    const items = visible.filter((entry) => entry.bucket === bucket);
+    if (items.length === 0) return "";
+    return `<h2 class="inbox-bucket-header">${BUCKET_LABELS[bucket]}</h2>` + items.map(renderCard).join("");
+  }).join("");
   resultsEmpty.hidden = visible.length > 0;
   resultsEmpty.textContent = allJobs.length === 0
     ? "Todavía no hay vacantes para mostrar."
@@ -524,7 +521,7 @@ function renderEvalBlock(evalLabel) {
 function renderModal(signature) {
   const entry = findJobEntry(signature);
   if (!entry) return;
-  const { scored, action, evalLabel } = entry;
+  const { scored, evalLabel } = entry;
   const job = scored.job;
 
   const pros = (scored.pros || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
@@ -568,8 +565,8 @@ function renderModal(signature) {
     ${renderEvalBlock(evalLabel)}
     <div class="modal-footer">
       <a class="btn-full primary" href="${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer">Abrir vacante &#8594;</a>
-      <button type="button" class="btn-full ghost${action === "applied" ? " is-active" : ""}" data-modal-action="applied">Apliqué</button>
-      <button type="button" class="btn-full ghost${action === "dismissed" ? " is-active" : ""}" data-modal-action="dismissed">No me interesa</button>
+      <button type="button" class="btn-full ghost" data-modal-action="applied">Apliqué</button>
+      <button type="button" class="btn-full ghost" data-modal-action="dismissed">No me interesa</button>
     </div>`;
 }
 
@@ -665,9 +662,7 @@ modalBody.addEventListener("click", (event) => {
   }
   const actionBtn = event.target.closest("[data-modal-action]");
   if (actionBtn) {
-    trackAction(overlay.dataset.signature, actionBtn.dataset.modalAction).then(() => {
-      renderModal(overlay.dataset.signature); // reflect the new state without closing
-    });
+    trackAction(overlay.dataset.signature, actionBtn.dataset.modalAction);
     return;
   }
 
@@ -686,9 +681,17 @@ overlay.addEventListener("click", (event) => { if (event.target === overlay) clo
 document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeModal(); });
 
 async function trackAction(signature, action) {
-  const entry = findJobEntry(signature);
-  if (entry) entry.action = action; // optimistic — the UI should react immediately
+  // EATP-031: once Kevin applies or dismisses a job, /inbox stops returning
+  // it entirely — so it drops out of the list here too, optimistically, and
+  // the modal closes since there's nothing left to show for it. The sidebar
+  // total/grade breakdown is derived from this same allJobs array, so it
+  // has to be re-rendered here too — otherwise it goes stale the moment a
+  // job disappears from the grid below it.
+  allJobs = allJobs.filter((entry) => entry.scored.job.signature !== signature);
   applyFiltersAndRender();
+  renderResultsMeta({ total: allJobs.length }, lastResult);
+  renderSidebar(allJobs, lastResult);
+  closeModal();
   await fetch("/track", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -711,43 +714,46 @@ async function submitEvalLabel(signature, label, reason) {
   });
 }
 
-async function loadResults() {
-  const [res, evalRes] = await Promise.all([fetch("/results"), fetch("/eval/labels")]);
-  const data = await res.json();
+async function loadInbox() {
+  // EATP-031: the job list itself comes from the accumulated inbox, not the
+  // last run — /results stays around only for the sidebar's "last run"
+  // diagnostics (date, AI providers, funnel counts).
+  const [inboxRes, resultsRes, evalRes] = await Promise.all([
+    fetch("/inbox"), fetch("/results"), fetch("/eval/labels"),
+  ]);
+  const inboxData = await inboxRes.json();
+  const resultsData = await resultsRes.json();
   const evalLabels = await evalRes.json();
-  const result = data.result;
-  const tracking = data.tracking || {};
-  const newSignatures = new Set((result && result.new_signatures) || []);
+  const result = resultsData.result;
+  lastResult = result;
+  const buckets = inboxData.buckets || {};
 
-  allJobs = ((result && result.jobs) || []).map((scored) => ({
-    scored,
-    isNew: newSignatures.has(scored.job.signature),
-    action: tracking[scored.job.signature] || null,
-    evalLabel: evalLabels[scored.job.signature] || null,
-  }));
+  allJobs = BUCKET_ORDER.flatMap((bucket) =>
+    (buckets[bucket] || []).map((item) => ({
+      scored: item.scored,
+      bucket,
+      evalLabel: evalLabels[item.signature] || null,
+    }))
+  );
 
   populateSourceDropdown();
-  renderResultsMeta(result);
-  renderSidebar(result);
+  renderResultsMeta(inboxData, result);
+  renderSidebar(allJobs, result);
   applyFiltersAndRender();
 }
 
 async function revealResults() {
-  await loadResults();
+  await loadInbox();
   transitionToState("results");
 }
 
-[searchInput, hideDismissedToggle].forEach((el) => {
-  el.addEventListener("input", applyFiltersAndRender);
-  el.addEventListener("change", applyFiltersAndRender);
-});
+searchInput.addEventListener("input", applyFiltersAndRender);
 
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 
 async function init() {
-  syncCheckbox(hideDismissedToggle);
   connectEvents();
   try {
     const res = await fetch("/status");

@@ -51,6 +51,7 @@ from rove.events import EventBus
 from rove.events import bus as default_bus
 from rove.health.check import classify_source, record_yields, yield_baseline
 from rove.history import store as history_store
+from rove.inbox import store as inbox_store
 from rove.models import Job, RunResult, RunStatus, ScoredJob, SourceHealth
 from rove.profile import Profile, load_profile
 from rove.quality.cache import SignatureCache
@@ -140,6 +141,9 @@ def reset_all_run_data() -> None:
     - `config.TRACKING_FILE` (applied/dismissed) and `config.EVAL_DIR`
       (Kevin's good/bad labels) — his own decisions about specific jobs, not
       run-derived cache.
+    - `config.INBOX_FILE` (EATP-031) — the whole point of the accumulated
+      inbox is surviving exactly this kind of wipe; a "clean test run" must
+      not cost Kevin real pending jobs he hasn't acted on yet.
     - `config.CHROME_USER_DATA_DIR` (browser login sessions/cookies) — Kevin
       explicitly asked to keep those (2026-08-13).
     """
@@ -449,6 +453,9 @@ def _persist(
         )
     cache.save()
     history_store.record_run([scored.job for scored in ranked], run_started_at)
+    # EATP-031: accumulate into the inbox — separate from RESULTS_FILE below,
+    # which stays "last run only" for the diagnostics sidebar.
+    inbox_store.append_run(ranked, run_started_at)
 
     counts = {**counts, "final": len(ranked)}
     result = RunResult(

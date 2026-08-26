@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 
@@ -33,6 +34,14 @@ SIGNATURES_FILE = CACHE_DIR / "signatures.jsonl"
 # Kevin's applied/dismissed actions (EATP-016, ADR-007) — append-only, latest
 # action per signature wins (rove.tracking.store).
 TRACKING_FILE = DATA_DIR / "tracking.jsonl"
+
+# EATP-031: accumulated inbox — every job that ever cleared the quality gate,
+# kept until Kevin applies or dismisses it (rove.inbox.store). Append-only,
+# same crash-safety discipline as TRACKING_FILE/history above. Deliberately
+# separate from RESULTS_FILE (which stays "last run only", for the run
+# diagnostics sidebar) and from TRACKING_FILE (Kevin's decisions, which
+# outlive any single job's time in the inbox).
+INBOX_FILE = DATA_DIR / "inbox.jsonl"
 
 # Match-quality harness (EATP-017, P22) — Kevin's good/bad labels on shown
 # jobs (rove.eval.labels) and the precision snapshot they're
@@ -163,6 +172,12 @@ CHROME_USER_DATA_DIR = os.getenv("CHROME_USER_DATA_DIR") or str(
 # Tunables
 # ---------------------------------------------------------------------------
 MAX_DAYS_OLD = 15
+
+# EATP-031: Kevin's own timezone (Morelia, Michoacán) — used only to group
+# inbox entries into "Hoy/Ayer/Esta semana" the way HE experiences the day,
+# not the server's UTC clock. Mexico abolished DST in 2022, so this is a
+# fixed UTC-6 offset year-round, not a moving target.
+KEVIN_TIMEZONE = ZoneInfo("America/Mexico_City")
 
 # How many days a content signature is considered "already seen" (ADR-001).
 # Owned here; enforced by the cache in EATP-010. Kevin confirmed 30 days.

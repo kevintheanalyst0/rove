@@ -45,6 +45,7 @@ def _isolated_data_dir(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "AI_USAGE_FILE", tmp_path / "ai_usage.json")
     monkeypatch.setattr(config, "HISTORY_DIR", tmp_path / "history")
     monkeypatch.setattr(config, "TRACKING_FILE", tmp_path / "tracking.jsonl")
+    monkeypatch.setattr(config, "INBOX_FILE", tmp_path / "inbox.jsonl")
     monkeypatch.setattr(config, "AI_BATCH_SIZE", 1)
 
 
@@ -207,6 +208,42 @@ def test_full_run_over_fixtures_yields_a_valid_run_result():
     assert not config.AI_CHECKPOINT_FILE.exists()
     # Never shown before -> new (EATP-016's NEW badge).
     assert result.new_signatures == [remote_job.signature]
+
+
+def test_two_runs_accumulate_into_the_inbox_and_a_tracked_job_drops_out():
+    """EATP-031, Kevin's own scenario: a job shown in one run and not acted
+    on must still be sitting in the inbox after a later run adds a
+    different job — and must disappear the moment he marks it, no matter
+    which run's entry that was."""
+    from rove.inbox import store as inbox_store
+    from rove.tracking import store as tracking_store
+    from rove.tracking.store import TrackingAction
+
+    first_job = _job(source="occ", source_job_id="1")
+    registry, _ = _registry(occ=[first_job])
+    provider = ScriptedProvider({first_job.signature: _ai_result(first_job)})
+    pipeline.run(
+        registry=registry, router=_router(provider), profile=PROFILE,
+        criteria=_criteria(), resume=False,
+    )
+
+    # A later run brings a genuinely different job; the first job wasn't
+    # acted on and isn't reposted, so it's never re-collected here.
+    second_job = _job(source="occ", source_job_id="2")
+    registry2, _ = _registry(occ=[second_job])
+    provider2 = ScriptedProvider({second_job.signature: _ai_result(second_job)})
+    pipeline.run(
+        registry=registry2, router=_router(provider2), profile=PROFILE,
+        criteria=_criteria(), resume=False,
+    )
+
+    open_signatures = {entry.signature for entry in inbox_store.open_entries()}
+    assert open_signatures == {first_job.signature, second_job.signature}
+
+    tracking_store.record_action(first_job.signature, TrackingAction.APPLIED)
+    resolved = set(tracking_store.latest_actions().keys())
+    open_signatures = {entry.signature for entry in inbox_store.open_entries(resolved)}
+    assert open_signatures == {second_job.signature}
 
 
 def test_dismissed_job_is_excluded_from_the_run():
@@ -576,6 +613,7 @@ def test_reset_all_run_data_wipes_derived_files_but_keeps_tracking():
 
     # Not touched by reset — Kevin's own decisions, not run-derived cache.
     config.TRACKING_FILE.write_text('{"signature": "abc", "action": "applied"}\n')
+    config.INBOX_FILE.write_text('{"signature": "abc"}\n')
 
     pipeline.reset_all_run_data()
 
@@ -591,3 +629,5 @@ def test_reset_all_run_data_wipes_derived_files_but_keeps_tracking():
 
     assert config.TRACKING_FILE.exists()
     assert "applied" in config.TRACKING_FILE.read_text(encoding="utf-8")
+    # EATP-031: "Limpiar caché" must never cost Kevin real pending jobs.
+    assert config.INBOX_FILE.exists()

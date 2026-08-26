@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -19,6 +19,7 @@ from rove.quality.cache import SignatureCache
 from rove.storage import write_json
 from rove.web.server import (
     _SHUTDOWN_GRACE_SECONDS,
+    _inbox_bucket,
     _should_shutdown,
     _stream_events,
     _watch_for_tab_close,
@@ -364,6 +365,44 @@ def test_should_shutdown_false_while_a_run_is_in_progress():
         subscriber_count=0, ever_connected=True, disconnected_since=0.0,
         running=True, now=9999.0,
     )
+
+
+# ---------------------------------------------------------------------------
+# EATP-031 — inbox day bucketing, in Kevin's local timezone
+# ---------------------------------------------------------------------------
+
+
+def test_inbox_bucket_today():
+    now = datetime(2026, 8, 20, 15, 0, tzinfo=UTC)
+    assert _inbox_bucket(now, now=now) == "hoy"
+
+
+def test_inbox_bucket_yesterday():
+    now = datetime(2026, 8, 20, 15, 0, tzinfo=UTC)
+    yesterday = datetime(2026, 8, 19, 15, 0, tzinfo=UTC)
+    assert _inbox_bucket(yesterday, now=now) == "ayer"
+
+
+def test_inbox_bucket_this_week():
+    now = datetime(2026, 8, 20, 15, 0, tzinfo=UTC)
+    four_days_ago = datetime(2026, 8, 16, 15, 0, tzinfo=UTC)
+    assert _inbox_bucket(four_days_ago, now=now) == "esta_semana"
+
+
+def test_inbox_bucket_older_than_a_week():
+    now = datetime(2026, 8, 20, 15, 0, tzinfo=UTC)
+    two_weeks_ago = datetime(2026, 8, 6, 15, 0, tzinfo=UTC)
+    assert _inbox_bucket(two_weeks_ago, now=now) == "mas_viejo"
+
+
+def test_inbox_bucket_uses_kevins_local_day_not_utc():
+    # Both timestamps fall on 2026-08-20 in UTC, but Morelia (Mexico City
+    # tz) is fixed UTC-6: 04:00 UTC on the 20th is still 22:00 on the 19th
+    # locally. A UTC-naive bucketing would wrongly call this "hoy" — Kevin's
+    # real local day already turned over between these two moments.
+    first_seen_at = datetime(2026, 8, 20, 4, 0, tzinfo=UTC)  # Aug 19, 22:00 in Morelia
+    now = datetime(2026, 8, 20, 7, 0, tzinfo=UTC)  # Aug 20, 01:00 in Morelia
+    assert _inbox_bucket(first_seen_at, now=now) == "ayer"
 
 
 def test_should_shutdown_false_before_the_grace_period_elapses():
