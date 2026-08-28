@@ -1,0 +1,14 @@
+[Unit]
+Description=Nudge CPU/network utilization above Oracle Always Free idle-reclaim threshold (EATP-032)
+
+[Service]
+Type=oneshot
+# Oracle reclaims an Always Free instance if, over a 7-day window, the 95th
+# percentile of CPU/network/memory utilization all stay under 20%. Rove's
+# own daily 7am run is too short (~10-15 min/day, <1% of the week) to clear
+# that bar on its own. This runs a real 1-core CPU load for 3 of every 15
+# minutes (20% duty cycle - comfortable margin over the 5% the 95th
+# percentile check actually needs) plus a small download from a mirror we
+# already trust and use (apt).
+ExecStart=/usr/bin/stress-ng --cpu 1 --timeout 180s --metrics-brief
+ExecStartPost=/usr/bin/curl -s -o /dev/null http://archive.ubuntu.com/ubuntu/dists/jammy/Release

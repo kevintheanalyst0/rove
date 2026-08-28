@@ -1,0 +1,17 @@
+[Unit]
+Description=Rove web UI (FastAPI) - always-on server mode (EATP-032)
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/rove
+Environment=ROVE_AUTO_SHUTDOWN=0
+Environment=ROVE_EXTRA_ALLOWED_HOSTS=__TAILSCALE_IP__:8000,__TAILSCALE_MAGICDNS_NAME__:8000
+ExecStart=/home/ubuntu/rove/.venv/bin/python -m uvicorn rove.web.server:app --host 0.0.0.0 --port 8000 --log-level info
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

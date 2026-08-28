@@ -76,12 +76,34 @@
       EATP-027 already documented in this file (different specific test,
       same file, same "passes alone, flakes in full-suite order" signature)
       — not introduced by this project, not chased down here.
+- [x] **Phase 9 — Idle-reclaim keep-alive (2026-08-27, same day, Kevin's own
+      concern after testing from his phone).** Verified against Oracle's own
+      docs (not memory): an Always Free instance is reclaimed if, over a
+      7-day window, the 95th percentile of CPU **and** network **and**
+      (for A1 shapes) memory utilization all stay under 20% —
+      `docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm`.
+      Rove's real daily workload (~10-15 min/day) is under 1% of that
+      7-day window — nowhere near enough to clear the ~5% mass the 95th
+      percentile test actually needs, so the VM was a real reclaim
+      candidate despite being genuinely in use. Installed `stress-ng`;
+      `rove-keepalive.timer` (`OnUnitActiveSec=15min`) runs
+      `rove-keepalive.service` (a 1-core `stress-ng --cpu 1 --timeout 180s`
+      burn, ~20% duty cycle, plus a small `curl` against the Ubuntu
+      archive mirror already trusted for `apt`) — clearing the CPU
+      criterion alone is sufficient since Oracle's rule is an AND of all
+      three, comfortable ~4x margin over the bare minimum duty cycle
+      needed. Confirmed live: the timer's `OnBootSec` fired it
+      immediately without manual intervention, `stress-ng` ran its full
+      180s and exited cleanly, next fire scheduled 15 min later. Costs
+      nothing (Always Free has no usage-based billing) and doesn't touch
+      AI quota or compete with the daily run.
 
 ## Time log
 
 | Date | Phase(s) | Time |
 |------|----------|------|
 | 2026-08-26 | 1 (provisioning, spike, retry workflow) | ~2h (prior session, approximate) |
+| 2026-08-27 | 9 (idle-reclaim keep-alive, follow-up) | ~15 min |
 | 2026-08-27 | 2-8 (VM lands through verify & close) | ~1h |
 
 **Total: ~3h across two sessions** (approximate — Phase 1's time wasn't

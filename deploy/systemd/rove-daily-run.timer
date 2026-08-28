@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily 7am (Mexico City, fixed UTC-6) trigger for Rove (EATP-032)
+
+[Timer]
+OnCalendar=*-*-* 13:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

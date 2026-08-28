@@ -1,0 +1,8 @@
+[Unit]
+Description=Trigger Rove daily job-search run via the running web server (EATP-032)
+After=rove-web.service
+Requires=rove-web.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl -sf -X POST http://127.0.0.1:8000/run -H "Content-Type: application/json" -d "{\"mode\": \"thorough\"}"
