@@ -73,6 +73,7 @@ jobs:
           IP=$(oci compute instance list-vnics \
             --instance-id "${{ steps.check.outputs.instance_id }}" \
             --query 'data[0]."public-ip"' --raw-output)
+          echo "IP pública: $IP"
           echo "### rove-vm ya está corriendo" >> "$GITHUB_STEP_SUMMARY"
           echo "IP pública: \`$IP\`" >> "$GITHUB_STEP_SUMMARY"
           echo "Nada que hacer — este workflow ya cumplió su función. Puede desactivarse." >> "$GITHUB_STEP_SUMMARY"
@@ -122,6 +123,7 @@ jobs:
               --query 'data[0].id' --raw-output)
             IP=$(oci compute instance list-vnics --instance-id "$ID" \
               --query 'data[0]."public-ip"' --raw-output)
+            echo "IP pública: $IP"
             echo "### rove-vm lanzada con éxito" >> "$GITHUB_STEP_SUMMARY"
             echo "IP pública: \`$IP\`" >> "$GITHUB_STEP_SUMMARY"
           else
