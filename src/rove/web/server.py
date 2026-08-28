@@ -67,9 +67,24 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 # (ROVE_PORT, default 8000) — kept as the single source of truth for
 # "what port is this server on" rather than hardcoding 8000 a second time.
 _PORT = os.getenv("ROVE_PORT", "8000")
-_ALLOWED_ORIGINS = frozenset(
-    {f"http://127.0.0.1:{_PORT}", f"http://localhost:{_PORT}"}
+
+# EATP-032: on the desktop, Kevin's browser always reaches the server as
+# 127.0.0.1/localhost — the two hardcoded hosts below. On the always-on VM
+# he reaches it over Tailscale instead (its Tailscale IP, or its MagicDNS
+# name), neither of which matches those two, so legitimate requests would
+# get the same 403 this check gives a real cross-origin attacker. Rather
+# than hardcode the VM's address here, `ROVE_EXTRA_ALLOWED_HOSTS` (comma-
+# separated `host:port` entries, e.g. `100.x.x.x:8000,rove-vm.tailnet-
+# name.ts.net:8000`) extends the allowlist at deploy time — set in the
+# systemd unit once Tailscale's actual address is known, empty/unset on the
+# desktop where it isn't needed.
+_EXTRA_ALLOWED_HOSTS = frozenset(
+    h.strip() for h in os.getenv("ROVE_EXTRA_ALLOWED_HOSTS", "").split(",") if h.strip()
 )
+_ALLOWED_HOSTS = frozenset(
+    {f"127.0.0.1:{_PORT}", f"localhost:{_PORT}"} | _EXTRA_ALLOWED_HOSTS
+)
+_ALLOWED_ORIGINS = frozenset(f"http://{host}" for host in _ALLOWED_HOSTS)
 
 
 def _verify_same_origin(request: Request) -> None:
@@ -89,14 +104,16 @@ def _verify_same_origin(request: Request) -> None:
     it) is allowed through; `Origin` present and not in the allowlist is
     rejected. `Host` is checked too since forging `Origin` while a proxy or
     DNS-rebinding attack changes `Host` is the other half of this attack
-    class.
+    class. The allowlist itself is `_ALLOWED_HOSTS`/`_ALLOWED_ORIGINS` —
+    127.0.0.1/localhost plus whatever `ROVE_EXTRA_ALLOWED_HOSTS` adds
+    (EATP-032: Kevin's Tailscale address on the VM).
     """
     origin = request.headers.get("origin")
     if origin is not None and origin not in _ALLOWED_ORIGINS:
         raise HTTPException(status_code=403, detail="origin not allowed")
 
     host = request.headers.get("host")
-    if host is not None and host not in {f"127.0.0.1:{_PORT}", f"localhost:{_PORT}"}:
+    if host is not None and host not in _ALLOWED_HOSTS:
         raise HTTPException(status_code=403, detail="host not allowed")
 
 # Bounds how long a leaked SSE thread can outlive a client that disconnected
@@ -474,4 +491,12 @@ def create_app(
     return app
 
 
-app = create_app(enable_auto_shutdown=True)
+# EATP-023's auto-shutdown assumes a desktop session: Kevin closes the one
+# browser tab, the server should go with it. EATP-032's always-on VM breaks
+# that assumption on purpose — he checks in from his phone whenever, with
+# long gaps in between, and the server must still be there next time, not
+# have killed itself for looking briefly tab-less. `ROVE_AUTO_SHUTDOWN=0` in
+# the VM's systemd unit turns this off; unset/anything else keeps the
+# desktop default of "on".
+_AUTO_SHUTDOWN = os.getenv("ROVE_AUTO_SHUTDOWN", "1") != "0"
+app = create_app(enable_auto_shutdown=_AUTO_SHUTDOWN)
