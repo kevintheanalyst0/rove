@@ -15,7 +15,7 @@
       inbound 22 from 0.0.0.0/0) provisioned ahead of the VM itself.
 - [x] **Phase 2 — VM lands (2026-08-27, this session).** The retry workflow
       succeeded faster than the ~5-day estimate — `VM.Standard.A1.Flex`
-      (1 OCPU/6GB, ARM), public IP `163.192.139.178`. The workflow's
+      (1 OCPU/6GB, ARM). The workflow's
       `GITHUB_STEP_SUMMARY` output (where it normally reports the IP) isn't
       readable via `gh api`; patched the workflow to also echo the IP to
       plain stdout so a future session can pull it with
@@ -28,8 +28,9 @@
       `.env` from the Windows machine. Full test suite green on the VM.
 - [x] **Phase 4 — Tailscale.** Installed, `sudo tailscale up --hostname=rove-vm
       --ssh` — the auth URL it printed had to be opened by Kevin himself
-      (account-owner action, not something this session could do). Landed at
-      `100.97.143.79` / `rove-vm.tail6049ca.ts.net`.
+      (account-owner action, not something this session could do). Landed on
+      the tailnet with a working IP and MagicDNS name (not recorded here —
+      see the VM itself via `tailscale status`).
 - [x] **Phase 5 — Host hardening.** Confirmed password SSH auth already
       disabled (Ubuntu cloud image default) before deciding anything about
       the security list. Presented Kevin the real tradeoff — restrict SSH to

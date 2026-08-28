@@ -38,13 +38,12 @@ at the time; see `projects/EATP-032-deploy-oracle-vm/` for the full record.)*
   laptop required, reachable from Kevin's phone. A GitHub Actions workflow
   (`.github/workflows/retry-oci-vm.yml`, `*/15 * * * *`, idempotent) retried
   Oracle's Always Free capacity in `mx-queretaro-1` until a slot opened —
-  landed a `VM.Standard.A1.Flex` (1 OCPU/6GB, ARM) named `rove-vm`, public IP
-  `163.192.139.178`, faster than the ~5-day estimate.
+  landed a `VM.Standard.A1.Flex` (1 OCPU/6GB, ARM) named `rove-vm`, faster
+  than the ~5-day estimate.
 - Installed Rove on the VM (`uv sync`, `.env` copied), full test suite
   verified green there too.
-- **Tailscale** installed for private remote access (`rove-vm.tail6049ca.ts.net`,
-  100.97.143.79) — this is how Kevin's phone reaches the server, not the
-  public IP.
+- **Tailscale** installed for private remote access — this is how Kevin's
+  phone reaches the server, not the public IP.
 - Hardened the VM without sacrificing direct SSH access for future sessions
   (key-only auth was already the default; added `fail2ban` for the sshd jail
   instead of restricting the security list, since the latter would have cut
