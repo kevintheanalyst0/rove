@@ -19,7 +19,7 @@ _NOW = datetime(2026, 1, 15, tzinfo=UTC)
 
 
 def _result(
-    source="indeed", status=CollectorStatus.OK, yielded=10, error=None, duration_seconds=0.0
+    source="greenhouse", status=CollectorStatus.OK, yielded=10, error=None, duration_seconds=0.0
 ) -> CollectorResult:
     return CollectorResult(
         source=source,
@@ -106,13 +106,13 @@ def test_record_yields_persists_duration_seconds(tmp_path):
 
 
 def test_yield_baseline_is_none_with_no_history(tmp_path):
-    assert yield_baseline("indeed", health_dir=tmp_path) is None
+    assert yield_baseline("greenhouse", health_dir=tmp_path) is None
 
 
 def test_yield_baseline_is_none_with_only_one_past_run(tmp_path):
     record_yields([_result(yielded=40)], run_started_at=_NOW, health_dir=tmp_path)
 
-    assert yield_baseline("indeed", health_dir=tmp_path) is None
+    assert yield_baseline("greenhouse", health_dir=tmp_path) is None
 
 
 def test_yield_baseline_averages_past_runs_once_there_are_enough(tmp_path):
@@ -123,22 +123,22 @@ def test_yield_baseline_averages_past_runs_once_there_are_enough(tmp_path):
             health_dir=tmp_path,
         )
 
-    assert yield_baseline("indeed", health_dir=tmp_path) == 50.0
+    assert yield_baseline("greenhouse", health_dir=tmp_path) == 50.0
 
 
 def test_yield_baseline_only_counts_matching_source(tmp_path):
     record_yields(
-        [_result(source="indeed", yielded=40), _result(source="occ", yielded=100)],
+        [_result(source="greenhouse", yielded=40), _result(source="occ", yielded=100)],
         run_started_at=datetime(2026, 1, 1, tzinfo=UTC),
         health_dir=tmp_path,
     )
     record_yields(
-        [_result(source="indeed", yielded=60)],
+        [_result(source="greenhouse", yielded=60)],
         run_started_at=datetime(2026, 1, 2, tzinfo=UTC),
         health_dir=tmp_path,
     )
 
-    assert yield_baseline("indeed", health_dir=tmp_path) == 50.0
+    assert yield_baseline("greenhouse", health_dir=tmp_path) == 50.0
 
 
 def test_yield_baseline_only_uses_the_most_recent_max_runs(tmp_path):
@@ -147,7 +147,7 @@ def test_yield_baseline_only_uses_the_most_recent_max_runs(tmp_path):
     record_yields([_result(yielded=50)], run_started_at=datetime(2026, 1, 2, tzinfo=UTC), health_dir=tmp_path)
     record_yields([_result(yielded=50)], run_started_at=datetime(2026, 1, 3, tzinfo=UTC), health_dir=tmp_path)
 
-    assert yield_baseline("indeed", max_runs=2, health_dir=tmp_path) == 50.0
+    assert yield_baseline("greenhouse", max_runs=2, health_dir=tmp_path) == 50.0
 
 
 # ---------------------------------------------------------------------------
@@ -158,20 +158,20 @@ def test_yield_baseline_only_uses_the_most_recent_max_runs(tmp_path):
 def test_check_sources_classifies_every_source_independently(tmp_path):
     for day in (1, 2, 3):
         record_yields(
-            [_result(source="indeed", yielded=50), _result(source="occ", yielded=20)],
+            [_result(source="greenhouse", yielded=50), _result(source="occ", yielded=20)],
             run_started_at=datetime(2026, 1, day, tzinfo=UTC),
             health_dir=tmp_path,
         )
 
     this_run = [
-        _result(source="indeed", yielded=2),  # far below its own baseline
+        _result(source="greenhouse", yielded=2),  # far below its own baseline
         _result(source="occ", yielded=22),  # normal for its own baseline
         _result(source="wwr", yielded=0),  # brand new, zero
     ]
     reports = check_sources(this_run, health_dir=tmp_path)
 
     by_source = {r.source: r for r in reports}
-    assert by_source["indeed"].status == SourceHealthStatus.LOW
+    assert by_source["greenhouse"].status == SourceHealthStatus.LOW
     assert by_source["occ"].status == SourceHealthStatus.OK
     assert by_source["wwr"].status == SourceHealthStatus.ZERO
 

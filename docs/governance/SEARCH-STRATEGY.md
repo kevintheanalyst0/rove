@@ -38,20 +38,21 @@ for the current set rather than trusting a copy pasted here). Rules:
   (CAPTCHA, login walls, geo/rate limits). Removed entirely in EATP-027 — the
   maintenance cost stopped being worth its yield (ROADMAP.md P26).
 
-**Tier 3 — Keep and optimize (captcha-heavy).**
-- **Indeed** — valuable listings but aggressive bot detection (P5). **Kept as a
-  first-class source and optimized** in EATP-006 (stealthier browser, human pacing,
-  event-based captcha handling); a run never *fails* because of an Indeed captcha, but
-  Indeed is not dropped.
+~~**Tier 3 — Keep and optimize (captcha-heavy).**~~
+- ~~**Indeed**~~ — valuable listings but aggressive bot detection (P5). Kept and
+  optimized in EATP-006 (stealthier browser, human pacing, event-based captcha
+  handling that needed Kevin at the screen to resolve). Removed entirely in EATP-033:
+  that captcha handling never survives an unattended headless VM (P31, ROADMAP.md) —
+  the same fate ADR-005 once explicitly rejected for a different reason.
 
-> Strategic point (ADR-005): we optimize Indeed AND add Tier-1 sources. The clean
-> Tier-1 feeds ease three problems at once — less pressure on captcha-heavy Indeed (P5),
-> higher quality (P4/P6), and the "missing good jobs" feeling (P15) — without giving up
-> Indeed's coverage.
+> Historical note (ADR-005, superseded): the original strategy was to optimize Indeed
+> AND add Tier-1 sources, easing pressure on captcha-heavy Indeed (P5) without giving
+> up its coverage. EATP-033 replaced "ease the pressure" with "remove the source" once
+> an unattended VM made the captcha problem unsolvable rather than just inconvenient.
 
 ## How much to pull
 
-- Breadth: run all Tier-1 + Tier-2 sources every run; Indeed only if enabled.
+- Breadth: run all Tier-1 + Tier-2 sources every run.
 - Depth per source: enough pages to catch fresh postings (last ~14 days), not so many
   that pagination trips bot detection. Prefer *recent* over *deep*.
 - **Recency window:** default 14 days; configurable.

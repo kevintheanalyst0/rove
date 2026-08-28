@@ -313,13 +313,13 @@ def test_new_signatures_excludes_a_job_already_in_history():
     assert result.new_signatures == []
 
 
-def test_fast_mode_never_touches_browser_sources():
-    # Indeed is the only entry left in BROWSER_SOURCES (EATP-027 removed
-    # LinkedIn, the other one) — 'fast' mode skips it; OCC (plain HTTP) is
-    # the one it should still run.
+def test_fast_mode_runs_every_source_while_browser_sources_is_empty():
+    # EATP-033 removed Indeed, BROWSER_SOURCES' last member (EATP-027 removed
+    # LinkedIn, the other one) — with nothing left in that set, 'fast' has
+    # nothing to skip and behaves like 'thorough' until a future
+    # browser-driven source exists.
     occ_job = _job(source="occ", source_job_id="1")
-    indeed_job = _job(source="indeed", source_job_id="3")
-    registry, collectors = _registry(occ=[occ_job], indeed=[indeed_job])
+    registry, collectors = _registry(occ=[occ_job])
 
     router = _router(ScriptedProvider({occ_job.signature: _ai_result(occ_job)}))
 
@@ -328,7 +328,6 @@ def test_fast_mode_never_touches_browser_sources():
         mode="fast", resume=False,
     )
 
-    assert collectors["indeed"].calls == 0
     assert collectors["occ"].calls == 1
     assert result.counts["collected"] == 1
 

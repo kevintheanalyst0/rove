@@ -1,9 +1,12 @@
 /* Rove — runner + results dashboard (EATP-015/016, v3 redesign).
  *
  * States: idle -> working -> (error | done -> results). "working" also
- * renders a dismissible notice banner for needs_intervention events (e.g.
- * Indeed's captcha) without leaving the working state, because the run itself
- * doesn't stop for those. "done" holds briefly on the checkmark, then fades
+ * renders a dismissible notice banner for needs_intervention events (e.g. a
+ * captcha on a browser-driven source) without leaving the working state,
+ * because the run itself doesn't stop for those. No live source fires this
+ * today (Indeed, the only one that did, was removed in EATP-033) — kept for
+ * whichever future browser-driven source needs it. "done" holds briefly on
+ * the checkmark, then fades
  * into "results" — one more state in this same machine, not a second page.
  *
  * EATP-020: on load, `init()` always lands on "idle" (unless a run is
@@ -69,7 +72,6 @@ const GRADE_TONE = { "A+": "good", A: "good", B: "mid", C: "low", D: "low" };
 // web/static/icons/); anything else falls back to a colored monogram —
 // still distinct at a glance, no unofficial logo guessing.
 const SOURCE_ICONS = {
-  indeed: { kind: "svg", file: "indeed", color: "#2164F3" },
   greenhouse: { kind: "svg", file: "greenhouse", color: "#24A47F" },
   occ: { kind: "letter", letter: "O", color: "#E03B2D" },
   computrabajo: { kind: "letter", letter: "C", color: "#0AA6A6" },

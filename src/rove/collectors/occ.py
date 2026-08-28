@@ -23,8 +23,8 @@ that's minutes of pure deliberate waiting. Rather than drop the pause
 was actually safer, just faster), detail-fetching is now parallelized across
 a small worker pool (same shape as the other HTTP collectors' concurrent
 detail-fetch pools) — same politeness per request, far less total wall-clock
-time. OCC has no login/session to protect (unlike
-Indeed), so there's no extra account-risk tradeoff to weigh here.
+time. OCC has no login/session to protect (unlike a browser-driven
+collector), so there's no extra account-risk tradeoff to weigh here.
 
 Live-verified (2026-08-15, all 9 `config.SEARCH_TERMS`): 79.0s for 134 jobs
 — down from the ~6 min Kevin measured before this fix, and faster than
@@ -57,7 +57,7 @@ SOURCE = "occ"
 _ID_RE = re.compile(r"/empleo/oferta/(\d+)")
 _MAX_PAGES_PER_TERM = 5
 # Plain public HTTP, no login/session at stake — safe to fetch details with
-# more concurrency than Indeed's browser-tab pool.
+# more concurrency than a browser-driven collector's tab pool would allow.
 _DETAIL_WORKERS = 5
 # get() exhausts its retries and reraises either of these — a request that
 # never recovers means "skip this job/page", not "crash the collector".

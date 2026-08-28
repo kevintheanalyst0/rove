@@ -3,6 +3,34 @@
 All notable changes to this project, grouped by build session (`EATP-00X`). Dates are
 the day the work was done; see `ROADMAP.md` for status/complexity/time per project.
 
+## EATP-033 — Remove Indeed as a source entirely (2026-08-27)
+- Cut Indeed out of Rove completely: deleted `collectors/indeed.py` and
+  `collectors/browser.py` (the DrissionPage/Chromium base — Indeed was its
+  only remaining consumer after EATP-027 removed LinkedIn, the other one),
+  their tests (`test_collector_indeed.py`, `test_browser.py` and the
+  browser-specific tail of `test_collector_framework.py`), the `indeed_jobs.json`
+  fixture, and the unused UI icon asset. Dropped `indeed` from the collector
+  registry; `BROWSER_SOURCES` is now empty (kept as a mechanism, not deleted,
+  for whichever future source needs it — 'fast' and 'thorough' modes run
+  the same sources until then).
+- Removed the now-fully-unused `DrissionPage` dependency and the
+  `CHROME_BROWSER_PATH`/`CHROME_USER_DATA_DIR` config; `playwright` stays
+  (used separately for UI visual verification, per `pyproject.toml`).
+- Reworded every comment/docstring in `pipeline.py`, `server.py`, `app.js`,
+  and the governance docs that described Indeed as active or pointed at the
+  now-deleted files; marked `ADR-005` (the "keep & optimize Indeed" decision)
+  Superseded by this project rather than rewriting its history.
+- Kevin's own call (2026-08-27), made while working through EATP-032's
+  headless-server deploy: Indeed's captcha volume is something he's always
+  solved by hand, watching the screen — not viable unattended on a VM with
+  no one looking, and not worth building around. He'll keep using Indeed
+  manually outside Rove; the real browser profile with his login session
+  (`data/browser_profile`) was deliberately left on disk for that, not
+  purged.
+- 360 tests passing (was 377 pre-EATP-027-era count minus the browser/indeed
+  suites removed here); `ruff check` clean (4 pre-existing, unrelated
+  findings in `parsing.py`/`weremoto.py`/`server.py` left untouched).
+
 ## EATP-030 — New sources: Hireline, WeRemoto, RemotoJob (2026-08-21)
 - Added three HTTP-only collectors sharing one shape new to this repo: no
   search API, but every posting discoverable via a sitemap or category page,

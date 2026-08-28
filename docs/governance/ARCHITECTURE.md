@@ -58,9 +58,9 @@ src/rove/
 │   └── cache.py             # content-signature cache + run history              [010]
 ├── collectors/
 │   ├── base.py              # Collector protocol + registry                      [003]
-│   ├── browser.py           # stealthy Chromium helpers                          [003]
 │   ├── http.py              # shared httpx session + pacing                      [003]
-│   ├── occ computrabajo indeed   (refactored; linkedin removed EATP-027)  [004-006]
+│   ├── occ.py computrabajo.py   (refactored; linkedin removed EATP-027,
+│   │                              indeed removed EATP-033)              [004-006]
 │   ├── remotive.py wwr.py remoteok.py greenhouse.py lever.py ...   (new)         [007-008]
 │   └── hireline.py weremoto.py remotojob.py   (sitemap/category + JSON-LD)  [030]
 ├── ai/

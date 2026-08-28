@@ -144,8 +144,6 @@ def reset_all_run_data() -> None:
     - `config.INBOX_FILE` (EATP-031) — the whole point of the accumulated
       inbox is surviving exactly this kind of wipe; a "clean test run" must
       not cost Kevin real pending jobs he hasn't acted on yet.
-    - `config.CHROME_USER_DATA_DIR` (browser login sessions/cookies) — Kevin
-      explicitly asked to keep those (2026-08-13).
     """
     _clear_run_artifacts()
     for path in (config.RESULTS_FILE, config.STATUS_FILE, config.SIGNATURES_FILE):
@@ -333,7 +331,7 @@ def _evaluate_batch_cancellable(
     Explorer's copy-cancel, in ~5-10s, not wait out a stuck/slow AI call).
 
     There's no safe way to force-kill a Python thread mid-HTTP-call the way
-    `browser.kill_all_browsers()` kills a real OS process — so a genuinely
+    an OS-level `SIGKILL` on a real process can — so a genuinely
     in-flight call isn't interrupted, it's abandoned: the background thread
     keeps running until the SDK's own timeout/retry logic gives up on its
     own, and whatever it eventually returns is simply discarded (never
@@ -501,11 +499,13 @@ def run(
 ) -> RunResult:
     """Run the full pipeline once and return its `RunResult`.
 
-    `mode='thorough'` (default) runs every registered source, including the
-    browser-driven one (Indeed) — best coverage, per Kevin (P4: a
-    short list of genuinely good matches beats a long one). `mode='fast'`
-    drops the browser sources for a quick HTTP/JSON-only pass. `sources`
-    overrides both with an explicit subset (mainly for tests/debugging).
+    `mode='thorough'` (default) runs every registered source — best coverage,
+    per Kevin (P4: a short list of genuinely good matches beats a long one).
+    `mode='fast'` drops any source in `BROWSER_SOURCES` for a quick
+    HTTP/JSON-only pass; that set is currently empty (EATP-033 removed
+    Indeed, its last member), so the two modes run the same sources until a
+    future browser-driven collector exists. `sources` overrides both with an
+    explicit subset (mainly for tests/debugging).
 
     If a checkpoint from a matching, unfinished run exists and `resume` is
     true (the default), already-collected sources and already-AI-scored jobs

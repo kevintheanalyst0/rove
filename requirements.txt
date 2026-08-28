@@ -9,7 +9,6 @@ tenacity>=8.2
 python-dateutil>=2.9
 rapidfuzz>=3.6
 orjson>=3.9
-DrissionPage>=4.1
 groq>=0.11
 google-genai>=1.0
 openai>=1.40

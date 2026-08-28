@@ -29,9 +29,10 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 
 - **Block A — Base (001–002):** structure, contracts, and Kevin's criteria. No scraping/AI.
 - **Block B — Scraping & data quality (003–011):** the framework, every collector
-  (incl. Indeed, kept & optimized), plus the gates/dedup/cache/history/health that turn
-  raw scrapes into a clean, remote-only, de-duplicated, non-repeating list. *When this
-  block is done, "the scraping is solved."*
+  (Indeed was kept & optimized here, then removed entirely in EATP-033 — see that
+  project), plus the gates/dedup/cache/history/health that turn raw scrapes into a
+  clean, remote-only, de-duplicated, non-repeating list. *When this block is done,
+  "the scraping is solved."*
 - **Block C — AI (012–013):** the multi-provider AI layer and the scoring pipeline.
   *Starts only after Block B.*
 - **Block D — Orchestration (014):** wire it all into one resumable, memory-safe run.
@@ -76,6 +77,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-028** | English-requirement classification (reject/compatible/indeterminate) + per-run funnel diagnostic + expanded search terms | — | ✅ | 027 | Medium | ~30 min (2026-08-21) |
 | **EATP-029** | Cache observability — "Ver cacheadas" view + manual reset | — | ✅ | 028 | Light-med | ~40 min (2026-08-21) |
 | **EATP-030** | New sources — Hireline, WeRemoto, RemotoJob shipped; LaPieza + Glassdoor spiked and dropped (see Backlog) | — | ✅ | 029 | Medium-High | ~1h40 (2026-08-21) |
+| **EATP-033** | Remove Indeed as a source entirely | — | ✅ | 032 | Medium | ~1h (2026-08-27) |
 
 > **EATP-027 through 030** come from a job-search improvement backlog Kevin had
 > drafted with ChatGPT and pasted into Notion (Rove page, 2026-08-21),
@@ -145,7 +147,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 A: 001 -> 002
 B: 001 -> 003 -> 004
                  |-> 005
-                 |-> 006   (Indeed: kept + optimized)
+                 |-> 006   (Indeed: kept + optimized, then removed in EATP-033)
                  |-> 007
                  |-> 008
    002 -> 009 -> 010 -> 011   (011 also needs 003-008)
@@ -171,7 +173,7 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 | P2  | Only 4 platforms; LinkedIn low visibility; competition | EATP-005, 007, 008 |
 | P3  | Want broader search across more platforms | EATP-007, 008 |
 | P4  | Not just "more" — much higher **quality** | EATP-009, 013 (+017 verifies) |
-| P5  | Indeed captchas | **EATP-006 (kept & optimized)** |
+| P5  | Indeed captchas | EATP-006 (kept & optimized), then **EATP-033 (removed entirely)** |
 | P6  | Junk / off-role vacancies | EATP-009, 013 |
 | P7  | Gemini criteria wrong ("B" with "No cons") | EATP-002, 013 |
 | P8  | Filter lets non-remote (hybrid/onsite) through | EATP-009 (ADR-002) |
@@ -199,6 +201,7 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 | P28 | No per-run funnel diagnostic (collected/duplicate/stale/non-remote/English-rejected/cache-hidden/prefiltered/sent-to-Gemini by source) | EATP-028 |
 | P29 | 30-day signature cache suppresses repeats but isn't inspectable or manually resettable | EATP-029 |
 | P30 | Source coverage still thin outside the current 10 collectors; untested LatAm-market boards | EATP-030 |
+| P31 | Indeed's captcha volume makes it unworkable for an unattended server (EATP-032's whole point) — Kevin used to solve them by hand, no one's watching the screen on a headless VM | EATP-033 |
 
 > P26-P30 are from the 2026-08-21 job-search backlog (Kevin + ChatGPT, trimmed in a
 > Claude Code design conversation — see the note above the project table).

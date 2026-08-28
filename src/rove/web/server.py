@@ -46,7 +46,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from rove import cancellation, config
-from rove.collectors import browser
 from rove.config import get_logger
 from rove.eval import labels as eval_labels_store
 from rove.eval.labels import BadReason, Label
@@ -333,23 +332,17 @@ def create_app(
         no run to cancel is a 409, not a silent no-op, so the UI never shows
         "cancelling" for nothing.
 
-        Two-pronged, since a collector can be stuck two different ways:
-        `cancellation.request()` is the cooperative path (picked up between
-        loop iterations / at stage boundaries, including a captcha/login
-        wait's own poll loop); `browser.kill_all_browsers()` is the safety
-        net for a call that's actually blocked *inside* a single CDP
-        operation, which no amount of checking a flag between iterations can
-        interrupt — killing the browser process makes that call fail fast
-        instead of hanging forever (the real scenario that prompted this
-        button, 2026-08-16: a crashed/ghost Chrome window with nothing
-        listening behind it, and no way to stop the run short of killing the
-        whole server).
+        `cancellation.request()` is cooperative — picked up between loop
+        iterations / at stage boundaries. EATP-024 also had a hard-kill of
+        the automation browser process here, for a collector stuck *inside*
+        a single blocking CDP call; removed in EATP-033 along with Indeed,
+        the last source that drove a real browser. Bring an equivalent back
+        if a future source does the same.
         """
         with lock:
             if not state["running"]:
                 return JSONResponse({"status": "not_running"}, status_code=409)
         cancellation.request(discard=request.discard)
-        browser.kill_all_browsers()
         message = "Descartando la corrida..." if request.discard else "Cancelando la corrida..."
         event_bus.publish("cancel", "running", 0.0, message)
         return JSONResponse({"status": "cancelling"}, status_code=202)

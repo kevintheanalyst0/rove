@@ -154,21 +154,6 @@ ATS_COMPANIES: dict[str, list[str]] = {
 }
 
 # ---------------------------------------------------------------------------
-# Browser (Chromium via DrissionPage — LinkedIn/Indeed collectors)
-# ---------------------------------------------------------------------------
-# Empty by default: browser.py resolves to the standalone Chromium Playwright
-# downloads (`playwright install chromium`) if this isn't set. Override only
-# to point at a different Chrome/Chromium binary.
-CHROME_BROWSER_PATH = os.getenv("CHROME_BROWSER_PATH") or None
-
-# Persistent profile dir: keeps LinkedIn/Indeed logins between runs so fewer
-# captchas trigger (mirrors legacy CHROME_USER_DATA_PATH, now cross-platform
-# and gitignored under data/).
-CHROME_USER_DATA_DIR = os.getenv("CHROME_USER_DATA_DIR") or str(
-    DATA_DIR / "browser_profile"
-)
-
-# ---------------------------------------------------------------------------
 # Tunables
 # ---------------------------------------------------------------------------
 MAX_DAYS_OLD = 15

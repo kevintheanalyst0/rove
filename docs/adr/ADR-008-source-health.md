@@ -9,7 +9,7 @@
 - **Decision (EATP-011):** Track per-source yield and classify each source
   `ok | low | zero | error` against **its own rolling baseline** from run history, with a
   short human reason. Surface it calmly in the RunResult and UI
-  ("Indeed no devolvió resultados — posible bloqueo"). A broken source never crashes the
+  ("OCC no devolvió resultados — posible bloqueo"). A broken source never crashes the
   run; it's flagged, and the rest proceeds.
 - **Consequences:** Kevin can trust "few results" means "few results", not "a source
   broke". Enables timely fixes. Minimal cost (a small classifier over data the run

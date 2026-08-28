@@ -1,8 +1,5 @@
-"""Tests for the collector framework: registry, per-source envelope, the
-shared HTTP layer's pacing/retry, and the browser base's path resolution +
-event-based manual intervention. No network, no real browser launch — fully
-offline (a real `ChromiumPage` is never instantiated here; that's a live
-browser process, out of scope for a unit test).
+"""Tests for the collector framework: registry, per-source envelope, and the
+shared HTTP layer's pacing/retry. No network — fully offline.
 """
 
 from __future__ import annotations
@@ -10,14 +7,12 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from rove.collectors import browser as browser_mod
 from rove.collectors.base import (
     CollectorRegistry,
     CollectorStatus,
     run_collector,
 )
 from rove.collectors.http import RetryableHTTPError, build_client, get
-from rove.events import EventBus
 from rove.models import Job
 
 
@@ -193,79 +188,3 @@ def test_build_client_merges_default_headers():
     client = build_client(headers={"X-Test": "1"})
     assert client.headers["X-Test"] == "1"
     assert "User-Agent" in client.headers
-
-
-# ---------------------------------------------------------------------------
-# Browser base: path resolution + event-based manual intervention
-# ---------------------------------------------------------------------------
-
-
-def test_resolve_chrome_path_prefers_config_override(monkeypatch):
-    monkeypatch.setattr(browser_mod.config, "CHROME_BROWSER_PATH", "/custom/chrome")
-    assert browser_mod.resolve_chrome_path() == "/custom/chrome"
-
-
-def test_resolve_chrome_path_falls_back_to_playwright_chromium(monkeypatch):
-    monkeypatch.setattr(browser_mod.config, "CHROME_BROWSER_PATH", None)
-    monkeypatch.setattr(browser_mod, "_find_playwright_chromium", lambda: "/fake/chrome-linux64/chrome")
-    assert browser_mod.resolve_chrome_path() == "/fake/chrome-linux64/chrome"
-
-
-def test_resolve_chrome_path_none_when_nothing_found(monkeypatch):
-    monkeypatch.setattr(browser_mod.config, "CHROME_BROWSER_PATH", None)
-    monkeypatch.setattr(browser_mod, "_find_playwright_chromium", lambda: None)
-    assert browser_mod.resolve_chrome_path() is None
-
-
-def test_build_options_sets_resolved_browser_path(monkeypatch, tmp_path):
-    monkeypatch.setattr(browser_mod.config, "CHROME_BROWSER_PATH", "/custom/chrome")
-    monkeypatch.setattr(browser_mod.config, "CHROME_USER_DATA_DIR", str(tmp_path))
-    options = browser_mod.build_options()
-    assert options.browser_path == "/custom/chrome"
-    assert options.user_data_path == str(tmp_path)
-    assert any(arg.startswith("--window-size=") for arg in options.arguments)
-
-
-def test_build_options_without_profile_skips_user_data_path(monkeypatch):
-    monkeypatch.setattr(browser_mod.config, "CHROME_BROWSER_PATH", "/custom/chrome")
-    options = browser_mod.build_options(use_profile=False)
-    assert not any(arg.startswith("--user-data-dir=") for arg in options.arguments)
-
-
-def test_build_options_disables_gpu_under_wsl(monkeypatch, tmp_path):
-    # EATP-024/025: WSLg's GPU driver was confirmed to drop compositor
-    # context mid-session, then later to crash the whole Chrome process
-    # outright (live `--enable-logging` captures both times) — disabling the
-    # GPU process entirely avoids both instabilities from the first launch.
-    monkeypatch.setattr(browser_mod, "_is_wsl", lambda: True)
-    monkeypatch.setattr(browser_mod.config, "CHROME_BROWSER_PATH", "/custom/chrome")
-    monkeypatch.setattr(browser_mod.config, "CHROME_USER_DATA_DIR", str(tmp_path))
-    options = browser_mod.build_options()
-    assert "--disable-gpu" in options.arguments
-
-
-def test_build_options_keeps_the_gpu_off_wsl(monkeypatch, tmp_path):
-    # EATP-025: the flag is a workaround for WSLg's virtualized driver, not
-    # a general setting — on native Windows (where the project now runs, on
-    # a real GPU) forcing software rendering would only slow things down.
-    monkeypatch.setattr(browser_mod, "_is_wsl", lambda: False)
-    monkeypatch.setattr(browser_mod.config, "CHROME_BROWSER_PATH", "/custom/chrome")
-    monkeypatch.setattr(browser_mod.config, "CHROME_USER_DATA_DIR", str(tmp_path))
-    options = browser_mod.build_options()
-    assert "--disable-gpu" not in options.arguments
-
-
-def test_request_manual_intervention_publishes_event_not_input():
-    test_bus = EventBus()
-    original_bus = browser_mod.bus
-    try:
-        browser_mod.bus = test_bus
-        subscriber = test_bus.subscribe()
-        browser_mod.request_manual_intervention("indeed", "captcha detected")
-        event = subscriber.get(timeout=1)
-    finally:
-        browser_mod.bus = original_bus
-
-    assert event.phase == "collect:indeed"
-    assert event.status == "needs_intervention"
-    assert event.message == "captcha detected"

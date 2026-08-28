@@ -35,12 +35,7 @@ directo en el Escritorio, clic derecho sobre `Rove.vbs` → *Enviar a* →
 **Una vez adentro:**
 1. Aprieta **"Iniciar búsqueda"**. Vas a ver el spinner con el estado en vivo; cuando
    termine, se muestra el dashboard con los resultados.
-2. Chrome corre minimizado de fondo — no lo vas a ver mientras Indeed recolecta
-   normalmente. Si Indeed pide verificación humana, la ventana
-   se sube sola al frente, maximizada — resuélvela ahí (el sistema espera hasta 5
-   minutos; si no llegas a tiempo, esa fuente se omite y el resto de la corrida sigue
-   igual), y una vez resuelto el aviso en el dashboard desaparece solo.
-3. En el dashboard puedes marcar cada vacante **Apliqué** / **No me interesa** — las que
+2. En el dashboard puedes marcar cada vacante **Apliqué** / **No me interesa** — las que
    marques "no me interesa" no vuelven a aparecer en corridas futuras.
 
 Para apagar el servidor, simplemente cerrá la pestaña del navegador (se apaga solo a
@@ -50,8 +45,7 @@ los ~20 segundos). Si lo corriste manualmente en una terminal, `Ctrl+C` ahí tam
 
 Ver `docs/governance/AUTOMATION.md` para la receta documentada (Task Scheduler de
 Windows + `wsl.exe`) por si en algún momento quieres activarla. Hoy queda apagada a
-propósito — cada corrida gasta cuota gratuita de IA, y una corrida automática sin
-supervisión no puede resolver un captcha de Indeed si aparece.
+propósito — cada corrida gasta cuota gratuita de IA.
 
 ## Repo map
 
@@ -97,14 +91,9 @@ Runs natively on Windows (EATP-025 — it used to run under WSL; see
 ```bat
 uv venv --python 3.12
 uv pip install -e ".[dev]"
-.venv\Scripts\python.exe -m playwright install chromium   REM browser collectors
+.venv\Scripts\python.exe -m playwright install chromium   REM UI visual verification
 .venv\Scripts\python.exe -m pytest                        REM offline, no live AI calls
-.venv\Scripts\python.exe scripts\smoke_browser.py         REM real Chrome launch+teardown
 ```
-
-`scripts/smoke_browser.py` is worth running after any change to the browser
-layer: the unit tests mock the browser away entirely, so a launch or teardown
-that hangs against a real Chrome is invisible to them.
 
 See `CLAUDE.md` for the full operating contract this project was built under, and
 `docs/governance/DEPENDENCIES.md` for what each dependency is for.

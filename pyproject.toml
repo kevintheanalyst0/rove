@@ -19,9 +19,6 @@ dependencies = [
     "rapidfuzz>=3.6",         # fast fuzzy dedup (replaces difflib)
     "orjson>=3.9",            # fast JSON read/write for large files
 
-    # --- Browser-based collectors ---
-    "DrissionPage>=4.1",      # Chromium automation (Indeed listing pages)
-
     # --- AI providers ---
     "groq>=0.11",             # primary free provider (OpenAI-compatible)
     "google-genai>=1.0",      # Gemini (Flash-Lite / Flash)

@@ -25,7 +25,7 @@ scrape by accident.
   card's text, rather than trying to filter them out after the fact (a recommendation
   card can otherwise look identical to a real one).
 - **Not yet confirmed, but likely** on any new source with a "for you" personalization
-  feature (Indeed, OCC, Computrabajo, and especially Tier-1 boards if they ever add
+  feature (OCC, Computrabajo, and especially Tier-1 boards if they ever add
   a logged-in view). **Action for EATP-004-008: check for this pattern on every new
   source**, even ones that seem to not have it — look at the raw HTML/JSON near the end
   of a results page/response before trusting "last N cards = real results".
@@ -52,14 +52,15 @@ the same tactic still works when the site tweaks the fixed-page count.
   reached it; also stopped early if a page returned fewer than 25 cards
   (`< PAGE_SIZE`) — a partial page means it's the last one. Capped at
   `MAX_PAGES_PER_TERM = 10` as a safety net regardless.
-- **Indeed** (`indeed.py`): stops when a page returns zero *new* ids, when a page
-  returns fewer than `PAGE_SIZE` (10), **or** when the exact same tuple of ids repeats
-  (`seen_page_signatures`) — this last one guards against a real failure mode: Indeed
-  sometimes serves the same page twice instead of advancing, which without this check
-  becomes an infinite loop. **Carry this loop-detection pattern into any new
-  pagination code (007/008)**, not just Indeed — it's a general safety net, cheap to
-  add, and the failure mode (infinite pagination) is a real crash/hang risk (CLAUDE.md
-  §3).
+- **Indeed** (historical — collector removed entirely in EATP-033; kept here as a
+  documented pagination-detection technique, not a live source): stopped when a page
+  returned zero *new* ids, when a page returned fewer than `PAGE_SIZE` (10), **or**
+  when the exact same tuple of ids repeated (`seen_page_signatures`) — this last one
+  guarded against a real failure mode: Indeed sometimes served the same page twice
+  instead of advancing, which without that check became an infinite loop. **Carry this
+  loop-detection pattern into any new pagination code** — it's a general safety net,
+  cheap to add, and the failure mode (infinite pagination) is a real crash/hang risk
+  (CLAUDE.md §3).
 
 ## 3. Prefer the site's own search filters over filtering after the fact
 
@@ -74,7 +75,7 @@ filter.
 | OCC | `/tipo-home-office-remoto/` (URL path segment) | Remote-only at the source |
 | Computrabajo | `-en-remoto` (URL path suffix) | Remote-only at the source |
 | LinkedIn *(historical, removed EATP-027)* | `f_WT=2` / `f_TPR=r86400` / `f_JT=F` / `sortBy=DD` | Remote / posted ≤24h / full-time / newest-first |
-| Indeed | `fromage=14` / `sc=0kf:attr(DSQF7);` | Posted ≤14 days / remote attribute filter |
+| Indeed *(historical, removed EATP-033)* | `fromage=14` / `sc=0kf:attr(DSQF7);` | Posted ≤14 days / remote attribute filter |
 
 This doesn't replace the remote hard-gate (ADR-002) or recency check downstream — sites
 occasionally mislabel a hybrid posting as remote — but it means far fewer irrelevant
@@ -119,12 +120,13 @@ don't solve them all the same way.
 
 ## 5. Other things worth carrying forward (not raised by Kevin, found while reading legacy code)
 
-- **Rate-limit coordination across parallel browser tabs.** Indeed (and, until its
-  removal in EATP-027, LinkedIn) runs several tabs in parallel and coordinates a
-  *global pause* the moment any tab hits a captcha/429-like signal (one thread "wins"
-  the pause, alerts, waits; the rest just wait on the same event) rather than each tab
-  independently retrying and hammering the site harder. Relevant for any future
-  multi-tab browser collector (EATP-030), not just Indeed.
+- **Rate-limit coordination across parallel browser tabs** *(historical — both
+  browser-driven collectors that needed this, LinkedIn and Indeed, are gone as of
+  EATP-027/033; kept for whichever future source drives a real browser)*: run several
+  tabs in parallel and coordinate a *global pause* the moment any tab hits a
+  captcha/429-like signal (one thread "wins" the pause, alerts, waits; the rest just
+  wait on the same event) rather than each tab independently retrying and hammering
+  the site harder.
 - **Don't resurrect the "conditional title rescue" pattern.** Legacy's
   `filters.py::CONDITIONAL_TITLE_RULES` (e.g. reject "coordinator" unless a data/BI
   word is *also* in the title) is exactly the anti-pattern ADR-009 replaced after the
@@ -132,18 +134,20 @@ don't solve them all the same way.
   in EATP-009, keep the absolute exclusion list, drop the conditional-rescue logic —
   `criteria.title_caution_flags()` (EATP-002) already replaced it correctly.
 - **A missing/empty description is a silent quality problem, not just a parsing bug**
-  (P21) — Indeed's `get_job_details` and OCC's `_fetch_offer` both already treat an
-  empty description as a reason to drop the job rather than pass along a job the AI
-  can't meaningfully evaluate; keep that discipline in every new HTTP/browser
-  collector.
+  (P21) — collectors like OCC's `_fetch_offer` already treat an empty description as a
+  reason to drop the job rather than pass along a job the AI can't meaningfully
+  evaluate; keep that discipline in every new collector.
 
 ## 5b. The persistent browser profile starts EMPTY — needs a one-time manual login
 
-Discovered live in EATP-005 (LinkedIn's own collector, removed entirely in EATP-027 —
-the lesson below stays relevant to Indeed and any future profile-using collector), not
-something Kevin flagged in advance: `browser.py`'s `CHROME_USER_DATA_DIR` (EATP-003)
-defaults to a brand-new directory under `data/` — unlike legacy, which pointed at an
-existing, already-logged-in automation profile on Kevin's machine. The first live run
+*(Historical: both collectors this ever applied to, LinkedIn and Indeed, are gone —
+removed entirely in EATP-027 and EATP-033 respectively. Kept as a documented lesson
+for whichever future source drives a real browser with a persistent profile.)*
+
+Discovered live in EATP-005 (LinkedIn's own collector), not something Kevin flagged in
+advance: the browser-driven collectors' `CHROME_USER_DATA_DIR` (EATP-003) defaulted to
+a brand-new directory under `data/` — unlike legacy, which pointed at an existing,
+already-logged-in automation profile on Kevin's machine. The first live run
 against LinkedIn with `use_profile=True` returned
 **zero jobs with no error at all**: LinkedIn didn't redirect to `/login` or show any
 health/error marker — it silently served the logged-out **public** search page instead
@@ -154,12 +158,9 @@ never changes.
 
 - **Any collector that turns on `use_profile=True` for the first time needs a manual,
   one-time, visible-browser login** before it will do anything useful — this is not
-  optional setup, it's a hard prerequisite. In this WSL environment, a non-headless
-  `build_page()` shows a real window via WSLg (`DISPLAY`/`WAYLAND_DISPLAY` are set) —
-  use that to let Kevin log in once; the persistent profile dir keeps the session
-  after that.
-- **Relevant to EATP-006 (Indeed) too** if it reuses a persistent profile — check
-  whether the profile has ever been logged into before assuming a browser-based
+  optional setup, it's a hard prerequisite. Use a non-headless launch to let Kevin log
+  in once; the persistent profile dir keeps the session after that.
+- Check whether the profile has ever been logged into before assuming a browser-based
   collector "just works" on a fresh environment/machine.
 - A logged-out **public** job-search view existing at all (rather than a hard
   authwall) is itself worth remembering: it's a plausible silent-failure mode for any
@@ -227,8 +228,9 @@ The rule for EATP-004-010, resolving the ambiguity:
 ## 8. Sitemap/category discovery + JSON-LD `JobPosting` detail (EATP-030)
 
 A fourth collector shape, distinct from the three already in this repo (Greenhouse/
-Lever's per-company watchlist API; OCC/Computrabajo/Indeed's server-side search;
-Remotive/RemoteOK/WWR/Himalayas's client-side-filtered feed): **no search API at
+Lever's per-company watchlist API; OCC/Computrabajo's server-side search (also
+Indeed's, historically — removed EATP-033); Remotive/RemoteOK/WWR/Himalayas's
+client-side-filtered feed): **no search API at
 all, but a discoverable list of every current posting's URL** (a sitemap, or a
 category-listing page), with each posting's own page embedding a standard
 schema.org `JobPosting` JSON-LD block — a real, if less obvious, structured-data

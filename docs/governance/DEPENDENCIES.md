@@ -58,7 +58,6 @@ the same platform — see CLAUDE.md golden rule 12.
 | `python-dateutil` | Robust date parsing (posting ages, mixed formats) | 003, 004 |
 | `rapidfuzz` | Fast fuzzy matching for dedup + content signatures | 003 |
 | `orjson` | Fast JSON for large files; streaming-friendly | 001+ |
-| `DrissionPage` | Chromium automation for Indeed listing pages (also LinkedIn until its removal in EATP-027) | 004 |
 | `groq` | **Primary** AI provider (free, fast, OpenAI-compatible) | 006 |
 | `google-genai` | Gemini provider (Flash-Lite / Flash) | 006 |
 | `openai` | OpenAI-compatible client (OpenRouter; also works for Groq) | 006 |
@@ -71,16 +70,13 @@ the same platform — see CLAUDE.md golden rule 12.
 
 ## Notes & gotchas
 
-- **`DrissionPage` needs a real Chromium.** Inside WSL, Claude Code must ensure a
-  Chromium/Chrome binary is available and reachable, or run browser collectors against
-  the Windows Chrome. Resolve this in EATP-003; don't block earlier projects on it.
-- **`playwright` needs a browser download** (`playwright install chromium`). Originally
-  planned for EATP-018/015-016 only, but EATP-003 downloaded it early: WSL has no
-  trustworthy system Chromium (Ubuntu 24.04's `chromium` is snap-only and its sandboxing
-  fights DrissionPage's custom profile dirs), so `collectors/browser.py` resolves to this
-  same standalone binary for the browser-driven collector (Indeed). No new
-  dependency — `playwright` was already in the list; this just fetches its browser asset
-  sooner.
+- **`DrissionPage` (Chromium automation for Indeed/LinkedIn) was removed in EATP-033**,
+  Indeed's removal — LinkedIn's own removal in EATP-027 had already left it as
+  Indeed's sole remaining consumer. `collectors/browser.py`, the module that wrapped
+  it, went with it; no browser-driven collector exists today.
+- **`playwright` needs a browser download** (`playwright install chromium`) — used for
+  visual verification of the web UI (EATP-010), unrelated to collectors now that the
+  browser-driven ones are gone.
 - **AI SDKs:** you don't need all three. Groq alone (via `groq` or the OpenAI-compatible
   `openai` client) covers the primary path. `google-genai` is for the Gemini fallback.
 - **We drop `requests` in favor of `httpx`** and **`difflib` in favor of `rapidfuzz`**

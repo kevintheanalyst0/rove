@@ -1,6 +1,11 @@
 # ADR-005 — Source strategy: keep & optimize Indeed, AND add high-signal boards
 
-- **Status:** Accepted (revised)
+- **Status:** Superseded by EATP-033 (2026-08-27) — Indeed removed entirely. The
+  "alternative considered" this ADR rejected (drop Indeed, lean on Tier-1) is what
+  happened in the end; the reason changed (see P31 in `ROADMAP.md`): the captcha
+  handling this ADR describes was never the problem — an unattended headless VM has
+  no one to hand a captcha to in the first place. The rest of this ADR is left as
+  written, a record of the decision at the time.
 - **Context:** Only 4 crowded consumer boards are used; Indeed throws captchas (P5);
   results are junky (P6) and Kevin feels good jobs are missed (P2/P3/P15). Kevin wants
   Indeed **kept and optimized**, not dropped — and also wants broader, higher-quality

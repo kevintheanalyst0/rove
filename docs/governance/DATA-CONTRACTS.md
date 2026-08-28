@@ -8,7 +8,7 @@ filters, cache, scoring, and the UI all speak these — no ad-hoc dicts.
 
 | field | type | notes |
 |-------|------|-------|
-| `source` | str | collector id: `occ`, `indeed`, `greenhouse`, … |
+| `source` | str | collector id: `occ`, `computrabajo`, `greenhouse`, … |
 | `source_job_id` | str | the site's own id (volatile — **never** a cache key) |
 | `signature` | str | **content signature** (see below); the stable identity |
 | `title` | str | normalized title |
@@ -92,7 +92,7 @@ number, so it can never look contradictory.
 | `status` | enum | `ok` \| `low` \| `zero` \| `error` — classified against the source's own rolling baseline, never a global threshold |
 | `yielded` | int | this run's **raw** collector yield (before the quality gate — gate attrition must never look like a broken scraper) |
 | `baseline` | float \| None | average raw yield over recent past runs; `None` when there isn't enough history yet |
-| `reason` | str | calm Spanish note, e.g. `"indeed no devolvió resultados - posible bloqueo"` |
+| `reason` | str | calm Spanish note, e.g. `"occ no devolvió resultados - posible bloqueo"` |
 
 ## Files on disk (`data/`, all gitignored)
 

@@ -201,7 +201,7 @@ def test_get_cache_returns_records_most_recently_seen_first(tmp_path, monkeypatc
     monkeypatch.setattr(config, "SIGNATURES_FILE", tmp_path / "signatures.jsonl")
     cache = SignatureCache()
     cache.update("old", title="Old One", company="Acme", source="occ", today=date(2026, 1, 1))
-    cache.update("new", title="New One", company="Beta", source="indeed", today=date(2026, 1, 20))
+    cache.update("new", title="New One", company="Beta", source="greenhouse", today=date(2026, 1, 20))
     cache.save()
 
     client, _bus = _make_client(pipeline_run=lambda **_: None)

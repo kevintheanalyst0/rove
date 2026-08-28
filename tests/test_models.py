@@ -17,7 +17,7 @@ from rove.models import (
 
 def make_job(**overrides) -> Job:
     defaults = {
-        "source": "indeed",
+        "source": "greenhouse",
         "source_job_id": "1",
         "title": "Analista de Datos",
         "company": "Acme",
@@ -35,7 +35,7 @@ def make_job(**overrides) -> Job:
 
 def test_job_requires_core_fields():
     with pytest.raises(ValidationError):
-        Job(source="indeed")  # missing source_job_id, title, url
+        Job(source="greenhouse")  # missing source_job_id, title, url
 
 
 def test_job_defaults():
