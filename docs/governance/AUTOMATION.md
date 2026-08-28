@@ -1,15 +1,19 @@
-# Automation — daily scheduled run (documented, not activated)
+# Automation — daily scheduled run
 
-Rove runs on demand: Kevin opens the web UI and clicks "Iniciar". This file
-documents how to add a **daily unattended run** on top of that, for if/when Kevin wants
-it. **It is not wired up.** Nothing in this repo runs on a schedule today.
+On Kevin's own machine, Rove still runs on demand: he opens the web UI and clicks
+"Iniciar". This file originally documented how to *add* a daily unattended run on top
+of that — as of EATP-032 (2026-08-27) that's no longer hypothetical, it's live, just
+not via the recipe below.
 
-> **EATP-032 note:** this recipe predates Kevin's move to an always-on Oracle VM for
-> unattended runs, and describes the original Windows Task Scheduler + WSL plan. It's
-> left as-is below (still valid if Rove ever runs on a Windows box again); the actual
-> EATP-032 deploy uses a Linux cron on the VM instead, not this recipe.
+> **EATP-032 superseded this file's original plan.** A scheduled run now actually
+> exists — a systemd timer on Kevin's always-on Oracle VM (`rove-daily-run.timer`,
+> fires `POST /run` at 13:00 UTC = 7am Kevin's fixed UTC-6 time against the
+> `rove-web.service` already running there), not the Windows Task Scheduler + WSL
+> recipe below. That recipe is left as-is — still valid if Rove ever needs a scheduled
+> run on a Windows box specifically — but it is not what actually runs today. See
+> `projects/EATP-032-deploy-oracle-vm/` for the full setup.
 
-## Why it's off by default
+## Why it's off by default (on Kevin's own machine — see the EATP-032 note above for the VM)
 
 - **AI quota.** Every run spends part of the free daily AI quota (`docs/governance/AI-PROVIDERS.md`).
   An unattended daily run competes with any manual runs Kevin does the same day.

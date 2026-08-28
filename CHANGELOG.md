@@ -31,6 +31,61 @@ the day the work was done; see `ROADMAP.md` for status/complexity/time per proje
   suites removed here); `ruff check` clean (4 pre-existing, unrelated
   findings in `parsing.py`/`weremoto.py`/`server.py` left untouched).
 
+## EATP-032 — Deploy to an always-on Oracle Cloud VM (2026-08-26/27)
+*(Backfilled 2026-08-27 — built across two sessions without a charter/checklist
+at the time; see `projects/EATP-032-deploy-oracle-vm/` for the full record.)*
+- The actual reason Rove forked off Career Radar (P32): run unattended, no
+  laptop required, reachable from Kevin's phone. A GitHub Actions workflow
+  (`.github/workflows/retry-oci-vm.yml`, `*/15 * * * *`, idempotent) retried
+  Oracle's Always Free capacity in `mx-queretaro-1` until a slot opened —
+  landed a `VM.Standard.A1.Flex` (1 OCPU/6GB, ARM) named `rove-vm`, public IP
+  `163.192.139.178`, faster than the ~5-day estimate.
+- Installed Rove on the VM (`uv sync`, `.env` copied), full test suite
+  verified green there too.
+- **Tailscale** installed for private remote access (`rove-vm.tail6049ca.ts.net`,
+  100.97.143.79) — this is how Kevin's phone reaches the server, not the
+  public IP.
+- Hardened the VM without sacrificing direct SSH access for future sessions
+  (key-only auth was already the default; added `fail2ban` for the sshd jail
+  instead of restricting the security list, since the latter would have cut
+  off SSH from anywhere outside the tailnet, including this repo's own
+  Claude Code sessions). `ufw` default-denies everything except port 22
+  (public) and the `tailscale0` interface (full access) — the web app itself
+  is reachable **only** over Tailscale, confirmed live: 200 via the Tailscale
+  IP, unreachable via the public IP.
+- `server.py` gained two env-driven toggles for server mode (desktop
+  launchers unaffected, defaults unchanged): `ROVE_AUTO_SHUTDOWN=0` disables
+  EATP-023's tab-close self-kill (Kevin checks in from his phone with long
+  gaps between visits — the server must survive that), and
+  `ROVE_EXTRA_ALLOWED_HOSTS` extends ADR-010's same-origin/host allowlist
+  past `127.0.0.1`/`localhost` so Tailscale-origin requests aren't rejected
+  as cross-origin.
+- Three systemd units on the VM: `rove-web.service` (the FastAPI app,
+  `Restart=always`, survives reboot), `rove-daily-run.timer` +
+  `rove-daily-run.service` (`OnCalendar=*-*-* 13:00:00 UTC` = 7am Kevin's
+  fixed UTC-6 time, triggers `POST /run` against the already-running
+  server rather than invoking the pipeline as a separate process). All
+  five services (`rove-web`, the timer, `tailscaled`, `fail2ban`, `ufw`)
+  confirmed `enabled` — a VM reboot (Oracle maintenance, etc.) restores full
+  function with no manual step.
+- **Not fixed here, flagged only:** `docs/governance/AUTOMATION.md` still
+  describes the original Windows-Task-Scheduler recipe, not this VM-based
+  approach — a note was added pointing at this project instead of rewriting
+  it (separate scope).
+- Also mid-session: EATP-033 removed Indeed entirely (see above) — surfaced
+  by this same deploy work (no headless display for its browser automation)
+  but Kevin's own call for a different reason (captcha volume, not the
+  display issue, which Xvfb would have solved).
+
+## EATP-031 — Accumulated inbox (2026-08-25/26)
+*(Backfilled 2026-08-27 alongside EATP-032/033 — see the note above.)*
+- Jobs now persist across runs in `data/inbox.jsonl` until Kevin applies or
+  dismisses them, fixing `results.json` being overwritten every run — which
+  used to silently lose anything from a day he didn't check (the concrete
+  case P32 above is about).
+- New `GET /inbox`, bucketed **Hoy / Ayer / Esta semana / Más viejo** in
+  Kevin's real timezone (`config.KEVIN_TIMEZONE`, fixed UTC-6).
+
 ## EATP-030 — New sources: Hireline, WeRemoto, RemotoJob (2026-08-21)
 - Added three HTTP-only collectors sharing one shape new to this repo: no
   search API, but every posting discoverable via a sitemap or category page,

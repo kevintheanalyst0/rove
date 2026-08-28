@@ -77,6 +77,8 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-028** | English-requirement classification (reject/compatible/indeterminate) + per-run funnel diagnostic + expanded search terms | — | ✅ | 027 | Medium | ~30 min (2026-08-21) |
 | **EATP-029** | Cache observability — "Ver cacheadas" view + manual reset | — | ✅ | 028 | Light-med | ~40 min (2026-08-21) |
 | **EATP-030** | New sources — Hireline, WeRemoto, RemotoJob shipped; LaPieza + Glassdoor spiked and dropped (see Backlog) | — | ✅ | 029 | Medium-High | ~1h40 (2026-08-21) |
+| **EATP-031** | Accumulated inbox — jobs persist across runs until applied/dismissed | — | ✅ | 030 | Medium | (2026-08-25/26) |
+| **EATP-032** | Deploy to an always-on Oracle Cloud VM (Querétaro), reachable from Kevin's phone | — | ✅ | 031 | High | ~3h across two sessions (2026-08-26/27) |
 | **EATP-033** | Remove Indeed as a source entirely | — | ✅ | 032 | Medium | ~1h (2026-08-27) |
 
 > **EATP-027 through 030** come from a job-search improvement backlog Kevin had
@@ -202,9 +204,13 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 | P29 | 30-day signature cache suppresses repeats but isn't inspectable or manually resettable | EATP-029 |
 | P30 | Source coverage still thin outside the current 10 collectors; untested LatAm-market boards | EATP-030 |
 | P31 | Indeed's captcha volume makes it unworkable for an unattended server (EATP-032's whole point) — Kevin used to solve them by hand, no one's watching the screen on a headless VM | EATP-033 |
+| P32 | Rove needs to run unattended (e.g. 7am daily) without Kevin's laptop, reachable from his phone to apply/dismiss, with nothing lost if he doesn't check in for days — the actual reason this repo forked off Career Radar in the first place, not just the rename | EATP-031, 032 |
 
 > P26-P30 are from the 2026-08-21 job-search backlog (Kevin + ChatGPT, trimmed in a
-> Claude Code design conversation — see the note above the project table).
+> Claude Code design conversation — see the note above the project table). P31/P32 are
+> Kevin's own, from the fork's founding motivation and a decision made mid-EATP-032 —
+> documented here after the fact along with EATP-031-033 themselves (built in earlier
+> sessions without the usual charter/checklist/ROADMAP ceremony; backfilled 2026-08-27).
 >
 > Bold = problems we surfaced that Kevin didn't list. P25 isn't bold — it's Kevin's own,
 > just recalled later than the original P1-P16 pass.
