@@ -107,6 +107,9 @@ class ScriptedProvider(Provider):
         matched = [self._by_sig[job.signature] for job in jobs if job.signature in self._by_sig]
         return [*matched, *self._extra]
 
+    def answer_questions(self, prompt: str) -> str:
+        raise NotImplementedError
+
 
 def _router(results_by_signature: dict[str, AiResult], *, extra: list[AiResult] | None = None) -> AiRouter:
     provider = ScriptedProvider(results_by_signature, extra=extra)

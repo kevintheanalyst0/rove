@@ -80,6 +80,8 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-031** | Accumulated inbox — jobs persist across runs until applied/dismissed | — | ✅ | 030 | Medium | (2026-08-25/26) |
 | **EATP-032** | Deploy to an always-on Oracle Cloud VM (Querétaro), reachable from Kevin's phone | — | ✅ | 031 | High | ~3h across two sessions (2026-08-26/27) |
 | **EATP-033** | Remove Indeed as a source entirely | — | ✅ | 032 | Medium | ~1h (2026-08-27) |
+| **EATP-034** | Auto-apply draft engine (Greenhouse & Lever) — headless-browser fill, AI-answered screening questions, dashboard review/manual-send | — | ✅ | 032, 033 | High | ~5h55m (2026-08-30/31) |
+| **EATP-035** | Unattended pre-run submit sweep — sends pending drafts before the next day's run | — | ⬜ | 034 | Light-med | — |
 
 > **EATP-027 through 030** come from a job-search improvement backlog Kevin had
 > drafted with ChatGPT and pasted into Notion (Rove page, 2026-08-21),
@@ -205,6 +207,7 @@ Kevin's stated problems are **P1-P16 / R11-R12**. Problems surfaced by our own a
 | P30 | Source coverage still thin outside the current 10 collectors; untested LatAm-market boards | EATP-030 |
 | P31 | Indeed's captcha volume makes it unworkable for an unattended server (EATP-032's whole point) — Kevin used to solve them by hand, no one's watching the screen on a headless VM | EATP-033 |
 | P32 | Rove needs to run unattended (e.g. 7am daily) without Kevin's laptop, reachable from his phone to apply/dismiss, with nothing lost if he doesn't check in for days — the actual reason this repo forked off Career Radar in the first place, not just the rename | EATP-031, 032 |
+| P33 | Vacantes se acumulan en el inbox sin que Kevin tenga tiempo de aplicar; para cuando aplica, ya se llenaron de competidores — quiere aplicación automática a Greenhouse/Lever, sin banco de preguntas fijo, sin obligar revisión manual, pero sin dejar nada pendiente después de la siguiente corrida diaria | EATP-034, 035 |
 
 > P26-P30 are from the 2026-08-21 job-search backlog (Kevin + ChatGPT, trimmed in a
 > Claude Code design conversation — see the note above the project table). P31/P32 are
@@ -257,6 +260,21 @@ with its own equivalent project. Only the Rove items are listed here.
 
 ## Backlog (not scheduled)
 
+- **Auto-apply (EATP-034): Greenhouse's real-world captcha rate may make it
+  near-unusable for full auto-submission.** Live-verified 2026-08-31 (that
+  project's Phase 8 smoke test): every standard `job-boards.greenhouse.io`
+  company sampled (8/8 — GitLab, Figma, Discord, Webflow, Mixpanel,
+  Amplitude, Vercel, Airtable) has a reCAPTCHA on submit; every custom-domain
+  Greenhouse embed sampled (4/4 — Coinbase, Stripe, Elastic, Asana) didn't
+  render a form within the automation's wait window (Cloudflare-style or
+  similar). Lever (Palantir), by contrast, had neither and fully worked live.
+  Not fixed by EATP-034 — fighting either kind of bot-protection unattended
+  is explicitly against this repo's own precedent (Indeed/EATP-033,
+  Glassdoor/EATP-030). Worth a future call, Kevin's: whether `config.
+  ATS_COMPANIES["greenhouse"]` should be re-curated toward captcha-free
+  boards specifically for this use case, or whether Greenhouse stays mostly
+  a "surfaces the job, Kevin applies by hand" source while Lever carries the
+  real auto-apply weight.
 - **CV tailoring / cover letters** — legacy `jobmatch/cv/` is Windows/Word-COM only; not
   urgent. Revisit post-018, redesigned cross-platform.
 - **Automatic ATS company discovery** (beyond the curated list in EATP-008).

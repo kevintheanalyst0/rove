@@ -21,11 +21,15 @@ key and the VM's SSH keypair lives on Kevin's Windows machine under
 1. Clone this repo to `~/rove` on the VM (SSH user `ubuntu` on the Ubuntu
    22.04 images this has been used with).
 2. Copy `.env` into `~/rove/.env` from Kevin's own machine — never
-   generated or committed here, it has real API keys.
+   generated or committed here, it has real API keys. Same treatment for
+   `data/resume.pdf` (EATP-034 — Kevin's real CV, used to fill the resume
+   field on real applications; auto-apply degrades gracefully without it,
+   just can't fill that one required field).
 3. Run `~/rove/deploy/setup_vm.sh`. It installs `uv`, syncs dependencies,
-   installs Tailscale (without starting it), installs `fail2ban`/`ufw`/
-   `stress-ng`, configures the firewall, and installs+enables the systemd
-   units in `deploy/systemd/`.
+   installs Playwright's Chromium (EATP-034 — separate download from the
+   Python package, ARM/aarch64 build), installs Tailscale (without starting
+   it), installs `fail2ban`/`ufw`/`stress-ng`, configures the firewall, and
+   installs+enables the systemd units in `deploy/systemd/`.
 4. The script prints two steps it cannot do itself — both require opening a
    real browser login, which only the Tailscale account owner can do:
    - `sudo tailscale up --hostname=rove-vm --ssh`, then open the URL it

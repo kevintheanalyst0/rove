@@ -9,6 +9,10 @@
 #   - This repo is cloned to ~/rove (this script lives at ~/rove/deploy/).
 #   - `.env` has been copied into ~/rove/.env (has secrets — must come from
 #     Kevin's own machine, never generated or stored here).
+#   - EATP-034: `data/resume.pdf` has been copied into ~/rove/data/resume.pdf
+#     (Kevin's real CV — same treatment as `.env`, never generated/stored
+#     here, gitignored). Auto-apply's submit step silently can't fill the
+#     resume field without it; nothing in this script depends on it though.
 #
 # Safe to re-run: apt/systemctl steps are idempotent, `uv sync` is a no-op
 # if already synced, `ufw`/`fail2ban` rules just get reasserted.
@@ -18,23 +22,30 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR"
 
-echo "==> [1/6] Installing uv, syncing Python deps"
+echo "==> [1/7] Installing uv, syncing Python deps"
 if ! command -v uv >/dev/null 2>&1; then
   curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 export PATH="$HOME/.local/bin:$PATH"
 uv sync --extra dev
 
-echo "==> [2/6] Installing Tailscale (not started yet — see manual step below)"
+echo "==> [2/7] Installing Playwright's Chromium (EATP-034 — headless
+    apply-form automation; separate from the Python package above, which
+    uv sync already installed). This is the ARM/aarch64 build, cached at
+    ~/.cache/ms-playwright — a different path/arch than the Windows build
+    DEPENDENCIES.md describes for Kevin's desktop copy."
+uv run playwright install --with-deps chromium
+
+echo "==> [3/7] Installing Tailscale (not started yet — see manual step below)"
 if ! command -v tailscale >/dev/null 2>&1; then
   curl -fsSL https://tailscale.com/install.sh | sh
 fi
 
-echo "==> [3/6] Installing fail2ban, ufw, stress-ng"
+echo "==> [4/7] Installing fail2ban, ufw, stress-ng"
 sudo apt-get update -qq
 sudo apt-get install -y -qq fail2ban ufw stress-ng
 
-echo "==> [4/6] Configuring fail2ban (sshd jail — SSH stays public, hardened
+echo "==> [5/7] Configuring fail2ban (sshd jail — SSH stays public, hardened
     instead of Tailscale-restricted, so this machine and future sessions
     keep direct access; see docs/adr and EATP-032's charter for why)"
 sudo tee /etc/fail2ban/jail.local > /dev/null <<'EOF'
@@ -47,14 +58,14 @@ findtime = 10m
 EOF
 sudo systemctl enable --now fail2ban
 
-echo "==> [5/6] Configuring ufw (SSH public; everything else Tailscale-only)"
+echo "==> [6/7] Configuring ufw (SSH public; everything else Tailscale-only)"
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw allow 22/tcp comment 'SSH - public, key-only + fail2ban'
 sudo ufw allow in on tailscale0 comment 'Tailscale tailnet - full access'
 sudo ufw --force enable
 
-echo "==> [6/6] Installing systemd units (rove-web, rove-daily-run, rove-keepalive)"
+echo "==> [7/7] Installing systemd units (rove-web, rove-daily-run, rove-keepalive)"
 sudo cp "$REPO_DIR"/deploy/systemd/*.service "$REPO_DIR"/deploy/systemd/*.timer \
   /etc/systemd/system/
 sudo systemctl daemon-reload

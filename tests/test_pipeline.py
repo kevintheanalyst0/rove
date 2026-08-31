@@ -137,6 +137,9 @@ class ScriptedProvider(Provider):
         self.batches.append(jobs)
         return [self._by_sig[job.signature] for job in jobs if job.signature in self._by_sig]
 
+    def answer_questions(self, prompt: str) -> str:
+        raise NotImplementedError
+
 
 class CrashingProvider(Provider):
     """Scores normally until the `fail_on_call`-th batch, where it raises a
@@ -154,6 +157,9 @@ class CrashingProvider(Provider):
         if self.calls == self._fail_on_call:
             raise RuntimeError("simulated crash mid-batch")
         return [self._by_sig[job.signature] for job in jobs if job.signature in self._by_sig]
+
+    def answer_questions(self, prompt: str) -> str:
+        raise NotImplementedError
 
 
 def _router(provider: Provider) -> AiRouter:
@@ -479,6 +485,9 @@ class HangingProvider(Provider):
         self.released.wait()
         return []
 
+    def answer_questions(self, prompt: str) -> str:
+        raise NotImplementedError
+
 
 def test_cancellation_during_a_hung_ai_call_does_not_wait_for_it(monkeypatch):
     monkeypatch.setattr(pipeline, "_CANCEL_POLL_SECONDS", 0.05)  # keep the test fast
@@ -557,6 +566,9 @@ class CancellingProvider(Provider):
         if self.calls == self._cancel_on_call:
             cancellation.request()
         return [self._by_sig[job.signature] for job in jobs if job.signature in self._by_sig]
+
+    def answer_questions(self, prompt: str) -> str:
+        raise NotImplementedError
 
 
 def test_cancellation_during_ai_scoring_stops_before_the_next_batch():

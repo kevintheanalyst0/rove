@@ -430,6 +430,24 @@ body[data-state="results"] #runnerCard { display: none; }
 .badge { font: 700 11.5px/1 var(--font); padding: 5px 10px; border-radius: 999px; }
 .badge-remote { background: rgba(23,24,28,0.06); color: var(--text-2); }
 .badge-confirm-english { background: rgba(244,200,75,0.32); color: #6B4E00; }
+/* EATP-034: auto-apply draft state on a job card. */
+.badge-apply-ready { background: linear-gradient(120deg, var(--green-soft), var(--mint)); color: #0B4A30; }
+.badge-apply-manual { background: rgba(242,118,104,0.18); color: #7A2213; }
+
+/* EATP-034: the "Aplicación lista" block inside the job detail modal —
+   same visual language as .summary-box, one level down in emphasis. */
+.apply-draft-block {
+  background: rgba(183,243,208,0.28);
+  border: 1px solid rgba(11,74,48,0.14);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.apply-draft-block > strong { display: block; margin-bottom: 2px; color: #0B4A30; }
+.apply-answers { list-style: none; margin: 10px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.apply-answers li strong { display: block; font-size: 12.5px; color: var(--text-2); }
+.apply-answers li p { margin: 2px 0 0; font-size: 13.5px; }
+.apply-answers li.empty { font-size: 13px; color: var(--text-2); }
 
 /* EATP-031: accumulated-inbox day-bucket headers ("Hoy" / "Ayer" / ...) —
    spans the full grid width so it reads as a section break, not a card. */

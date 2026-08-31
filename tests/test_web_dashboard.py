@@ -12,15 +12,21 @@ from datetime import UTC, datetime
 from fastapi.testclient import TestClient
 
 from rove import config
+from rove.apply import store as apply_store
+from rove.apply.store import ApplicationEntry, ApplicationStatus
 from rove.events import EventBus
+from rove.inbox import store as inbox_store
 from rove.models import Job, RunResult, RunStatus, ScoredJob
 from rove.storage import write_json
 from rove.tracking.store import TrackingAction
 from rove.web.server import create_app
 
 
-def _make_client() -> TestClient:
-    app = create_app(event_bus=EventBus(), pipeline_run=lambda **_: None)
+def _make_client(submit_application=None) -> TestClient:
+    kwargs = {"event_bus": EventBus(), "pipeline_run": lambda **_: None}
+    if submit_application is not None:
+        kwargs["submit_application"] = submit_application
+    app = create_app(**kwargs)
     # EATP-026: see test_web_server.py's _make_client for why base_url is set.
     return TestClient(app, base_url="http://127.0.0.1:8000")
 
@@ -247,3 +253,88 @@ def test_label_rejects_an_invalid_label(tmp_path, monkeypatch):
     response = _make_client().post("/eval/label", json={"signature": "sig-1", "label": "maybe"})
 
     assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Auto-apply (EATP-034): GET /applications, POST /applications/<sig>/send
+# ---------------------------------------------------------------------------
+
+
+def test_applications_empty_when_nothing_prepared(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "APPLICATIONS_FILE", tmp_path / "applications.jsonl")
+
+    response = _make_client().get("/applications")
+
+    assert response.status_code == 200
+    assert response.json() == {}
+
+
+def test_applications_returns_prepared_entries(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "APPLICATIONS_FILE", tmp_path / "applications.jsonl")
+    apply_store.record_entry(
+        ApplicationEntry(
+            signature="sig-1",
+            status=ApplicationStatus.DRAFT_READY,
+            answers={"Why this role?": "Porque encaja con mi experiencia."},
+        )
+    )
+
+    data = _make_client().get("/applications").json()
+
+    assert data["sig-1"]["status"] == "draft_ready"
+    assert data["sig-1"]["answers"] == {"Why this role?": "Porque encaja con mi experiencia."}
+
+
+def test_send_application_calls_submit_and_returns_its_result(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "APPLICATIONS_FILE", tmp_path / "applications.jsonl")
+    monkeypatch.setattr(config, "INBOX_FILE", tmp_path / "inbox.jsonl")
+    monkeypatch.setattr(config, "TRACKING_FILE", tmp_path / "tracking.jsonl")
+
+    scored = _scored_job("sig-1")
+    inbox_store.append_run([scored], datetime.now(UTC))
+    entry = ApplicationEntry(signature="sig-1", status=ApplicationStatus.DRAFT_READY, answers={})
+    apply_store.record_entry(entry)
+
+    calls: list[tuple] = []
+
+    def fake_submit(job, profile, entry_arg, **kwargs):
+        calls.append((job, profile, entry_arg))
+        return entry_arg.model_copy(update={"status": ApplicationStatus.SUBMITTED})
+
+    client = _make_client(submit_application=fake_submit)
+    response = client.post("/applications/sig-1/send")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "signature": "sig-1", "result": "submitted", "note": None}
+    assert len(calls) == 1
+    assert calls[0][0].signature == "sig-1"
+
+
+def test_send_application_404_when_no_draft_exists(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "APPLICATIONS_FILE", tmp_path / "applications.jsonl")
+
+    response = _make_client().post("/applications/does-not-exist/send")
+
+    assert response.status_code == 404
+
+
+def test_send_application_409_when_not_draft_ready(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "APPLICATIONS_FILE", tmp_path / "applications.jsonl")
+    apply_store.record_entry(
+        ApplicationEntry(signature="sig-1", status=ApplicationStatus.MANUAL_REQUIRED, note="captcha")
+    )
+
+    response = _make_client().post("/applications/sig-1/send")
+
+    assert response.status_code == 409
+    assert response.json()["current_status"] == "manual_required"
+
+
+def test_send_application_404_when_job_missing_from_inbox(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "APPLICATIONS_FILE", tmp_path / "applications.jsonl")
+    monkeypatch.setattr(config, "INBOX_FILE", tmp_path / "inbox.jsonl")
+    apply_store.record_entry(ApplicationEntry(signature="sig-1", status=ApplicationStatus.DRAFT_READY))
+
+    response = _make_client().post("/applications/sig-1/send")
+
+    assert response.status_code == 404

@@ -73,6 +73,20 @@ class GeminiProvider(Provider):
         )
         return response.text or ""
 
+    def _generate_freeform(self, prompt: str) -> str:
+        """Same as `_generate`, but without the scoring-specific
+        `response_schema` — EATP-034's question-answering shape isn't fixed
+        the way `_BatchResponse` is."""
+        from google.genai import types
+
+        client = self._get_client()
+        response = client.models.generate_content(
+            model=self._model,
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+        return response.text or ""
+
     def evaluate_batch(self, jobs: list[Job], profile: Profile) -> list[AiResult]:
         if not self.configured:
             raise ProviderError(f"{self.id}: no API key configured")
@@ -96,6 +110,26 @@ class GeminiProvider(Provider):
             raise ProviderError(str(error)) from error
 
         return parse_batch_response(text)
+
+    def answer_questions(self, prompt: str) -> str:
+        if not self.configured:
+            raise ProviderError(f"{self.id}: no API key configured")
+
+        @retry(
+            stop=stop_after_attempt(config.AI_MAX_RETRIES),
+            wait=wait_exponential(multiplier=config.AI_RETRY_BACKOFF_SECONDS),
+            retry=retry_if_exception(is_transient_error),
+            reraise=True,
+        )
+        def _call() -> str:
+            return self._generate_freeform(prompt)
+
+        try:
+            return _call()
+        except Exception as error:
+            if is_daily_quota_error(error):
+                raise QuotaExceededError(str(error)) from error
+            raise ProviderError(str(error)) from error
 
 
 def gemini_flash(api_key: str | None = None) -> GeminiProvider:

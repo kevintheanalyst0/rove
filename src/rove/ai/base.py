@@ -54,3 +54,11 @@ class Provider(ABC):
         for a job it isn't confident about; see `ai/parse.py::match_ai_results`
         for how missing/duplicate ids are handled downstream."""
         raise NotImplementedError
+
+    @abstractmethod
+    def answer_questions(self, prompt: str) -> str:
+        """EATP-034: a raw prompt -> raw text completion, JSON-mode but with
+        no fixed response schema (unlike `evaluate_batch`'s scoring shape) —
+        `rove.apply.questions` builds the prompt and parses the response
+        itself. Same `QuotaExceededError`/`ProviderError` contract."""
+        raise NotImplementedError

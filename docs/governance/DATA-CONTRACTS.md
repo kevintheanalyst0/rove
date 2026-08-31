@@ -94,6 +94,20 @@ number, so it can never look contradictory.
 | `baseline` | float \| None | average raw yield over recent past runs; `None` when there isn't enough history yet |
 | `reason` | str | calm Spanish note, e.g. `"occ no devolvió resultados - posible bloqueo"` |
 
+## `ApplicationEntry` — auto-apply state per job (EATP-034, ADR-011)
+
+| field | type | notes |
+|-------|------|-------|
+| `signature` | str | same content signature as `Job`/`InboxEntry`/`TrackingEntry` |
+| `status` | enum | `draft_ready` \| `manual_required` \| `submitted` \| `failed` — `failed` is the only status the pipeline hook retries on a later run |
+| `answers` | dict[str, str] | screening question → AI-generated answer, for the dashboard review UI |
+| `resume_path` | str \| None | which resume file was used |
+| `note` | str \| None | why `manual_required`/`failed` (e.g. "captcha detected", "unrecognized form") |
+| `updated_at` | datetime | when this entry was written |
+
+Append-only JSONL, same "latest entry per signature wins" discipline as
+`TrackingEntry`/`InboxEntry` above — implemented in `rove/apply/store.py`.
+
 ## Files on disk (`data/`, all gitignored)
 
 | file | shape | written by |
@@ -105,6 +119,7 @@ number, so it can never look contradictory.
 | `history/<run-timestamp>.jsonl` | `{signature, source, title, company, shown_at}` per shown job | history store (append-only, one file per run) |
 | `health/yields.jsonl` | `{run_started_at, source, yielded, status}` per source per run | health check (EATP-011, append-only, one cumulative file — raw yield, not shown count, so gate attrition never looks like a broken scraper) |
 | `status.json` | run status for the UI | orchestrator |
+| `applications.jsonl` | `ApplicationEntry` per line | auto-apply engine (EATP-034, append-only, `rove.apply.store`) |
 
 > Use **JSONL (one record per line)** for large collections so writes stream and a
 > crash never corrupts more than the last line. Reserve pretty JSON for small files

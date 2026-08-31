@@ -39,6 +39,9 @@ class MockProvider(Provider):
             raise self._behavior
         return self._behavior
 
+    def answer_questions(self, prompt: str) -> str:
+        raise NotImplementedError
+
 
 def _job(source_job_id: str = "1") -> Job:
     return Job(

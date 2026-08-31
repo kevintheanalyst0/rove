@@ -46,6 +46,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from rove import cancellation, config
+from rove.apply import store as apply_store
+from rove.apply.store import ApplicationStatus
+from rove.apply.submit import submit_application as submit_application_default
 from rove.config import get_logger
 from rove.eval import labels as eval_labels_store
 from rove.eval.labels import BadReason, Label
@@ -54,6 +57,7 @@ from rove.events import bus as default_bus
 from rove.inbox import store as inbox_store
 from rove.pipeline import reset_all_run_data
 from rove.pipeline import run as run_pipeline
+from rove.profile import load_profile
 from rove.quality.cache import SignatureCache
 from rove.storage import read_json
 from rove.tracking import store as tracking_store
@@ -263,13 +267,16 @@ def create_app(
     reset_run_data: Callable[[], None] = reset_all_run_data,
     enable_auto_shutdown: bool = False,
     shutdown: Callable[[], None] = _terminate_process,
+    submit_application: Callable[..., Any] = submit_application_default,
 ) -> FastAPI:
     """App factory. Tests inject a private `event_bus` and a fake
     `pipeline_run` instead of the process-wide bus and the real pipeline, so
     a route test never triggers a live scrape/AI call (CLAUDE.md §7) and
     never shares SSE subscribers with other tests. `reset_run_data` is
     injectable the same way, so a route test never touches real files on
-    disk either.
+    disk either. `submit_application` (EATP-034) follows the exact same
+    pattern — a route test for `/applications/<sig>/send` never launches a
+    real headless browser.
 
     `enable_auto_shutdown` defaults to **off** on purpose (EATP-023): the
     real self-kill (`shutdown`, default `_terminate_process` -> SIGTERM) is
@@ -459,6 +466,49 @@ def create_app(
     def track(request: TrackRequest) -> JSONResponse:
         tracking_store.record_action(request.signature, request.action)
         return JSONResponse({"status": "ok", "signature": request.signature, "action": request.action.value})
+
+    @app.get("/applications")
+    def get_applications() -> JSONResponse:
+        """EATP-034: current auto-apply state per job, keyed by signature —
+        same shape/pattern as `/eval/labels`. The dashboard merges this onto
+        the inbox entries it already has from `/inbox` rather than this
+        endpoint re-fetching/duplicating job data server-side."""
+        apps = {
+            signature: entry.model_dump(mode="json")
+            for signature, entry in apply_store.latest_entries().items()
+        }
+        return JSONResponse(apps)
+
+    @app.post("/applications/{signature}/send", dependencies=[Depends(_verify_same_origin)])
+    def send_application(signature: str) -> JSONResponse:
+        """Kevin's manual "Enviar aplicación" button — reuses the exact
+        answers already prepared (`entry.answers`), never re-asks the AI.
+        Runs synchronously (a single job, a few seconds of headless-browser
+        work) rather than through the SSE/background-thread machinery built
+        for a whole multi-minute pipeline run — deliberately simpler for
+        this single-action scope."""
+        entry = apply_store.latest_entries().get(signature)
+        if entry is None:
+            raise HTTPException(status_code=404, detail="no application draft for this signature")
+        if entry.status != ApplicationStatus.DRAFT_READY:
+            return JSONResponse(
+                {"status": "not_draft_ready", "current_status": entry.status.value},
+                status_code=409,
+            )
+
+        inbox_entry = inbox_store.latest_entries().get(signature)
+        if inbox_entry is None:
+            raise HTTPException(status_code=404, detail="job not found in inbox")
+
+        updated = submit_application(inbox_entry.scored.job, load_profile(), entry)
+        return JSONResponse(
+            {
+                "status": "ok",
+                "signature": signature,
+                "result": updated.status.value,
+                "note": updated.note,
+            }
+        )
 
     @app.get("/eval/labels")
     def get_eval_labels() -> JSONResponse:

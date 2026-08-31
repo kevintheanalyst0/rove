@@ -43,6 +43,25 @@ TRACKING_FILE = DATA_DIR / "tracking.jsonl"
 # outlive any single job's time in the inbox).
 INBOX_FILE = DATA_DIR / "inbox.jsonl"
 
+# EATP-034: auto-apply draft/send state per job (rove.apply.store).
+# Append-only, same crash-safety discipline as TRACKING_FILE/INBOX_FILE —
+# latest entry per signature wins. Separate from TRACKING_FILE: an
+# "applied"/"dismissed" tracking action is Kevin's own decision, while an
+# ApplicationEntry is this engine's own state machine (draft_ready ->
+# submitted, or manual_required/failed) for a job it's trying to apply to.
+APPLICATIONS_FILE = DATA_DIR / "applications.jsonl"
+
+# EATP-034: Kevin's real resume, uploaded to Greenhouse/Lever's file inputs.
+# Gitignored, same as `.env` — never committed. Not present until Kevin
+# places it here (or the deploy step copies it to the VM); rove.apply.browser
+# treats a missing file as "can't fill this required field", never a crash.
+RESUME_FILE = DATA_DIR / "resume.pdf"
+
+# Auto-apply master switch (EATP-034). Off by default — flip only after a
+# manual smoke test on the real VM confirms memory stays healthy (see
+# projects/EATP-034-auto-apply/CHARTER.md Definition of Done).
+AUTO_APPLY_ENABLED = os.getenv("ROVE_AUTO_APPLY_ENABLED", "0") == "1"
+
 # Match-quality harness (EATP-017, P22) — Kevin's good/bad labels on shown
 # jobs (rove.eval.labels) and the precision snapshot they're
 # compared against (rove.eval.report).

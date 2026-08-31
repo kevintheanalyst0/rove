@@ -75,6 +75,48 @@ class AiRouter:
         )
         return []
 
+    def answer_questions(self, prompt: str) -> str:
+        """EATP-034 — same fallback discipline as `evaluate_batch`, over
+        `Provider.answer_questions`'s freeform prompt/response shape instead
+        of the scoring-specific one. Empty string on total failure, mirroring
+        `evaluate_batch`'s "degrade, don't crash" contract (P11/P12) — the
+        caller (`rove.apply.questions`) treats that the same as "the AI
+        didn't answer this question."""
+        last_error: Exception | None = None
+        for provider_id in self._order:
+            provider = self._providers.get(provider_id)
+            if provider is None or not provider.configured:
+                continue
+            if self._usage.is_exhausted(provider_id):
+                logger.info("skipping %s: exhausted for today", provider_id)
+                continue
+
+            try:
+                text = provider.answer_questions(prompt)
+            except QuotaExceededError as error:
+                logger.warning(
+                    "%s: daily quota exhausted (%s) — falling back", provider_id, error
+                )
+                self._usage.mark_exhausted(provider_id)
+                self._usage.save()
+                last_error = error
+                continue
+            except ProviderError as error:
+                logger.warning(
+                    "%s: failed for this batch (%s) — falling back", provider_id, error
+                )
+                last_error = error
+                continue
+
+            self._usage.record_request(provider_id)
+            self._usage.save()
+            return text
+
+        logger.error(
+            "all AI providers unavailable for question-answering (last error: %s)", last_error
+        )
+        return ""
+
 
 def build_default_router() -> AiRouter:
     """Wire up the real providers from `.env` config. Used by the

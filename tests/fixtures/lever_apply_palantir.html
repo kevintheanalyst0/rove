@@ -1,0 +1,49 @@
+<!--
+Trimmed, hand-reduced snapshot of a real Lever apply form
+(jobs.lever.co/palantir/<id>/apply, captured 2026-08-30 for EATP-034). Field
+names, the hidden `[baseTemplate]` JSON shape, and the card question types
+(text/multiple-choice/multiple-select/dropdown) are copied verbatim from the
+live DOM; the app bundle is stripped out. One oversized dropdown (600 fake
+options) stands in for the real 3301-option "university" field, to exercise
+the MAX_CHOICE_OPTIONS cap without bloating this fixture.
+-->
+<!doctype html>
+<html>
+<body>
+<form>
+  <input type="file" name="resume" id="resume-upload-input" required>
+  <input type="text" name="name" required>
+  <input type="email" name="email" required>
+  <input type="text" name="phone">
+  <input type="text" name="location" id="location-input">
+  <input type="text" name="org">
+  <input type="text" name="urls[LinkedIn]">
+  <input type="text" name="urls[GitHub]">
+  <input type="text" name="urls[Portfolio]">
+
+  <input type="hidden"
+    value="{&quot;text&quot;:&quot;Supplementary Questions&quot;,&quot;type&quot;:&quot;posting&quot;,&quot;fields&quot;:[{&quot;type&quot;:&quot;text&quot;,&quot;text&quot;:&quot;Preferred Name&quot;,&quot;required&quot;:false},{&quot;type&quot;:&quot;multiple-choice&quot;,&quot;text&quot;:&quot;Are you legally authorized to work in the country for which you are applying?&quot;,&quot;required&quot;:true,&quot;options&quot;:[{&quot;text&quot;:&quot;Yes&quot;},{&quot;text&quot;:&quot;No&quot;}]},{&quot;type&quot;:&quot;multiple-select&quot;,&quot;text&quot;:&quot;Language Skill(s) (Check all that apply)&quot;,&quot;required&quot;:true,&quot;options&quot;:[{&quot;text&quot;:&quot;English (ENG)&quot;},{&quot;text&quot;:&quot;Spanish (SPA)&quot;}]}],&quot;id&quot;:&quot;a69a985a-eae9-4c14-90fb-b5a4b891523e&quot;}"
+    name="cards[a69a985a-eae9-4c14-90fb-b5a4b891523e][baseTemplate]">
+  <ul>
+    <li><label>Preferred Name</label><input type="text" name="cards[a69a985a-eae9-4c14-90fb-b5a4b891523e][field0]"></li>
+    <li>
+      <label>Are you legally authorized to work in the country for which you are applying?</label>
+      <input type="radio" name="cards[a69a985a-eae9-4c14-90fb-b5a4b891523e][field1]" value="Yes" required>
+      <input type="radio" name="cards[a69a985a-eae9-4c14-90fb-b5a4b891523e][field1]" value="No" required>
+    </li>
+    <li>
+      <label>Language Skill(s)</label>
+      <input type="checkbox" name="cards[a69a985a-eae9-4c14-90fb-b5a4b891523e][field2]" value="English (ENG)" required>
+      <input type="checkbox" name="cards[a69a985a-eae9-4c14-90fb-b5a4b891523e][field2]" value="Spanish (SPA)" required>
+    </li>
+  </ul>
+
+  <input type="hidden"
+    value="{&quot;text&quot;:&quot;University&quot;,&quot;type&quot;:&quot;posting&quot;,&quot;fields&quot;:[{&quot;type&quot;:&quot;dropdown&quot;,&quot;text&quot;:&quot;Which university did you attend?&quot;,&quot;required&quot;:true,&quot;options&quot;:[REPLACED_AT_BUILD]}],&quot;id&quot;:&quot;univ-card&quot;}"
+    name="cards[univ-card][baseTemplate]">
+  <select name="cards[univ-card][field0]" required><option value="">Select...</option><!--SELECT_OPTIONS--></select>
+
+  <button type="submit">Submit application</button>
+</form>
+</body>
+</html>

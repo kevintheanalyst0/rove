@@ -18,18 +18,16 @@ dependencies = [
     "python-dateutil>=2.9",   # robust date parsing
     "rapidfuzz>=3.6",         # fast fuzzy dedup (replaces difflib)
     "orjson>=3.9",            # fast JSON read/write for large files
-
     # --- AI providers ---
     "groq>=0.11",             # primary free provider (OpenAI-compatible)
     "google-genai>=1.0",      # Gemini (Flash-Lite / Flash)
     "openai>=1.40",           # used for OpenAI-compatible endpoints (OpenRouter, Groq)
-
     # --- Web UI (EATP-009) ---
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
-
     # --- Verification (EATP-010) ---
     "playwright>=1.44",       # visual verification of the web UI
+    "psutil>=7.2.2",
 ]
 
 [project.optional-dependencies]

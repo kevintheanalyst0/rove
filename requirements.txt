@@ -15,6 +15,7 @@ openai>=1.40
 fastapi>=0.110
 uvicorn[standard]>=0.29
 playwright>=1.44
+psutil>=7.2.2
 
 # dev
 pytest>=8.0

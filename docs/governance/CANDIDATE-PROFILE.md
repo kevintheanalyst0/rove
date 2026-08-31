@@ -78,6 +78,32 @@ Kevin **urgently** needs a remote job of this type. Therefore:
 - English proficiency: **B2** (intermediate-high). Roles in English content are OK only
   if they don't *require* advanced English (see dealbreaker #2).
 
+## Application data (EATP-034 — auto-apply only, never read by scoring)
+
+Machine twin: `profile.toml`'s `[application]` table.
+
+- **Phone:** +52 443 169 2514 · **Email:** castillok54@gmail.com
+- **LinkedIn:** https://www.linkedin.com/in/kevin-castillo-844005244/
+- **Portfolio:** https://kevincastilloportfolio.netlify.app/
+- **GitHub:** https://github.com/kevintheanalyst0
+- **Availability:** Immediate, no notice period.
+- **Work authorization:** Mexican citizen, authorized to work in Mexico without
+  a visa; open to remote roles for companies anywhere, always working
+  physically from Mexico — never needs relocation sponsorship. **Real
+  refinement from EATP-034's live smoke test (2026-08-31):** a US company's
+  real "are you authorized to work in [country]?" question is genuinely
+  ambiguous (Mexico-based-remote vs. that country's own work visa) — the
+  full disambiguation rule now lives in `profile.toml`'s
+  `work_authorization` field itself, since it needs to reach the AI prompt
+  verbatim, not just this human-readable summary.
+- **Relocation:** Remote-only; tolerates at most ~1 office day/month (same
+  bar as dealbreaker #1 above) — not open to full relocation or hybrid.
+- **Salary expectation questions — Kevin's own deliberate practice:** when a
+  form only accepts a bare number (no currency/text option), always answer
+  `1000` — a non-committal placeholder, never his real minimum. If free text
+  is allowed and an answer is required, say salary is flexible/open to
+  discussion. **Never state a real salary figure in any application.**
+
 ## One-line goal (for prompts)
 
 > "Find genuinely remote Data Analyst / BI / Business Analyst roles where Kevin can start

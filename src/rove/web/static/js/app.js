@@ -436,12 +436,19 @@ function renderSidebar(inboxJobs, result) {
 
 // ---- cards ----
 
-function renderCard({ scored }) {
+function renderCard({ scored, application }) {
   const job = scored.job;
   const badges = [`<span class="grade-pill tone-${gradeTone(scored.grade)}">${escapeHtml(scored.grade)}</span>`];
   if (job.remote_status === "remote") badges.push('<span class="badge badge-remote">Remoto</span>');
   if ((scored.flags || []).includes("confirm_english")) {
     badges.push('<span class="badge badge-confirm-english">Confirmar inglés</span>');
+  }
+  // EATP-034: auto-apply draft state, when this job's source (Greenhouse/
+  // Lever) is one Rove tries to automate.
+  if (application?.status === "draft_ready") {
+    badges.push('<span class="badge badge-apply-ready">Aplicación lista</span>');
+  } else if (application?.status === "manual_required") {
+    badges.push('<span class="badge badge-apply-manual">Aplica manual</span>');
   }
 
   return `
@@ -520,10 +527,44 @@ function renderEvalBlock(evalLabel) {
     </div>`;
 }
 
+// EATP-034: the auto-apply section inside the job detail modal — a
+// draft's AI-answered questions with a real "Enviar" button, or a plain
+// notice when it couldn't be automated. Nothing renders at all for a job
+// with no application state (most jobs — only Greenhouse/Lever are in
+// scope for v1).
+function renderApplicationBlock(application) {
+  if (!application) return "";
+
+  if (application.status === "manual_required") {
+    return `
+      <div class="notice" style="margin-bottom:14px;">
+        <span class="notice-icon">&#9888;</span>
+        <p class="notice-text"><strong>No se pudo automatizar esta aplicación:</strong>
+          ${escapeHtml(application.note || "motivo no especificado")} — aplica manualmente
+          con el botón de arriba.</p>
+      </div>`;
+  }
+
+  if (application.status !== "draft_ready") return "";
+
+  const answers = Object.entries(application.answers || {});
+  const answersList = answers.length
+    ? answers.map(([q, a]) => `<li><strong>${escapeHtml(q)}</strong><p>${escapeHtml(a)}</p></li>`).join("")
+    : '<li class="empty">Sin preguntas de formulario para esta vacante.</li>';
+
+  return `
+    <div class="apply-draft-block">
+      <strong>Aplicación lista para enviar</strong>
+      <p class="job-meta">Respuestas generadas con tu perfil — revísalas antes de enviar.</p>
+      <ul class="apply-answers">${answersList}</ul>
+      <button type="button" class="btn-full primary" data-send-application>Enviar aplicación &#8594;</button>
+    </div>`;
+}
+
 function renderModal(signature) {
   const entry = findJobEntry(signature);
   if (!entry) return;
-  const { scored, evalLabel } = entry;
+  const { scored, evalLabel, application } = entry;
   const job = scored.job;
 
   const pros = (scored.pros || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
@@ -564,6 +605,7 @@ function renderModal(signature) {
       <div class="pc-col pros"><h4>Pros</h4><ul>${pros || '<li class="empty">Sin datos</li>'}</ul></div>
       <div class="pc-col cons"><h4>Contras</h4><ul>${cons || '<li class="empty">Sin contras detectadas</li>'}</ul></div>
     </div>
+    ${renderApplicationBlock(application)}
     ${renderEvalBlock(evalLabel)}
     <div class="modal-footer">
       <a class="btn-full primary" href="${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer">Abrir vacante &#8594;</a>
@@ -668,6 +710,12 @@ modalBody.addEventListener("click", (event) => {
     return;
   }
 
+  const sendBtn = event.target.closest("[data-send-application]");
+  if (sendBtn) {
+    sendApplication(overlay.dataset.signature, sendBtn);
+    return;
+  }
+
   const evalLabelBtn = event.target.closest("[data-eval-label]");
   if (evalLabelBtn) {
     submitEvalLabel(overlay.dataset.signature, evalLabelBtn.dataset.evalLabel, null);
@@ -701,6 +749,38 @@ async function trackAction(signature, action) {
   });
 }
 
+// EATP-034: sending a real application takes a few real seconds (a genuine
+// headless-browser fill+submit, not a quick API call) — the button shows a
+// "Enviando..." state instead of looking dead/double-clickable while that
+// happens.
+async function sendApplication(signature, button) {
+  button.disabled = true;
+  button.textContent = "Enviando...";
+  try {
+    const res = await fetch(`/applications/${encodeURIComponent(signature)}/send`, { method: "POST" });
+    const data = await res.json();
+    if (data.result === "submitted") {
+      // Mirrors trackAction: apply/submit.py marks it "applied" server-side
+      // on success, so /inbox stops returning it — drop it here too.
+      allJobs = allJobs.filter((entry) => entry.scored.job.signature !== signature);
+      applyFiltersAndRender();
+      renderResultsMeta({ total: allJobs.length }, lastResult);
+      renderSidebar(allJobs, lastResult);
+      closeModal();
+      return;
+    }
+    // manual_required or failed after all — re-render with the fresh status
+    // instead of leaving the button stuck on "Enviando...".
+    const entry = findJobEntry(signature);
+    if (entry) entry.application = { ...entry.application, status: data.result, note: data.note };
+    renderModal(signature);
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Enviar aplicación →";
+    window.alert("No se pudo enviar la aplicación. Intenta de nuevo.");
+  }
+}
+
 // Clicking "Mala" submits immediately (reason: null) so one click is always
 // enough to label (charter: "a dozen or two jobs is enough" — keep it
 // lightweight); picking a reason chip afterward just refines that same
@@ -719,13 +799,17 @@ async function submitEvalLabel(signature, label, reason) {
 async function loadInbox() {
   // EATP-031: the job list itself comes from the accumulated inbox, not the
   // last run — /results stays around only for the sidebar's "last run"
-  // diagnostics (date, AI providers, funnel counts).
-  const [inboxRes, resultsRes, evalRes] = await Promise.all([
-    fetch("/inbox"), fetch("/results"), fetch("/eval/labels"),
+  // diagnostics (date, AI providers, funnel counts). EATP-034: /applications
+  // is merged in the same way /eval/labels already is — signature-keyed
+  // extra state the dashboard overlays onto each inbox job, not a separate
+  // list of its own.
+  const [inboxRes, resultsRes, evalRes, applicationsRes] = await Promise.all([
+    fetch("/inbox"), fetch("/results"), fetch("/eval/labels"), fetch("/applications"),
   ]);
   const inboxData = await inboxRes.json();
   const resultsData = await resultsRes.json();
   const evalLabels = await evalRes.json();
+  const applications = await applicationsRes.json();
   const result = resultsData.result;
   lastResult = result;
   const buckets = inboxData.buckets || {};
@@ -735,6 +819,7 @@ async function loadInbox() {
       scored: item.scored,
       bucket,
       evalLabel: evalLabels[item.signature] || null,
+      application: applications[item.signature] || null,
     }))
   );
 

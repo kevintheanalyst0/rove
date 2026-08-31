@@ -63,7 +63,8 @@ the same platform — see CLAUDE.md golden rule 12.
 | `openai` | OpenAI-compatible client (OpenRouter; also works for Groq) | 006 |
 | `fastapi` | Web UI backend | 009 |
 | `uvicorn[standard]` | ASGI server to run FastAPI | 009 |
-| `playwright` | Visual verification of the web UI | 010 |
+| `playwright` | Visual verification of the web UI (010); reused for headless apply-form automation (034) | 010, 034 |
+| `psutil` | Pre-launch memory check before each headless Chromium instance in the apply pipeline, so an unbounded prepare loop never OOMs the 1 OCPU/6GB VM | 034 |
 | `pytest` (dev) | Test runner | 001+ |
 | `pytest-asyncio` (dev) | Async tests (AI layer, FastAPI) | 006, 009 |
 | `ruff` (dev) | Lint/format | 001+ |
@@ -83,3 +84,9 @@ the same platform — see CLAUDE.md golden rule 12.
   for speed and cleaner async. The legacy code uses the old ones — refactor as you port.
 - **`langdetect`, `python-docx`, `pywin32`** from the legacy `requirements` are **not**
   in the core list — they belonged to CV tailoring (backlog).
+- **Known doc gap (flagged in EATP-034, not fixed here):** this file only describes
+  the native-Windows runtime from EATP-025. Since EATP-032, Rove *also* runs
+  unattended on `rove-vm` (Oracle Cloud, Linux/ARM aarch64) — a second real runtime
+  with its own install story (e.g. `playwright install chromium` lands in a
+  different path than on Windows). EATP-034's apply automation runs primarily on
+  that VM. Revisit this file properly instead of patching around the gap forever.

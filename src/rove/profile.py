@@ -29,6 +29,22 @@ class Priority(BaseModel):
     statement: str
 
 
+class Application(BaseModel):
+    """Facts the auto-apply engine (EATP-034) needs to answer real screening
+    questions on Greenhouse/Lever forms. Never read by scoring/matching."""
+
+    phone: str
+    email: str
+    linkedin_url: str
+    portfolio_url: str
+    github_url: str
+    availability: str
+    work_authorization: str
+    relocation: str
+    salary_numeric_placeholder: int
+    salary_field_instruction: str
+
+
 class Profile(BaseModel):
     name: str
     location: str
@@ -40,6 +56,7 @@ class Profile(BaseModel):
     target_roles: list[str]
     skills: Skills
     priority: Priority
+    application: Application
 
 
 @lru_cache(maxsize=1)

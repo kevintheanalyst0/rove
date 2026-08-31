@@ -3,6 +3,50 @@
 All notable changes to this project, grouped by build session (`EATP-00X`). Dates are
 the day the work was done; see `ROADMAP.md` for status/complexity/time per project.
 
+## EATP-034 — Auto-apply draft engine for Greenhouse & Lever (2026-08-30/31)
+- New `[application]` table in `profile.toml` + `Application` submodel on
+  `Profile` — the lean facts (contact, availability, work authorization,
+  relocation, and a deliberate salary-placeholder policy) needed to answer
+  real screening questions, never read by scoring.
+- New `src/rove/apply/` package: `browser.py` (headless Playwright reads,
+  classifies, and fills a real Greenhouse/Lever apply form — including full
+  parsing of Lever's `[baseTemplate]` custom-question JSON, and a Cloudflare
+  bot-challenge detector), `questions.py` (AI answers screening questions
+  from the candidate profile, matched back by stable id — ADR-006's
+  discipline, never a fixed Q&A bank per Kevin's explicit call),
+  `store.py`/`prepare.py`/`submit.py` (draft state machine, orchestration,
+  real send). `Provider.answer_questions` added across the whole AI layer,
+  reusing `AiRouter`'s existing fallback/quota machinery.
+- New pipeline stage (`pipeline._prepare_applications`, off by default via
+  `AUTO_APPLY_ENABLED`): after every run, prepares a draft for every
+  still-open Greenhouse/Lever job graded A+/A/B/C across the *whole*
+  accumulated inbox — no per-run cap (Kevin's call), sequential, memory- and
+  cancellation-aware.
+- New dashboard surface: `GET /applications`, `POST
+  /applications/<signature>/send`, a card badge, and a modal review/send
+  block in `app.js`.
+- Real-world DOM shape for every piece above was live-probed against actual
+  Greenhouse (GitLab, Coinbase) and Lever (Palantir) boards before being
+  coded, then validated end-to-end on `rove-vm` with 3 real jobs and a tiny,
+  Kevin-approved live AI call — never sending a real application anywhere
+  (`prepare_application` only, `submit_application` never invoked in
+  testing). Two real findings logged for Kevin, not silently resolved:
+  Greenhouse's real captcha rate may make it near-unusable for this feature
+  as currently curated (Lever looks like the real carrier); one live AI
+  answer to a US work-authorization question was ambiguous enough to warrant
+  refining `profile.toml`'s wording afterward.
+- `ADR-011` records the design (headless browser over raw HTTP replay,
+  sweep-based deadline deferred to EATP-035, `manual_required` graceful
+  degradation matching the Indeed/EATP-033 precedent). `EATP-035` (the
+  unattended pre-run submit sweep) is scoped but deliberately not started —
+  waits on Kevin watching real draft quality first.
+- 416 tests passing (73 new: `test_apply_store.py`,
+  `test_apply_browser.py`, `test_apply_questions.py`,
+  `test_apply_prepare.py`, `test_apply_submit.py`,
+  `test_pipeline_apply_prep.py`, plus dashboard/AI-router additions) — none
+  of them spend live AI quota or touch the real network; the live smoke
+  test was a separate, explicitly-approved, one-off run.
+
 ## EATP-033 — Remove Indeed as a source entirely (2026-08-27)
 - Cut Indeed out of Rove completely: deleted `collectors/indeed.py` and
   `collectors/browser.py` (the DrissionPage/Chromium base — Indeed was its

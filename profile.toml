@@ -56,3 +56,56 @@ A partial skill match (roughly half the requirements) with room to learn the res
 good match, as long as the role is genuinely his kind of work. A simpler role he can do
 today beats a fancier role needing several unknown skills.
 """
+
+# Used only by the auto-apply engine (EATP-034) to answer real screening
+# questions on Greenhouse/Lever applications — never read by scoring/matching.
+[application]
+phone = "+52 443 169 2514"
+email = "castillok54@gmail.com"
+linkedin_url = "https://www.linkedin.com/in/kevin-castillo-844005244/"
+portfolio_url = "https://kevincastilloportfolio.netlify.app/"
+github_url = "https://github.com/kevintheanalyst0"
+availability = "Immediate — no notice period required."
+work_authorization = """
+Mexican citizen. Authorized to work in Mexico without a visa or sponsorship.
+Open to remote roles for companies anywhere in the world, always working
+physically FROM Mexico — never needs relocation sponsorship or a work permit
+for another country.
+
+Real form-answering rule, found necessary in EATP-034's live smoke test
+(2026-08-31 — Palantir's US application literally asked this and the AI's
+first attempt overstated it): a screening question phrased "are you
+authorized to work in [the country the employer is based in]?" is ambiguous
+between two different things — authorization to work FROM Mexico for that
+employer (true), versus holding that country's own work visa/authorization
+to be physically present and employed there (false, e.g. no US, Canada, or
+EU work authorization). Kevin does NOT hold work authorization for any
+country besides Mexico. When a form's context makes clear it means "may we
+legally employ you, working remotely from where you are" — a yes/no with no
+room for nuance — answer based on his Mexico authorization (true, since
+that's where the work is actually performed, and no sponsorship is ever
+needed for that). When a form asks specifically about authorization to work
+IN that country's own territory / relocate there, or offers a free-text
+option, be explicit: authorized to work in Mexico only, not in [that
+country], and not seeking sponsorship or relocation there.
+"""
+relocation = """
+Remote-only. Can tolerate at most one in-office day per month if a role is
+otherwise a strong fit; not open to full relocation or a primarily
+in-office/hybrid arrangement.
+"""
+# Kevin's own deliberate practice for salary-expectation questions: when a
+# screening question only accepts a bare number (no currency, no free text),
+# he always answers with this exact placeholder rather than a real figure —
+# it reads as ambiguous/non-committal and avoids locking in a number or
+# currency this early. The AI must follow the same practice, never his real
+# expectation, in every application this engine sends.
+salary_numeric_placeholder = 1000
+salary_field_instruction = """
+Whenever a screening question asks for a salary expectation as a bare number
+(no currency selector, no free-text option), answer exactly 1000 — Kevin's own
+deliberate placeholder, not a real figure. If a question instead allows free
+text and genuinely requires an answer, say salary is flexible / open to
+discussion rather than stating a number. Never state or imply a real salary
+amount in any application this engine sends.
+"""

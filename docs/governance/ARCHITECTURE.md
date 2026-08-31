@@ -91,8 +91,17 @@ src/rove/
    validated structured results (score, fit, pros, contras, summary). Malformed items
    are repaired or dropped; contradictions are stripped.
 5. **Rank & persist.** Results are ranked, written atomically to `data/results.json`,
-   and the content-signature cache is updated.
-6. **Show.** The web UI reads `results.json` and renders the dashboard; during the run
+   the content-signature cache is updated, and the job accumulates into the persistent
+   inbox (EATP-031, `data/inbox.jsonl` — this step predates this doc and isn't otherwise
+   described here, a real gap; see `rove/inbox/store.py`).
+6. **Auto-apply prep (EATP-034, off by default via `AUTO_APPLY_ENABLED`).** For every
+   still-open Greenhouse/Lever job graded A+/A/B/C across the *whole* accumulated inbox
+   (not just this run's new jobs), a headless browser reads the real apply form, an AI
+   call answers its screening questions from `profile.toml`'s `[application]` table, and
+   the result is dry-filled to validate it — landing in `data/applications.jsonl` as
+   `draft_ready` or `manual_required`. Strictly sequential, memory-bounded — see
+   `rove/apply/` and `docs/adr/ADR-011-auto-apply-draft-and-sweep.md`.
+7. **Show.** The web UI reads `results.json` and renders the dashboard; during the run
    it shows the spinner + live phase text from the event bus.
 
 ## Cross-cutting invariants

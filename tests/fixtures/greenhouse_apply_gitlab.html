@@ -1,0 +1,52 @@
+<!--
+Trimmed, hand-reduced snapshot of a real Greenhouse-hosted apply form
+(job-boards.greenhouse.io/gitlab/jobs/8617615002, captured 2026-08-30 for
+EATP-034). Field ids/names/labels and the EEO "Decline"-option wording are
+copied verbatim from the live DOM; the surrounding React/webpack app bundle
+(irrelevant to rove.apply.browser's own parsing logic) is stripped out. The
+EEO combobox's open/close behavior is reproduced with a few lines of plain
+JS instead of the real React-select bundle, so `read_form`/`fill_form`
+interaction logic can be exercised without needing a live SPA runtime — this
+tests OUR code's DOM handling, not Greenhouse's app.
+-->
+<!doctype html>
+<html>
+<body>
+<form id="application_form">
+  <input type="text" id="first_name" required>
+  <input type="text" id="last_name" required>
+  <input type="text" id="email" required>
+  <input type="tel" id="phone">
+  <input type="file" id="resume" required>
+  <input type="file" id="cover_letter">
+
+  <label for="question_37171442002">LinkedIn Profile</label>
+  <input type="text" id="question_37171442002">
+
+  <label for="question_37171447002">Will you now or in the future require sponsorship for a visa to remain in your current location?*</label>
+  <input type="text" id="question_37171447002" required>
+
+  <label for="gender">Gender</label>
+  <input type="text" id="gender" role="combobox" aria-haspopup="true" class="select__input"
+         onclick="document.getElementById('react-select-gender-listbox').style.display='block'">
+  <div id="react-select-gender-listbox" role="listbox" style="display:none">
+    <div role="option" onclick="document.getElementById('gender').value=this.innerText; document.getElementById('react-select-gender-listbox').style.display='none'">Male</div>
+    <div role="option" onclick="document.getElementById('gender').value=this.innerText; document.getElementById('react-select-gender-listbox').style.display='none'">Female</div>
+    <div role="option" onclick="document.getElementById('gender').value=this.innerText; document.getElementById('react-select-gender-listbox').style.display='none'">Decline To Self Identify</div>
+  </div>
+
+  <label for="veteran_status">Veteran status</label>
+  <input type="text" id="veteran_status" role="combobox" aria-haspopup="true" class="select__input"
+         onclick="document.getElementById('react-select-veteran_status-listbox').style.display='block'">
+  <div id="react-select-veteran_status-listbox" role="listbox" style="display:none">
+    <div role="option" onclick="document.getElementById('veteran_status').value=this.innerText; document.getElementById('react-select-veteran_status-listbox').style.display='none'">I am not a protected veteran</div>
+    <div role="option" onclick="document.getElementById('veteran_status').value=this.innerText; document.getElementById('react-select-veteran_status-listbox').style.display='none'">I identify as one or more of the classifications of a protected veteran</div>
+    <div role="option" onclick="document.getElementById('veteran_status').value=this.innerText; document.getElementById('react-select-veteran_status-listbox').style.display='none'">I don't wish to answer</div>
+  </div>
+
+  <textarea name="g-recaptcha-response" id="g-recaptcha-response-100000" style="display:none"></textarea>
+
+  <button type="submit" id="submit_app">Submit Application</button>
+</form>
+</body>
+</html>

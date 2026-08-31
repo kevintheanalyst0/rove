@@ -44,6 +44,15 @@ Free tiers change often, and Google in particular reshuffles which model generat
 `evaluate_batch(jobs, profile) -> list[AiResult]`, hiding SDK differences. Each concrete
 provider (`groq.py`, `gemini.py`, `openrouter.py`, …) adapts its SDK/endpoint.
 
+**EATP-034 addition:** `Provider` also exposes `answer_questions(prompt) -> str` — a
+freeform prompt/response shape (no fixed schema, unlike scoring's `AiResult`) used by
+`rove.apply.questions` to answer real application screening questions. It shares the
+exact same `AiRouter` fallback chain and `ai/usage.py` daily-exhaustion bookkeeping as
+scoring — **usage is tracked per provider, not per feature**, so a heavy auto-apply day
+(Kevin's call: no per-run cap on how many jobs get prepared) can eat into the same daily
+budget scoring depends on. Flagged in ADR-011 as an accepted risk, not solved here —
+revisit if this becomes a real problem in practice.
+
 **Router with fallback** (`ai/router.py`): reads `AI_PROVIDER_ORDER` from `.env`
 (default `gemini_flash,groq,gemini_flash_lite,openrouter` — see amendment below). For
 each batch it uses the first provider that is configured **and** not over its tracked

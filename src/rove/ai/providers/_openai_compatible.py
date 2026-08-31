@@ -90,3 +90,23 @@ class OpenAICompatibleProvider(Provider):
             raise ProviderError(str(error)) from error
 
         return parse_batch_response(text)
+
+    def answer_questions(self, prompt: str) -> str:
+        if not self.configured:
+            raise ProviderError(f"{self.id}: no API key configured")
+
+        @retry(
+            stop=stop_after_attempt(config.AI_MAX_RETRIES),
+            wait=wait_exponential(multiplier=config.AI_RETRY_BACKOFF_SECONDS),
+            retry=retry_if_exception(is_transient_error),
+            reraise=True,
+        )
+        def _call() -> str:
+            return self._complete(prompt)
+
+        try:
+            return _call()
+        except Exception as error:
+            if is_daily_quota_error(error):
+                raise QuotaExceededError(str(error)) from error
+            raise ProviderError(str(error)) from error

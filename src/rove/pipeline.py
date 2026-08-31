@@ -34,12 +34,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from queue import Empty, Queue
 
+import psutil
 from pydantic import BaseModel, Field
 
 from rove import cancellation, config
 from rove.ai.base import AiResult
 from rove.ai.parse import match_ai_results
 from rove.ai.router import AiRouter, build_default_router
+from rove.apply import store as apply_store
+from rove.apply.prepare import is_eligible, prepare_application
 from rove.collectors import BROWSER_SOURCES, build_registry
 from rove.collectors.base import (
     CollectorRegistry,
@@ -476,6 +479,79 @@ def _persist(
     return result
 
 
+# EATP-034 (ADR-011): a job needs at least this much free memory available
+# before another headless Chromium instance is launched — the VM is a
+# 1 OCPU/6GB Oracle Always-Free box that also runs the always-on web server.
+# Never a hard crash: falling short just stops this run's prep early,
+# retried automatically tomorrow (nothing is lost, same philosophy as the
+# rest of Rove).
+_MIN_FREE_MEMORY_MB = 1024
+
+
+def _has_memory_headroom() -> bool:
+    try:
+        available_mb = psutil.virtual_memory().available / (1024 * 1024)
+    except Exception:  # noqa: BLE001 - a diagnostics failure must never block a run
+        return True
+    return available_mb >= _MIN_FREE_MEMORY_MB
+
+
+def _prepare_applications(profile: Profile, router: AiRouter, event_bus: EventBus) -> None:
+    """EATP-034: after persisting, prepare application drafts for every
+    still-open Greenhouse/Lever job graded A+/A/B/C (Kevin's own scope — see
+    `apply/prepare.py::is_eligible`), across the FULL accumulated inbox, not
+    just this run's new jobs. No per-run cap (Kevin's explicit call) —
+    bounded only by memory headroom and the AI layer's own quota-exhaustion
+    fallback (which already refuses to call an exhausted provider, so this
+    never overspends beyond what `evaluate_batch`'s scoring calls already
+    left available today). Strictly sequential — one Chromium instance at a
+    time, never parallel (CLAUDE.md golden rule 2)."""
+    if not config.AUTO_APPLY_ENABLED:
+        return
+
+    resolved = set(tracking_store.latest_actions().keys())
+    candidates = [
+        entry.scored
+        for entry in inbox_store.open_entries(resolved)
+        if entry.signature not in apply_store.already_prepared_signatures()
+        and is_eligible(entry.scored)
+    ]
+
+    if not candidates:
+        event_bus.publish("apply_prep", "done", 100.0, "Sin vacantes nuevas para preparar aplicación")
+        return
+
+    prepared = 0
+    for index, scored in enumerate(candidates, start=1):
+        cancellation.check()
+        if not _has_memory_headroom():
+            logger.warning(
+                "apply_prep: stopping early, low memory headroom (%d/%d prepared)",
+                prepared,
+                len(candidates),
+            )
+            event_bus.publish(
+                "apply_prep",
+                "running",
+                100.0,
+                f"Preparación pausada por memoria del VM: {prepared}/{len(candidates)}",
+            )
+            break
+
+        prepare_application(scored.job, profile, router)
+        prepared += 1
+        event_bus.publish(
+            "apply_prep",
+            "running",
+            100.0 * index / len(candidates),
+            f"Preparando aplicaciones: {index}/{len(candidates)} ({scored.job.company})",
+        )
+
+    event_bus.publish(
+        "apply_prep", "done", 100.0, f"Aplicaciones preparadas: {prepared}/{len(candidates)}"
+    )
+
+
 def _with_ai_cap(criteria: Criteria, ai_cap: int | None) -> Criteria:
     if ai_cap is None:
         return criteria
@@ -535,9 +611,11 @@ def run(
             registry, requested, checkpoint, cache, recency_days, event_bus
         )
         ranked = _score_stage(kept, criteria, router, profile, checkpoint, event_bus)
-        return _persist(
+        result = _persist(
             ranked, source_health, checkpoint.counts, checkpoint.funnel, run_started_at, cache, event_bus
         )
+        _prepare_applications(profile, router, event_bus)
+        return result
     except cancellation.RunCancelled:
         # Kevin's own "Pausar"/"Cancelar" click, not a failure — logged
         # plainly (no traceback) and left as RunStatus.PAUSED rather than
