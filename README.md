@@ -10,42 +10,40 @@ apply to beats a long one he has to wade through.
 
 ## Cómo correrlo (Kevin)
 
-**La forma fácil — un acceso** (está en esta misma carpeta,
-`D:\Development\Rove\`):
+**Desde EATP-032 (2026-08-27), Rove ya no se abre localmente — corre 24/7 en un
+servidor propio** (Oracle Cloud, siempre encendido), y se accede desde cualquier
+dispositivo conectado a Tailscale — iPhone o PC, es el mismo servidor, los mismos
+datos, sin nada que sincronizar entre ellos:
 
-- **`Rove.vbs`** — abre el navegador siempre en la misma pantalla de inicio,
-  con tres botones: **Iniciar búsqueda**, **Limpiar caché** y **Ver dashboard de la
-  última corrida** (este último solo aparece si ya hay una corrida previa). Nunca
-  arranca nada por su cuenta — vos elegís qué hacer cada vez que lo abrís.
+```
+http://100.97.143.79:8000
+```
 
-No se abre ninguna ventana de consola (EATP-023) — el servidor corre invisible y se
-apaga solo cuando cerrás la pestaña del navegador (esperá unos 20 segundos; si volvés
-a abrir la página rápido, como al refrescarla, no se apaga). Si querés un acceso
-directo en el Escritorio, clic derecho sobre `Rove.vbs` → *Enviar a* →
-*Escritorio (crear acceso directo)*.
+(o el nombre `rove-vm.tail6049ca.ts.net:8000`, equivalente). El único requisito es
+tener Tailscale conectado en ese dispositivo — sin eso, la app se ve "no disponible"
+aunque el servidor esté sano.
 
-**La forma manual** (si el `.vbs` no te funciona, o querés ver qué está pasando):
-1. Abre PowerShell o CMD en esta carpeta (`D:\Development\Rove`).
-2. Levanta el servidor:
-   ```bat
-   .venv\Scripts\python.exe -m uvicorn rove.web.server:app --host 127.0.0.1 --port 8000
-   ```
-3. Abre `http://127.0.0.1:8000` en el navegador.
+El viejo launcher de escritorio (`Rove.vbs` + `scripts/run_web.{bat,sh}`) se retiró
+del repo (2026-09-01) — dejó de tener sentido una vez que correr Rove localmente en
+la laptop de Kevin ya no es el flujo real. Ver `deploy/README.md` para el detalle del
+servidor y `docs/adr/` para por qué se hizo el cambio (EATP-032).
 
 **Una vez adentro:**
-1. Aprieta **"Iniciar búsqueda"**. Vas a ver el spinner con el estado en vivo; cuando
-   termine, se muestra el dashboard con los resultados.
+1. Aprieta **"Iniciar búsqueda"** para forzar una corrida nueva fuera del horario
+   automático (7am hora de Kevin, todos los días, sola). Vas a ver el spinner con el
+   estado en vivo; cuando termine, se muestra el dashboard con los resultados.
 2. En el dashboard puedes marcar cada vacante **Apliqué** / **No me interesa** — las que
    marques "no me interesa" no vuelven a aparecer en corridas futuras.
+3. Para vacantes de Greenhouse/Lever, el motor de auto-apply (EATP-034/035) puede
+   dejar un borrador de aplicación listo para revisar y enviar — ver el badge
+   "Aplicación lista" en la tarjeta.
 
-Para apagar el servidor, simplemente cerrá la pestaña del navegador (se apaga solo a
-los ~20 segundos). Si lo corriste manualmente en una terminal, `Ctrl+C` ahí también funciona.
+### Corrida diaria automática
 
-### Corrida diaria automática (opcional, no activada)
-
-Ver `docs/governance/AUTOMATION.md` para la receta documentada (Task Scheduler de
-Windows + `wsl.exe`) por si en algún momento quieres activarla. Hoy queda apagada a
-propósito — cada corrida gasta cuota gratuita de IA.
+Ya está activa — no es opcional ni algo por configurar. Un `systemd` timer
+(`rove-daily-run.timer`) en el servidor dispara la corrida todos los días a las 7am
+hora de Kevin. Ver `deploy/README.md` para el detalle completo; `docs/governance/
+AUTOMATION.md` documenta el plan original (pre-VM), superseded por esto.
 
 ## Repo map
 
