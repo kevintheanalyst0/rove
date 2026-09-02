@@ -22,9 +22,12 @@
       `test_apply_submit.py`). Full suite: 421/421, `ruff` clean.
 
 ### Phase 2 — Deploy & validate on the real VM
-- [ ] Install on `rove-vm` via `git pull` + the systemd steps; confirm
-      `rove-presubmit-sweep.timer` `enabled` + `active`, next trigger ~30
-      min ahead of the daily run.
+- [x] Installed on `rove-vm` (`git pull` + systemd install/enable);
+      `rove-presubmit-sweep.timer` confirmed `enabled` + `active`, next
+      trigger `12:30 UTC` — 30 min ahead of the `13:00 UTC` daily run.
+      Manually fired the service once (`systemctl start`) to confirm it
+      actually runs end to end: exited `0/SUCCESS`, no drafts pending (none
+      exist yet), no errors.
 - [ ] **Watch 2+ real daily cycles via `journalctl`** — genuinely can't be
       done inside this session (needs real calendar days to pass). Not
       blocking close: the code and deployment are done and verified as far
