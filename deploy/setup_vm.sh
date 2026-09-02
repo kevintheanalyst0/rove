@@ -65,11 +65,12 @@ sudo ufw allow 22/tcp comment 'SSH - public, key-only + fail2ban'
 sudo ufw allow in on tailscale0 comment 'Tailscale tailnet - full access'
 sudo ufw --force enable
 
-echo "==> [7/7] Installing systemd units (rove-web, rove-daily-run, rove-keepalive)"
+echo "==> [7/7] Installing systemd units (rove-web, rove-daily-run,
+    rove-keepalive, rove-presubmit-sweep)"
 sudo cp "$REPO_DIR"/deploy/systemd/*.service "$REPO_DIR"/deploy/systemd/*.timer \
   /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now rove-daily-run.timer rove-keepalive.timer
+sudo systemctl enable --now rove-daily-run.timer rove-keepalive.timer rove-presubmit-sweep.timer
 # rove-web is enabled last, deliberately NOT started yet — it needs
 # ROVE_EXTRA_ALLOWED_HOSTS filled in with this VM's real Tailscale address
 # first (see manual step 2 below), or every request from Kevin's phone

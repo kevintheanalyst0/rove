@@ -81,7 +81,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-032** | Deploy to an always-on Oracle Cloud VM (Querétaro), reachable from Kevin's phone | — | ✅ | 031 | High | ~3h across two sessions (2026-08-26/27) |
 | **EATP-033** | Remove Indeed as a source entirely | — | ✅ | 032 | Medium | ~1h (2026-08-27) |
 | **EATP-034** | Auto-apply draft engine (Greenhouse & Lever) — headless-browser fill, AI-answered screening questions, dashboard review/manual-send | — | ✅ | 032, 033 | High | ~5h55m (2026-08-30/31) |
-| **EATP-035** | Unattended pre-run submit sweep — sends pending drafts before the next day's run | — | ⬜ | 034 | Light-med | — |
+| **EATP-035** | Unattended pre-run submit sweep — sends pending drafts before the next day's run | — | ✅ | 034 | Light-med | ~40 min (2026-09-01) |
 
 > **EATP-027 through 030** come from a job-search improvement backlog Kevin had
 > drafted with ChatGPT and pasted into Notion (Rove page, 2026-08-21),

@@ -1,0 +1,8 @@
+[Unit]
+Description=Send every pending draft_ready auto-apply application before the daily run (EATP-035)
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/rove
+ExecStart=/home/ubuntu/rove/.venv/bin/python -m rove.apply.sweep

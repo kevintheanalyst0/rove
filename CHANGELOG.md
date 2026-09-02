@@ -3,6 +3,31 @@
 All notable changes to this project, grouped by build session (`EATP-00X`). Dates are
 the day the work was done; see `ROADMAP.md` for status/complexity/time per project.
 
+## EATP-035 — Unattended pre-run submit sweep (2026-09-01)
+- `src/rove/apply/sweep.py`: `sweep_pending_applications()` sends every
+  still-pending `draft_ready` application, sequentially, reusing
+  `apply.submit.submit_application` from EATP-034 as-is — no new fill/submit
+  logic, just the daily orchestration. New `rove-presubmit-sweep.timer`
+  (`12:30 UTC`, 30 min ahead of `rove-daily-run.timer`'s `13:00 UTC`) +
+  `.service`, installed via `deploy/setup_vm.sh`.
+- Kevin's own call to build this immediately rather than wait for real
+  `draft_ready` output to validate first (EATP-034's original staging
+  rationale): with only 2 of his 51 real accumulated jobs eligible for
+  auto-apply at all, and both blocked by reCAPTCHA, there was nothing real
+  to review yet — "cómo lo voy a probar si no hay ninguna vacante que se
+  pueda." The sweep only ever acts on entries already `draft_ready`, so it's
+  safe regardless of how often that actually happens.
+- Same session: live-verified why OCC (Kevin's own question, prompted by
+  this low real yield) isn't in scope — a plain page load against a real
+  OCC posting returned `HTTP 403 "scraping abuse"` from headless Chromium,
+  a harder and earlier-triggering block than Greenhouse's reCAPTCHA or
+  Coinbase's Cloudflare wall. Not pursued further, same precedent as
+  Indeed/EATP-033 and Glassdoor/EATP-030.
+- 5 new tests (`test_apply_sweep.py`), full suite 421/421.
+- Real-world timing validation (sweep finishes before the daily run over
+  2+ actual days) is necessarily still pending — needs real calendar time
+  to observe, not something a single session can confirm.
+
 ## EATP-034 — Auto-apply draft engine for Greenhouse & Lever (2026-08-30/31)
 - New `[application]` table in `profile.toml` + `Application` submodel on
   `Profile` — the lean facts (contact, availability, work authorization,

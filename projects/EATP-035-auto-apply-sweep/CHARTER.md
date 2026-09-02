@@ -48,15 +48,17 @@ half of Kevin's requirement.
   unattended, per EATP-034's Definition of Done precedent.
 
 ## Definition of Done
-- [ ] Deliverables exist and work.
-- [ ] `pytest` green.
-- [ ] No OOM/crash risk left (same sequential/memory-aware discipline as EATP-034).
-- [ ] Checklist ticked, time logged.
-- [ ] ROADMAP status → ✅.
-- [ ] Session notes written.
-- [ ] Committed to git (CLAUDE.md §10) and deployed to `rove-vm`.
-- [ ] Verified over 2+ real days: sweep completes before the daily run, drafts
-      actually get sent, nothing left dangling past the deadline.
+- [x] Deliverables exist and work.
+- [x] `pytest` green — 421/421.
+- [x] No OOM/crash risk left (same sequential/memory-aware discipline as EATP-034).
+- [x] Checklist ticked, time logged.
+- [x] ROADMAP status → ✅.
+- [x] Session notes written.
+- [x] Committed to git (CLAUDE.md §10) and deployed to `rove-vm`.
+- [ ] **Not yet observable this session:** verified over 2+ real days that the
+      sweep completes before the daily run and drafts actually get sent —
+      needs real calendar time; the code/deploy side is done and correct as
+      far as one session can confirm.
 
 ## Estimated time
 Light-medium — ~1-1.5h. Mostly deploy plumbing; the hard part (submit logic)

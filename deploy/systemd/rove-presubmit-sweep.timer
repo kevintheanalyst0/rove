@@ -1,0 +1,9 @@
+[Unit]
+Description=Fire the pre-run submit sweep shortly before the daily run (EATP-035)
+
+[Timer]
+OnCalendar=*-*-* 12:30:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
