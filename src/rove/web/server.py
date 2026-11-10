@@ -306,7 +306,17 @@ def create_app(
                 watcher_task.cancel()
 
     app = FastAPI(title="Rove", lifespan=_lifespan)
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    class _NoCacheStaticFiles(StaticFiles):
+        """Static assets always revalidate. Without this Edge kept serving
+        months-old cached JS/CSS for this origin (127.0.0.1:8000 used to be
+        Career Radar), which left the dashboard's buttons hidden."""
+
+        async def get_response(self, path, scope):
+            response = await super().get_response(path, scope)
+            response.headers["Cache-Control"] = "no-cache"
+            return response
+
+    app.mount("/static", _NoCacheStaticFiles(directory=STATIC_DIR), name="static")
 
     def _worker(request: RunRequest) -> None:
         try:
