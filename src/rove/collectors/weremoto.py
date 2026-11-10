@@ -36,7 +36,8 @@ _BASE_URL = "https://www.weremoto.com"
 # "programacion" were near-empty that day but are the right categories for
 # this profile long-term — a quiet day isn't a reason to drop them, per
 # ROADMAP.md's own "measure per source, don't chase volume" principle).
-_CATEGORIES = ("analista-de-datos", "it", "programacion")
+# EATP-036: "administrativo" and "data-entry" added (verified live 2026-11-10).
+_CATEGORIES = ("analista-de-datos", "it", "programacion", "administrativo", "data-entry")
 _REQUEST_ERRORS = (HTTPError, RetryableHTTPError)
 
 

@@ -26,6 +26,17 @@ Data Analyst · Analista de Datos · Business Intelligence Analyst · Analista B
 Reporting Analyst · Analista de Reportes · Business Analyst · Analista de Negocios ·
 Power BI Analyst · Analytics Specialist · Business Systems Analyst · Analista Funcional.
 
+### EATP-036 addendum (2026-11-10) — remote administrative / operations roles
+
+Kevin urgently needs *any* genuinely remote, administrative-type job, not only data
+roles. These are equally acceptable targets: administrative assistant/coordinator,
+virtual or executive assistant, data entry / back office, procurement & purchasing,
+logistics / supply-chain coordination, demand & material planning, document control,
+project coordination, Excel-based reporting. His SAP MM / Audi planning experience
+makes procurement, logistics and planning the strongest of these. Still rejected:
+customer support / call center, sales, accounting/payroll, HR/recruiting, and every
+other category in dealbreaker #3. The data/BI roles above stay targets.
+
 ## THE PRIORITY (read this before tuning anything)
 
 Kevin **urgently** needs a remote job of this type. Therefore:

@@ -104,6 +104,30 @@ SEARCH_TERMS = [
     # EATP-028 (2026-08-21 backlog): widen the net without drowning it —
     # measure per source, drop a term if it's mostly noise (see ROADMAP.md).
     "analista de inteligencia comercial",
+    # EATP-036 (2026-11-10): Kevin urgently needs ANY genuinely remote
+    # administrative/operations job, not only data roles. Additive — the
+    # data terms above stay. Kept specific on purpose (no bare "compras" /
+    # "operaciones": substring matching would drown the run in noise).
+    "asistente administrativo",
+    "auxiliar administrativo",
+    "coordinador administrativo",
+    "asistente virtual",
+    "asistente ejecutivo",
+    "captura de datos",
+    "back office",
+    "analista de compras",
+    "auxiliar de compras",
+    "coordinador de logistica",
+    "coordinador de logística",
+    "analista de logistica",
+    "analista de logística",
+    "asistente de logistica",
+    "planeacion de la demanda",
+    "planeación de la demanda",
+    "control documental",
+    "analista de inventarios",
+    "coordinador de operaciones",
+    "analista de operaciones",
 ]
 
 # English terms: for remote-first/global boards (Remotive, RemoteOK, We Work
@@ -128,6 +152,28 @@ ENGLISH_SEARCH_TERMS = [
     "sap data analyst",
     "automation analyst",
     "people analytics",
+    # EATP-036 (2026-11-10): administrative / procurement / supply-chain-ops
+    # roles (see SEARCH_TERMS note). Specific phrases only — Greenhouse/Lever
+    # match against title + description, so a bare "procurement" would pull
+    # in every posting that merely mentions it.
+    "administrative assistant",
+    "administrative coordinator",
+    "virtual assistant",
+    "executive assistant",
+    "data entry",
+    "back office",
+    "operations coordinator",
+    "operations assistant",
+    "procurement analyst",
+    "procurement coordinator",
+    "purchasing analyst",
+    "purchasing coordinator",
+    "supply chain coordinator",
+    "logistics coordinator",
+    "inventory analyst",
+    "demand planner",
+    "document control",
+    "project coordinator",
 ]
 
 # Curated ATS company boards (EATP-008) — remote-friendly companies with a

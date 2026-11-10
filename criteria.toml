@@ -75,15 +75,18 @@ contract_type = [
 manager = ["data", "analytics", "business", "bi", "power bi", "sql", "machine learning", "ai"]
 specialist = ["data", "analytics", "business", "analyst", "bi", "power bi", "sql", "automation", "report"]
 support = ["analyst", "data", "business", "bi", "sql"]
-planner = ["data", "analytics", "business", "bi"]
-coordinator = ["data", "analytics", "business"]
-operations = ["data", "analytics", "business", "bi"]
+# EATP-036: admin/ops rescue words added so remote administrative roles are not
+# penalized as "unconfirmed" — the penalty is advisory, but with the 20-point
+# floor even 5 points can matter on a borderline job.
+planner = ["data", "analytics", "business", "bi", "demand", "material", "supply chain", "inventory", "demanda", "materiales"]
+coordinator = ["data", "analytics", "business", "administrativ", "administrative", "logistic", "logístic", "operations", "operaciones", "procurement", "compras", "supply chain", "project", "proyectos"]
+operations = ["data", "analytics", "business", "bi", "administrativ", "administrative", "logistic", "procurement", "supply chain", "coordinat"]
 administrator = ["data", "analytics", "business", "bi", "power bi", "sql", "reporting"]
 # Spanish stem for "administrativo/administrativa" — "administrator" above is
 # English-only and never matches it, which is exactly the ADR-009 case
 # (Kevin, EATP-013): "Analista administrativo" must still be readable as a
 # caution flag, never silently un-flagged just because the title is Spanish.
-administrativ = ["data", "analytics", "business", "bi", "power bi", "sql", "reporting"]
+administrativ = ["data", "analytics", "business", "bi", "power bi", "sql", "reporting", "asistente", "assistant", "coordinador", "coordinator", "compras", "logistic", "excel", "sap"]
 engineer = ["data", "analytics", "business", "bi", "power bi", "reporting", "business intelligence"]
 developer = ["power bi", "bi", "reporting", "data", "business intelligence"]
 security = ["data", "analytics", "business", "bi", "reporting", "business intelligence"]
@@ -167,6 +170,29 @@ max_onsite_days_per_month = 1  # confirmed by Kevin 2026-08-12: ~1 day/month = r
 "analytics" = 25
 "supply chain" = 20
 "data analyst" = 15
+# EATP-036: remote administrative / operations roles (strongest fit first).
+"procurement" = 30
+"analista de compras" = 35
+"asistente administrativo" = 30
+"auxiliar administrativo" = 30
+"administrative assistant" = 30
+"coordinador administrativo" = 30
+"administrative coordinator" = 30
+"demand planner" = 30
+"planeación de la demanda" = 30
+"coordinador de logística" = 30
+"logistics coordinator" = 30
+"control documental" = 30
+"document control" = 30
+"virtual assistant" = 25
+"asistente virtual" = 25
+"executive assistant" = 25
+"asistente ejecutivo" = 25
+"captura de datos" = 25
+"data entry" = 25
+"back office" = 25
+"operations coordinator" = 25
+"project coordinator" = 25
 
 [matcher.skill_weights]
 "Power BI" = 25
@@ -179,6 +205,7 @@ max_onsite_days_per_month = 1  # confirmed by Kevin 2026-08-12: ~1 day/month = r
 "Power Apps" = 10
 "Power Automate" = 10
 "Python" = 5
+"Excel" = 10
 
 [matcher]
 remote_bonus = 20

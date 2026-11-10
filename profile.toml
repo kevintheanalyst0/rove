@@ -12,10 +12,17 @@ english_level = "B2"
 
 # Goes straight into the AI prompt (EATP-012/013).
 career_goal = """
-Find genuinely remote Data Analyst / BI / Business Analyst roles where Kevin can start
-contributing now. Prioritize real fit and true remote over prestige, seniority, salary,
-or tool-for-tool matching. Overqualification is a plus. Reject non-remote, advanced-
-English-required, and out-of-field (DBA/Linux/dev/finance/design/etc.) roles.
+Find genuinely remote jobs where Kevin can start contributing now. Best fit: Data
+Analyst / BI / Business Analyst roles. Equally acceptable (EATP-036, urgent): remote
+administrative and operations roles — administrative assistant/coordinator, virtual or
+executive assistant, data entry/back office, procurement/purchasing, logistics and
+supply-chain coordination, demand/material planning, document control, project
+coordination, and Excel-based reporting. Kevin's real experience (SAP MM key user,
+process & systems planning at Audi México) makes procurement/logistics/planning roles
+a particularly strong fit. Prioritize real fit and true remote over prestige,
+seniority, salary, or tool-for-tool matching. Overqualification is a plus. Reject
+non-remote, advanced-English-required, and out-of-field (DBA/Linux/dev/finance/
+accounting/design/sales/customer support/call center/etc.) roles.
 """
 
 target_roles = [
@@ -31,6 +38,17 @@ target_roles = [
     "Analytics Specialist",
     "Business Systems Analyst",
     "Analista Funcional",
+    # EATP-036 — remote administrative / operations roles.
+    "Asistente Administrativo",
+    "Administrative Assistant",
+    "Coordinador Administrativo",
+    "Asistente Virtual",
+    "Procurement / Purchasing Analyst",
+    "Analista de Compras",
+    "Logistics / Supply Chain Coordinator",
+    "Demand / Material Planner",
+    "Document Control",
+    "Operations Coordinator",
 ]
 
 [skills]
@@ -41,6 +59,7 @@ bi_and_analytics = [
 data_and_automation = [
     "SQL", "Python", "dbt", "PostgreSQL", "SAP MM/HANA",
     "Power Automate", "Power Apps", "VBA", "Microsoft Fabric",
+    "Advanced Excel", "SAP MM procurement & inventory", "process planning",
 ]
 
 # THE PRIORITY (CANDIDATE-PROFILE.md) — read before tuning any weight elsewhere.
