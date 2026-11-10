@@ -332,7 +332,11 @@ def create_app(
 
     @app.get("/")
     def index() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html")
+        # no-cache: always revalidate. Without it Edge kept serving a months-old
+        # cached page for this origin (127.0.0.1:8000 used to be Career Radar).
+        return FileResponse(
+            STATIC_DIR / "index.html", headers={"Cache-Control": "no-cache"}
+        )
 
     @app.get("/favicon.ico")
     def favicon() -> FileResponse:
