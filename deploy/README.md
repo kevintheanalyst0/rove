@@ -64,3 +64,12 @@ Kevin's tailnet and reaches the VM by its public IP, so that would cut off
 direct VM access for this and every future session, for a marginal security
 gain given key-only auth (already the default) already makes brute-force
 attacks impractical. Kevin's own call when presented with the tradeoff.
+
+## Update 2026-11-18: Brennel now has a public HTTPS door on this VM
+
+Brennel (a separate project on the same VM) is reachable from the internet at `https://163-192-139-178.sslip.io` behind its own e-mail + password sign-in. What changed on the machine, so this README stays true:
+
+- Oracle's *Default Security List for rove-vcn* now allows TCP **80 and 443** from anywhere (before: only 22).
+- `ufw` allows 80/443 **only to the private address `10.0.0.118`**, where Caddy (`brennel-caddy`, `~/caddy`) listens. SSH is still the only other public port; Rove (`:8000`), Home Assistant and SearXNG stay tailnet-only.
+- **Never bind anything to `0.0.0.0:443` or `0.0.0.0:80`**: Lumet's `tailscale serve` owns `100.97.143.79:443` and Caddy owns the private 80/443; a wildcard bind would break one of them.
+- Details, rollback and rebuild script: Brennel repo, `docs/DEPLOY.md` ("Public HTTPS and sign-in") and `scripts/install-caddy.sh`.
