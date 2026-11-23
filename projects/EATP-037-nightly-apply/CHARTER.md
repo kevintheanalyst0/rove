@@ -113,6 +113,8 @@ Rove has no place to park vacancies that need Kevin (captcha, account, unknown q
 **Fail closed:** if the wrapper cannot read it, it does not run and it notifies Kevin.
 
 ## Run structure
+- **Model: Sonnet, not Haiku** (Kevin's decision, 2026-11-22: it does not consume that much, and
+  filling forms is the hard part). The Haiku spikes only proved the plumbing works.
 - Each batch is a separate `claude -p` session (fresh context, cheaper, failures don't
   chain). The wrapper decides between batches using the quota guard.
 - Progress is written **per vacancy** (never only at the end). If tokens run out or the
