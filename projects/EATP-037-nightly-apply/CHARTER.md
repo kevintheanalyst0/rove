@@ -88,6 +88,11 @@ Rove has no place to park vacancies that need Kevin (captcha, account, unknown q
    data-harvesting traps).
 8. **A vacancy counts as applied only after the confirmation page is seen.** Never
    submit a half-filled form. On resume, check the store first so nothing is sent twice.
+9. **Mark every handled vacancy in Rove** (`POST /track` with `applied` or `dismissed`, signature taken
+   from `GET /inbox`) so it leaves the inbox: `applied` after a confirmed send; `dismissed` for
+   vacancies that can never work (residence requirement, probable scam, offer gone). Vacancies skipped
+   because Kevin must act (CURP, unanswerable question) stay visible. Verified 2026-11-22: the POST
+   works from the PC over Tailscale with no `Origin` header, and the inbox count dropped as expected.
 
 ## Quota guard
 - Read usage from `GET https://api.anthropic.com/api/oauth/usage` with the token the
