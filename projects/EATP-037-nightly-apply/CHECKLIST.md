@@ -9,7 +9,8 @@
 - [x] Compare Kevin's CVs on `D:` with the ones in Notion (identical, SHA-256)
 - [ ] `claude -p` driving Chrome unattended, one OCC vacancy, no submit
 - [ ] Chrome behaviour with the screen locked after waking
-- [ ] Enable hibernation + timed wake (Vigilante repo; needs Kevin's permission)
+- [x] Enable hibernation (2026-11-22, Kevin approved the admin prompt; Fast Startup off)
+- [ ] Timed wake from hibernation (Vigilante repo)
 - [ ] OCC / Computrabajo apply flows: captcha? account?
 
 ### Phase 1 — Rove side
