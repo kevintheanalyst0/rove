@@ -32,7 +32,7 @@
 ### Phase 3 — Rollout
 - [x] Dry run (no submit): `--dry-run` against the real Rove (2026-11-22)
 - [x] Supervised real run with Kevin present (2026-11-22: 2 sent, 4 skipped; see CHARTER)
-- [x] First supervised runner batch, 3 vacancies (2026-11-22): 0 sent, 2 dismissed, 1 question; ~4 min; window 42 -> 43 %. The `applied` path is not yet proven live.
+- [x] First supervised runner batch, 3 vacancies (2026-11-22): 0 sent, 2 dismissed, 1 question; ~4 min; window 42 -> 43 %. Phone summary arrived and no tabs were left open (Kevin confirmed). The `applied` path is not yet proven live.
 - [ ] First unattended night; read the summary together
 
 ### Phase 4 — Verify & close

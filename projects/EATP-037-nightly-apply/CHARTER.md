@@ -244,9 +244,11 @@ the test (and off again right after). Real Claude (Sonnet), real Chrome, real Ro
   so rough: on the order of a third of a point of the window per vacancy with Sonnet).
 - **Sonnet followed the rules:** correct classification with a one-line reason each, no submission, no
   invented answers, valid JSON the parser accepted. Inbox 259 -> 257 (the 2 dismissed).
+- **Confirmed by Kevin afterwards:** the phone summary arrived, and **no Chrome tabs were left open** (the
+  playbook's rule 10 — close every tab you opened — held; it also matches Kevin's standing rule that Claude
+  never leaves tabs or saved tab groups behind in his Chrome).
 - **Not yet exercised live:** the `applied` path (no vacancy passed the rules this time) and therefore the
-  evidence check on a real confirmation page; form filling by the runner; leftover Chrome tabs
-  (not verified); arrival of the phone summary (Kevin to confirm).
+  evidence check on a real confirmation page, and form filling by the runner.
 
 ## First supervised run (2026-11-22, Kevin present, 6 candidates from the inbox)
 Result: **2 sent** (Computrabajo: Grupo Autofin, Analista de Ecommerce), **4 skipped**. Findings:
