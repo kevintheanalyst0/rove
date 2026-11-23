@@ -243,7 +243,13 @@ run, with no Claude call and no write to Rove; `--max`, `--batch`). **Tests:** `
   **wake timers on battery were enabled** in the active Windows power plan (reversible) and the Vigilante turns the
   charger back on when the PC wakes. The runner now also **turns the charger off before it hibernates** at the end
   (`pc.charger_off`, plus the Vigilante's `apagando` marker); otherwise it would stay on all day, since the
-  Vigilante does not run while the PC hibernates. **Untested: waking from hibernation on battery.**
+  Vigilante does not run while the PC hibernates. **The battery wake test then FAILED** (9:10-9:14 p. m.): hibernated on battery
+  with a task due at 9:13:00, it did not wake; Kevin had to press the power button (wake logged at 9:14:28, source
+  "Unknown"). Wake timers on battery were **reverted to off**. As things stand, with the charger off the 3:00 a. m. wake
+  **does not happen** and nothing warns about it. Pending Kevin's decision: a short charging window driven by Home
+  Assistant (charger on at 2:50 a. m., off again by the runner when it finishes, hard stop at 5:30 a. m.), always-on charger
+  (rejected by Kevin), or no nightly run. Until decided, the nightly switch should stay off.
+- **First-night cap:** the registered task has `--max 8` (Kevin, 2026-11-22); `install_task.ps1` restores the default 20.
 - Suite: 559 green. Vigilante scenarios: "todo bien".
 - **Still untested:** the task actually waking the PC and running unattended at 3:00 a. m. with the screen
   locked; the `applied` path with a real confirmation page; a multi-hour hibernation. That is the first
