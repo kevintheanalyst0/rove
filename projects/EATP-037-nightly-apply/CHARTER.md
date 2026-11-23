@@ -222,6 +222,27 @@ run, with no Claude call and no write to Rove; `--max`, `--batch`). **Tests:** `
 - **Not done:** Phase C (the playbook run live, supervised), Phase D (Windows scheduled task, Vigilante
   rule, VM redeploy).
 
+## Phase D — scheduling, Vigilante rule, VM redeploy (2026-11-22)
+- **Windows task `NocturnoRove`** (registered for Kevin's user, no admin): daily at **3:00 a. m.** (Mexico),
+  **WakeToRun**, `StartWhenAvailable=false` (if the PC was off at 3:00 it must NOT run at 8:00 while Kevin
+  works), 3 h limit, runs `conhost.exe --headless wsl.exe -e pc/nightly/run_nightly.sh` (which appends to
+  `~/.cache/rove-nightly/run.log`). Files: `pc/nightly/{NocturnoRove.task.xml,install_task.ps1,run_nightly.sh}`;
+  reinstall with `install_task.ps1`, remove with `Unregister-ScheduledTask -TaskName NocturnoRove`.
+  The launcher was checked through `wsl.exe` exactly as Windows runs it (dry-run). **The task itself has not fired yet.**
+- **Vigilante rule** (repo `vigilante-pc`): when Rove's nightly switch is ON and `NocturnoRove` fires within
+  14 h, the watchdog **hibernates instead of shutting down and leaves the charger ON**; with the switch off (or
+  unreadable) it shuts down as before. While the runner is running, or a run is about to start (PC just
+  woke for it), it counts as "working": no shutdown and no "¿apago?" question at 3 a. m. 14 new scenarios,
+  all green. `~/bin/vigilante-inactividad.sh` is a symlink to the repo, so it is **live now**.
+- **Selection fix found by the launcher test:** vacancies waiting on an *unanswered* question are excluded
+  (otherwise the same one would be retried and re-asked every night). 2 tests.
+- **VM redeployed** to `74101f8` (pull + restart `rove-web`, no run in progress): `/nightly/retry` and
+  `/nightly/learned-answers` now answer 200; switch off, inbox 257, lists intact, no log errors.
+- Suite: 559 green. Vigilante scenarios: "todo bien".
+- **Still untested:** the task actually waking the PC and running unattended at 3:00 a. m. with the screen
+  locked; the `applied` path with a real confirmation page; a multi-hour hibernation. That is the first
+  real night.
+
 ## Phase C — first live, supervised batch (2026-11-22, Kevin present)
 Command: `python -m rove.nightly.runner --max 3 --batch 3 --no-hibernate` with the switch turned on only for
 the test (and off again right after). Real Claude (Sonnet), real Chrome, real Rove.

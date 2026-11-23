@@ -26,8 +26,8 @@
 ### Phase 2 — PC runner
 - [x] Wrapper: preflight (switch, quota), batches, per-vacancy progress, summary, hibernate (code + tests with fakes, 2026-11-22; `--dry-run` checked live)
 - [~] Playbook prompt written (`prompt.py`, 11 rules + JSON contract); not yet run live: that is the supervised batch
-- [ ] Windows scheduled task (wake to run)
-- [ ] Vigilante rule: hibernate instead of shutdown before a scheduled wake
+- [x] Windows scheduled task `NocturnoRove`, 3:00 a. m., wake to run (registered 2026-11-22; has not fired yet)
+- [x] Vigilante rule: hibernate instead of shutdown when the nightly switch is on and a wake is due; runner counts as working (14 scenarios green)
 
 ### Phase 3 — Rollout
 - [x] Dry run (no submit): `--dry-run` against the real Rove (2026-11-22)

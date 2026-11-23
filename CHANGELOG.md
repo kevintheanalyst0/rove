@@ -35,6 +35,13 @@ the day the work was done; see `ROADMAP.md` for status/complexity/time per proje
   preflight reading, honour `Retry-After`, retry; still fails closed), `$HOME` in the Vigilante token path,
   and added `--no-hibernate`. Pending: the Windows scheduled task, the Vigilante rule, a VM redeploy.
 
+## EATP-037 (phase D) — Scheduling, Vigilante rule, redeploy (2026-11-22)
+- `pc/nightly/NocturnoRove.task.xml` + `install_task.ps1` + `run_nightly.sh`: Windows task, daily 3:00 a. m.,
+  wake to run, no catch-up run. Registered; not fired yet.
+- Vigilante (separate repo): hibernate instead of shutdown (charger stays on) when the nightly switch is on
+  and a wake is due; the runner counts as "working". 14 new scenarios.
+- Runner: skip vacancies waiting on an unanswered question. VM redeployed to `74101f8`. Suite: 559 green.
+
 ## EATP-035 — Unattended pre-run submit sweep (2026-09-01)
 - `src/rove/apply/sweep.py`: `sweep_pending_applications()` sends every
   still-pending `draft_ready` application, sequentially, reusing
