@@ -154,7 +154,8 @@ overnight and on-battery wakes are untested.
 A timer wake is "unattended": Windows puts the PC back to sleep ~2 min later unless something holds
 a keep-awake request. Commands running inside WSL do not count. The wrapper must request keep-awake
 (e.g. Vigilante's `scripts/mantener-despierto.ps1`) from the first second after waking and for the
-whole run, and start within ~2 minutes. Untested whether that request is enough.
+whole run, and start within ~2 minutes. **Tested 2026-11-22: it is enough** for a 6-minute window (24 heartbeats, max gap 16 s, no second
+hibernation, using the real script). A multi-hour run is still untested.
 
 ## Unverified (spike first, in this order)
 1. Whether `claude -p` can drive Chrome through the extension unattended (permission mode).

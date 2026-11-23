@@ -11,7 +11,7 @@
 - [x] Chrome behaviour with the screen locked after waking (2026-11-22 short test: usable)
 - [x] Enable hibernation (2026-11-22, Kevin approved the admin prompt; Fast Startup off)
 - [x] Timed wake from hibernation, short test (2026-11-22, 87 s, worked)
-- [ ] Verify a keep-awake request stops Windows re-sleeping after a timed wake (found 2026-11-22: it re-hibernated after ~2 min, "System Idle")
+- [x] Verify a keep-awake request stops Windows re-sleeping after a timed wake (2026-11-22: re-hibernated after ~2 min without it; with it, 6 min clean)
 - [ ] Overnight multi-hour timed wake (Vigilante repo)
 - [ ] OCC / Computrabajo apply flows: captcha? account?
 
