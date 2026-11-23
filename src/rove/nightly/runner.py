@@ -66,6 +66,8 @@ class Ports:
     applicant_answers: Callable[[], dict[str, Any]]
     # Make sure Chrome (with Kevin's Claude extension) is running before a batch needs it.
     ensure_chrome: Callable[[], None] = lambda: None
+    # Same idea for the Claude desktop app (Kevin: keep it open "por si acaso").
+    ensure_claude_app: Callable[[], None] = lambda: None
     now: Callable[[], datetime] = lambda: datetime.now(UTC)
     progress_dir: Path = field(default_factory=lambda: config.NIGHTLY_PROGRESS_DIR)
 
@@ -160,6 +162,12 @@ def build_summary(report: RunReport) -> str:
     return text
 
 
+def _ensure_apps(ports: Ports) -> None:
+    """The Claude desktop app first, then Chrome (the extension needs Chrome open)."""
+    ports.ensure_claude_app()
+    ports.ensure_chrome()
+
+
 def _run_batches(ports: Ports, cfg: RunConfig, weekly_cap: float, quota: Quota) -> RunReport:
     """Inputs, selection and the batch loop. Runs inside the keep-awake window;
     never notifies or hibernates (the caller does, after releasing it)."""
@@ -195,7 +203,7 @@ def _run_batches(ports: Ports, cfg: RunConfig, weekly_cap: float, quota: Quota) 
     by_url = {c.url: c for c in candidates}
     queue = list(candidates)
     consecutive_failures = 0
-    ports.ensure_chrome()  # after a restart (a Windows update, say) Chrome is closed and Claude cannot see the extension
+    _ensure_apps(ports)  # after a restart (a Windows update, say) these may be closed
 
     while queue and report.attempted < cfg.max_per_night:
         # The usage endpoint rate-limits: reuse the preflight reading for the first batch
@@ -226,7 +234,7 @@ def _run_batches(ports: Ports, cfg: RunConfig, weekly_cap: float, quota: Quota) 
             report.failures += 1
             consecutive_failures += 1
             report.errors.append(f"lote {report.batches}: {result.error or 'falló'}")
-            ports.ensure_chrome()  # maybe Chrome closed mid-run: make sure it is back before the next batch
+            _ensure_apps(ports)  # maybe one closed mid-run: make sure both are back before the next batch
             salvage = [o for o in outcomes if o.status != "pending"]
             if salvage:
                 salvaged = record_outcomes(ports.client, by_url, salvage)

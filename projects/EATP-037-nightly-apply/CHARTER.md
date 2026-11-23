@@ -260,6 +260,12 @@ run, with no Claude call and no write to Rove; `--max`, `--batch`). **Tests:** `
   (a Windows update, say) it is not. The runner now calls `pc.ensure_chrome()` before the first batch and again after a
   failed batch: if no `chrome` process exists it runs `Start-Process chrome` and waits 30 s. It cannot fix an extension that
   signed out after a Chrome restart (the tool warns that can happen); that would show up as failed batches.
+- **Claude desktop app must be open too** (Kevin: "por si acaso", same check as Chrome). It is a packaged Windows app,
+  not on the startup list, so after a restart it may be closed. `pc.ensure_claude_app()` checks for the packaged
+  `Claude.exe` by path (so a Claude CLI process does not count) and, if missing, launches it the way the Start menu does
+  (`shell:AppsFolder\<AppID from Get-StartApps>`), waiting 20 s. Order before the first batch and after a failed one: Claude
+  app, then Chrome. Detection verified live ("running"); the launch itself is untested (it would require closing the app
+  that hosts this session).
 - Suite: 559 green. Vigilante scenarios: "todo bien".
 - **Still untested:** the task actually waking the PC and running unattended at 3:00 a. m. with the screen
   locked; the `applied` path with a real confirmation page; a multi-hour hibernation. That is the first

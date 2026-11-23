@@ -552,3 +552,43 @@ def test_ensure_chrome_never_crashes_the_night(monkeypatch):
 
 def test_real_ports_wire_ensure_chrome():
     assert pc.real_ports(dry_run=False, cfg=RunConfig()).ensure_chrome is pc.ensure_chrome
+
+
+# ------------------------------------- the Claude desktop app must be open ---
+
+
+def test_claude_app_then_chrome_are_ensured_before_the_first_batch_and_after_a_failed_one(tmp_path):
+    calls = []
+    outcomes = iter([ClaudeResult(ok=False, error="boom"), None])
+
+    def claude(text, n):
+        calls.append(("claude", n))
+        first = next(outcomes)
+        return first if first is not None else _all_applied(text, n)
+
+    h = Harness(tmp_path, FakeRove(jobs=list("abcd")), quotas=[OK_QUOTA], claude=claude)
+    h.ports.ensure_claude_app = lambda: calls.append(("app",))
+    h.ports.ensure_chrome = lambda: calls.append(("chrome",))
+    run_night(h.ports, RunConfig(batch_size=2))
+    assert calls == [("app",), ("chrome",), ("claude", 1), ("app",), ("chrome",), ("claude", 2)]
+
+
+def test_ensure_claude_app_launches_it_only_when_it_is_not_running(monkeypatch):
+    waits = []
+    for stdout, expected_started in (("running\n", False), ("started\n", True), ("missing\n", False)):
+        monkeypatch.setattr(pc.subprocess, "run", lambda cmd, _out=stdout, **kw: type("R", (), {"stdout": _out})())
+        assert pc.ensure_claude_app(sleep=waits.append) is expected_started
+    assert waits == [pc.CLAUDE_APP_START_WAIT]
+
+
+def test_ensure_claude_app_never_crashes_the_night_and_matches_the_packaged_app_by_path(monkeypatch):
+    def boom(*a, **k):
+        raise OSError("no powershell")
+
+    monkeypatch.setattr(pc.subprocess, "run", boom)
+    assert pc.ensure_claude_app(sleep=lambda s: None) is False
+    assert "Claude_" in pc._CLAUDE_APP_SCRIPT and "Claude.exe" in pc._CLAUDE_APP_SCRIPT and "Get-StartApps" in pc._CLAUDE_APP_SCRIPT
+
+
+def test_real_ports_wire_ensure_claude_app():
+    assert pc.real_ports(dry_run=False, cfg=RunConfig()).ensure_claude_app is pc.ensure_claude_app

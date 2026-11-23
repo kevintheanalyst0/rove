@@ -173,6 +173,34 @@ def ensure_chrome(*, sleep: Callable[[float], None] = time.sleep) -> bool:
     return False
 
 
+CLAUDE_APP_START_WAIT = 20
+# Launching it the way the Start menu does (it is a packaged Windows app, not on the startup list).
+_CLAUDE_APP_SCRIPT = (
+    "$p = Get-Process claude -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*\\Claude_*\\app\\Claude.exe' }; "
+    "if ($p) { 'running' } else { "
+    "$id = (Get-StartApps | Where-Object { $_.Name -eq 'Claude' } | Select-Object -First 1).AppID; "
+    "if ($id) { Start-Process ('shell:AppsFolder\\' + $id); 'started' } else { 'missing' } }"
+)
+
+
+def ensure_claude_app(*, sleep: Callable[[float], None] = time.sleep) -> bool:
+    """Open the Claude desktop app if it is not running (Kevin's request: keep it open just in case).
+    Matches the packaged app by path so a Claude CLI process is not mistaken for it. Best effort."""
+    try:
+        completed = subprocess.run(
+            [POWERSHELL, "-NoProfile", "-Command", _CLAUDE_APP_SCRIPT], capture_output=True, text=True, timeout=60
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    if "started" in completed.stdout:
+        logger.info("La app de Claude estaba cerrada: la abrí; espero %s s", CLAUDE_APP_START_WAIT)
+        sleep(CLAUDE_APP_START_WAIT)
+        return True
+    if "missing" in completed.stdout:
+        logger.warning("No encontré la app de Claude en el menú Inicio: no pude abrirla")
+    return False
+
+
 # --- keep the PC awake / let it sleep ----------------------------------------
 
 
@@ -271,6 +299,7 @@ def real_ports(*, dry_run: bool, cfg: RunConfig) -> Ports:
             hibernate_if_idle=lambda: hibernate_if_idle(cfg.min_idle_minutes),
             applicant_answers=answers_mod.load_applicant_answers,
             ensure_chrome=ensure_chrome,
+            ensure_claude_app=ensure_claude_app,
         )
 
     def fake_claude(prompt: str) -> ClaudeResult:
