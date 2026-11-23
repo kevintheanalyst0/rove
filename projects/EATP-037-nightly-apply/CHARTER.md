@@ -128,6 +128,12 @@ on Kevin's laptop** and waking from hibernation has never been tested.
   real share after the first nights** before deciding what to do about it.
 - Greenhouse boards often carry a reCAPTCHA on submit (EATP-034 sampled 8/8). With a real
   Chrome it may pass; if a checkbox appears, rule 1 applies.
+- **OCC blocked Rove's automated browser** (Notion Rove page, 2026-08-31/09-01: HTTP 403
+  "scraping abuse" before the page even loaded, harsher than Greenhouse's reCAPTCHA). That
+  was a Playwright-style browser on the VM; Kevin's real signed-in Chrome is a different
+  situation but **untested for OCC** — spike 5 decides whether the inbox half of this
+  project is viable at all. Computrabajo and OCC did not block the Mexican IP itself
+  (2026-08-26 spike).
 
 ## Unverified (spike first, in this order)
 1. Whether `claude -p` can drive Chrome through the extension unattended (permission mode).
