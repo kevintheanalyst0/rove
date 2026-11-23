@@ -246,9 +246,14 @@ run, with no Claude call and no write to Rove; `--max`, `--batch`). **Tests:** `
   Vigilante does not run while the PC hibernates. **The battery wake test then FAILED** (9:10-9:14 p. m.): hibernated on battery
   with a task due at 9:13:00, it did not wake; Kevin had to press the power button (wake logged at 9:14:28, source
   "Unknown"). Wake timers on battery were **reverted to off**. As things stand, with the charger off the 3:00 a. m. wake
-  **does not happen** and nothing warns about it. Pending Kevin's decision: a short charging window driven by Home
-  Assistant (charger on at 2:50 a. m., off again by the runner when it finishes, hard stop at 5:30 a. m.), always-on charger
-  (rejected by Kevin), or no nightly run. Until decided, the nightly switch should stay off.
+  **does not happen** and nothing warns about it. **Fix (Kevin's idea, the same
+  night): the charger is turned on BEFORE the wake by Home Assistant** (it is always on; the Vigilante script cannot,
+  because it does not run while the PC hibernates). Two automations created through HA's REST config API (no restart),
+  reproducible with `python3 ha/instalar_ha.py --solo-cargador` in the Vigilante repo: **02:50** charger ON ("Vigilante PC -
+  Cargador antes del despertar") and **05:30** charger OFF as a hard cap ("... tope de la noche"; the Vigilante turns it
+  back on if the PC is in use). Both were triggered by hand and worked; the real 2:50 -> 3:00 chain has not been observed
+  yet. The runner now **always** turns the charger off and hibernates after any wake-run (also switch off, nothing to
+  do, failures) unless Kevin is using the PC, so the charger is on only from ~2:50 until the run ends.
 - **First-night cap:** the registered task has `--max 8` (Kevin, 2026-11-22); `install_task.ps1` restores the default 20.
 - Suite: 559 green. Vigilante scenarios: "todo bien".
 - **Still untested:** the task actually waking the PC and running unattended at 3:00 a. m. with the screen

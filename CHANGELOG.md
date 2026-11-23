@@ -41,6 +41,9 @@ the day the work was done; see `ROADMAP.md` for status/complexity/time per proje
 - Vigilante (separate repo): hibernate instead of shutdown (charger stays on) when the nightly switch is on
   and a wake is due; the runner counts as "working". 14 new scenarios.
 - Runner: skip vacancies waiting on an unanswered question. VM redeployed to `74101f8`. Suite: 559 green.
+- Wake-on-battery test failed (the PC only wakes by timer on AC): charger ON at 2:50 a. m. / OFF at 5:30 a. m. via Home
+  Assistant automations (Vigilante repo); the runner always turns the charger off and hibernates after any wake-run;
+  `pc.charger_off`. First night capped at `--max 8` on the registered task.
 
 ## EATP-035 — Unattended pre-run submit sweep (2026-09-01)
 - `src/rove/apply/sweep.py`: `sweep_pending_applications()` sends every

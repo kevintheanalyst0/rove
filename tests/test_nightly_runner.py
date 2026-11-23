@@ -121,7 +121,8 @@ def test_switch_off_does_nothing_and_is_silent(tmp_path):
     rove = FakeRove(jobs=["a"], settings={"enabled": False, "allowed": False, "reason": "apagado"})
     h = Harness(tmp_path, rove, quotas=[OK_QUOTA], claude=_all_applied)
     report = run_night(h.ports)
-    assert report.status == "off" and h.prompts == [] and h.notices == [] and h.hibernated == 0
+    assert report.status == "off" and h.prompts == [] and h.notices == []
+    assert h.hibernated == 1  # a PC woken for the task goes back to sleep even when the switch is off
 
 
 def test_skip_next_run_is_honoured_once_and_consumed(tmp_path):
@@ -489,3 +490,19 @@ def test_hibernate_still_hibernates_if_the_charger_call_fails(tmp_path, monkeypa
     ran = []
     monkeypatch.setattr(pc.subprocess, "run", lambda cmd, **kw: ran.append(cmd))
     assert pc.hibernate_if_idle(10.0) is True and ran == [[pc.SHUTDOWN, "/h"]]
+
+
+def test_every_outcome_ends_with_the_pc_going_back_to_sleep(tmp_path):
+    cases = {
+        "off": dict(settings={"enabled": False, "allowed": False, "reason": "apagado"}, quotas=[OK_QUOTA]),
+        "skipped": dict(settings={"allowed": False, "skip_next_run": True, "reason": "saltar"}, quotas=[OK_QUOTA]),
+        "no_quota": dict(settings={}, quotas=[None]),
+        "weekly_cap": dict(settings={}, quotas=[Quota(10, 80)]),
+        "ran": dict(settings={}, quotas=[OK_QUOTA]),
+    }
+    for status, case in cases.items():
+        h = Harness(tmp_path / status, FakeRove(jobs=["a"], settings=case["settings"]), quotas=case["quotas"], claude=_all_applied)
+        assert run_night(h.ports).status == status
+        assert h.hibernated == 1, status
+    unreadable = Harness(tmp_path / "ns", FakeRove(jobs=["a"], fail={"/nightly/settings"}), quotas=[OK_QUOTA], claude=_all_applied)
+    assert run_night(unreadable.ports).status == "no_switch" and unreadable.hibernated == 1

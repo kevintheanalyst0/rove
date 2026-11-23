@@ -260,7 +260,7 @@ def _run_batches(ports: Ports, cfg: RunConfig, weekly_cap: float, quota: Quota) 
     return report
 
 
-def run_night(ports: Ports, cfg: RunConfig = RunConfig()) -> RunReport:
+def _run_night(ports: Ports, cfg: RunConfig) -> RunReport:
     # 1. Kevin's switch — fail closed.
     try:
         settings = ports.client.get_settings()
@@ -297,6 +297,14 @@ def run_night(ports: Ports, cfg: RunConfig = RunConfig()) -> RunReport:
         ports.notify("Corrida nocturna", "No había vacantes nuevas que aplicar esta noche.")
     elif report.status == "no_inbox":
         ports.notify("Corrida nocturna", "No pude leer la bandeja de Rove: no corrí esta noche.")
+    return report
+
+
+def run_night(ports: Ports, cfg: RunConfig = RunConfig()) -> RunReport:
+    report = _run_night(ports, cfg)
+    # Whatever happened (ran, switch off, nothing to do, a failure): a PC that woke up for this task goes
+    # back to sleep, charger off first (the charging window is only there to let it wake). If Kevin is
+    # using the PC, `hibernate_if_idle` does nothing.
     ports.hibernate_if_idle()
     return report
 
