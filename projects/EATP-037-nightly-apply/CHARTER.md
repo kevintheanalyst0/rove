@@ -157,6 +157,30 @@ overnight and on-battery wakes are untested.
   project is viable at all. Computrabajo and OCC did not block the Mexican IP itself
   (2026-08-26 spike).
 
+## Phase 1 — built (Rove side), 2026-11-22
+**Code:** `src/rove/nightly/{settings,skipped,questions}.py`, new constants in `config.py`, request
+models + routes in `web/server.py`, a "Corrida nocturna" modal in the dashboard (`index.html`,
+`static/js/app.js`, `static/css/style.css`; entry points on the idle screen and in the sidebar, with a
+badge counting what waits for Kevin). **Tests:** `test_nightly_settings.py`, `test_nightly_lists.py`,
+`test_web_nightly.py` (72 new; full suite 493 green, no live AI).
+- **Routes:** `GET/POST /nightly/settings`, `POST /nightly/consume-skip`, `GET/POST /nightly/skipped`,
+  `POST /nightly/skipped/{id}/done`, `GET/POST /nightly/questions`, `POST /nightly/questions/{id}/answer`.
+  Every POST keeps the same-origin guard; the PC runner sends no `Origin` header.
+- **Fails closed:** a missing, corrupt or invalid settings file reads as *off*. Default is off until
+  Kevin turns it on. `skip_next_run` covers one run only (`consume-skip`).
+- **Decisions:** answers Kevin gives from the phone are stored in `data/learned_answers.jsonl` (no new
+  TOML-writing dependency); `questions.learned_answer_for()` and `vacancies_to_retry()` are the runner's
+  read side. Question ids come from the normalized text + language, so one question asked by ten
+  vacancies is one card. Skipped ids come from the URL. Links in the dashboard render only for
+  http(s) URLs (validated on write and again in the page).
+- **Bug caught by a test:** pydantic's `model_copy(update=...)` skips validation, so an over-long
+  answer slipped through; the stores now re-validate (`model_validate`).
+- **Checked live** against a throwaway server with sample data in a temp dir (not Kevin's data):
+  badge, modal, skip toggle, "Ya la hice" and answering a question all worked; narrow window fine.
+- **NOT deployed to the VM.** That needs Kevin's go: pull, restart `rove-web.service`.
+- **Not in this phase:** the `applicant_answers.toml` loader and everything on the PC side (wrapper,
+  playbook, scheduled task) — Phase 2.
+
 ## First supervised run (2026-11-22, Kevin present, 6 candidates from the inbox)
 Result: **2 sent** (Computrabajo: Grupo Autofin, Analista de Ecommerce), **4 skipped**. Findings:
 - OCC and Computrabajo load fine in Kevin's real Chrome (no 403, no captcha seen). This answers the

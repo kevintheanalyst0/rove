@@ -688,6 +688,170 @@ async function resetCache(button) {
   }
 }
 
+// EATP-037: "Corrida nocturna" — Kevin's kill switch for the nightly run on his
+// PC plus the two lists it leaves for him (vacancies it skipped, questions it
+// could not answer). Same overlay/modal as the cache view; every value that
+// came from the server is escaped, and links only render for http(s) URLs.
+const NIGHTLY_REASONS = {
+  captcha: "Captcha",
+  account_required: "Pide crear cuenta",
+  government_id: "Pide un dato oficial (CURP)",
+  pending_question: "Pregunta sin respuesta",
+  employment_question: "Pregunta sobre tu empleo",
+  suspected_scam: "Posible estafa",
+  residence_requirement: "Exige vivir en otra zona",
+  offer_gone: "La oferta ya no existe",
+  other: "Otro motivo",
+};
+
+function safeHttpUrl(url) {
+  return /^https?:\/\//i.test(url || "") ? url : "";
+}
+
+async function nightlyPost(url, body) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+  return res.json();
+}
+
+async function loadNightly() {
+  const [settings, skipped, questions] = await Promise.all([
+    fetch("/nightly/settings").then((r) => r.json()),
+    fetch("/nightly/skipped").then((r) => r.json()),
+    fetch("/nightly/questions").then((r) => r.json()),
+  ]);
+  return { settings, skipped: skipped.items || [], questions: questions.items || [] };
+}
+
+function renderNightlySettings(s) {
+  const label = s.allowed ? "Encendida: corre esta noche" : (s.reason === "apagado" ? "Apagada" : `Detenida: ${s.reason}`);
+  return `
+    <section class="nightly-block">
+      <div class="nightly-status ${s.allowed ? "is-on" : "is-off"}">${escapeHtml(label)}</div>
+      <div class="modal-footer">
+        <button type="button" class="btn-full ghost ${s.enabled ? "is-active" : ""}" data-nightly-action="enabled" data-value="${s.enabled ? "0" : "1"}">${s.enabled ? "Apagar" : "Encender"}</button>
+        <button type="button" class="btn-full ghost ${s.skip_next_run ? "is-active" : ""}" data-nightly-action="skip" data-value="${s.skip_next_run ? "0" : "1"}">${s.skip_next_run ? "Ya no saltar la próxima" : "Saltar la próxima corrida"}</button>
+      </div>
+      <div class="nightly-form">
+        <label for="nightlyPauseDate">Pausar hasta</label>
+        <input type="date" id="nightlyPauseDate" value="${escapeHtml(s.pause_until || "")}">
+        <button type="button" class="eval-chip" data-nightly-action="pause">Pausar</button>
+        ${s.pause_until ? '<button type="button" class="eval-chip" data-nightly-action="clear-pause">Quitar pausa</button>' : ""}
+      </div>
+      <div class="nightly-form">
+        <label for="nightlyCap">No correr si el uso semanal pasa de (%)</label>
+        <input type="number" id="nightlyCap" min="10" max="100" step="1" value="${Number(s.weekly_cap_pct) || 70}">
+        <button type="button" class="eval-chip" data-nightly-action="cap">Guardar</button>
+      </div>
+    </section>`;
+}
+
+function renderNightlySkipped(items) {
+  const body = items.length
+    ? `<ul class="cache-list">${items.map((e) => {
+        const url = safeHttpUrl(e.url);
+        return `
+        <li class="cache-row nightly-row">
+          <div class="cache-row-main">
+            <strong>${escapeHtml(e.title || "(sin título)")}</strong>
+            <span class="job-meta">${escapeHtml(e.company || "—")} · ${escapeHtml(e.source || "—")}</span>
+            <span class="nightly-reason">${escapeHtml(NIGHTLY_REASONS[e.reason] || e.reason)}${e.note ? " — " + escapeHtml(e.note) : ""}</span>
+          </div>
+          <div class="nightly-row-actions">
+            ${url ? `<a class="eval-chip" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Abrir</a>` : ""}
+            <button type="button" class="eval-chip" data-nightly-action="done" data-id="${escapeHtml(e.id)}">Ya la hice</button>
+          </div>
+        </li>`;
+      }).join("")}</ul>`
+    : '<p class="empty">Nada pendiente.</p>';
+  return `<section class="nightly-block"><h3 class="nightly-h">Vacantes que dejé para ti (${items.length})</h3>${body}</section>`;
+}
+
+function renderNightlyQuestions(items) {
+  const body = items.length
+    ? items.map((q) => `
+        <div class="nightly-q">
+          <strong>${escapeHtml(q.question)}</strong>
+          <span class="job-meta">${q.language === "en" ? "Inglés" : "Español"} · ${q.vacancies.length} vacante(s): ${escapeHtml(q.vacancies.map((v) => v.title || v.company || "—").slice(0, 3).join(", "))}</span>
+          <textarea class="nightly-input" rows="2" maxlength="2000" data-answer-input="${escapeHtml(q.id)}" placeholder="Tu respuesta"></textarea>
+          <button type="button" class="eval-chip" data-nightly-action="answer" data-id="${escapeHtml(q.id)}">Guardar respuesta</button>
+        </div>`).join("")
+    : '<p class="empty">Ninguna pregunta pendiente.</p>';
+  return `<section class="nightly-block"><h3 class="nightly-h">Preguntas que no supe contestar (${items.length})</h3>${body}</section>`;
+}
+
+async function renderNightlyModal() {
+  modalBody.innerHTML = `
+    <div class="modal-head">
+      <div><h2>Corrida nocturna</h2><p class="meta">Lo que corre de madrugada en tu PC y lo que dejó para ti.</p></div>
+      <button class="modal-close" type="button" id="modalCloseBtn">&#10005;</button>
+    </div>
+    <div id="nightlyBody"><p class="empty">Cargando...</p></div>`;
+  try {
+    const data = await loadNightly();
+    document.getElementById("nightlyBody").innerHTML =
+      renderNightlySettings(data.settings) + renderNightlySkipped(data.skipped) + renderNightlyQuestions(data.questions);
+  } catch {
+    document.getElementById("nightlyBody").innerHTML = '<p class="empty">No pude cargar la corrida nocturna.</p>';
+  }
+  refreshNightlyBadge();
+}
+
+async function openNightlyModal() {
+  overlay.classList.add("open");
+  overlay.dataset.signature = "";
+  await renderNightlyModal();
+}
+
+async function handleNightlyAction(button) {
+  const action = button.dataset.nightlyAction;
+  button.disabled = true;
+  try {
+    if (action === "enabled") await nightlyPost("/nightly/settings", { enabled: button.dataset.value === "1" });
+    else if (action === "skip") await nightlyPost("/nightly/settings", { skip_next_run: button.dataset.value === "1" });
+    else if (action === "pause") {
+      const value = document.getElementById("nightlyPauseDate").value;
+      if (!value) { window.alert("Elige una fecha."); return; }
+      await nightlyPost("/nightly/settings", { pause_until: value });
+    } else if (action === "clear-pause") await nightlyPost("/nightly/settings", { clear_pause: true });
+    else if (action === "cap") {
+      const value = Number(document.getElementById("nightlyCap").value);
+      if (!Number.isInteger(value) || value < 10 || value > 100) { window.alert("El tope va de 10 a 100."); return; }
+      await nightlyPost("/nightly/settings", { weekly_cap_pct: value });
+    } else if (action === "done") await nightlyPost(`/nightly/skipped/${encodeURIComponent(button.dataset.id)}/done`);
+    else if (action === "answer") {
+      const input = modalBody.querySelector(`[data-answer-input="${CSS.escape(button.dataset.id)}"]`);
+      const text = (input && input.value || "").trim();
+      if (!text) { window.alert("Escribe la respuesta."); return; }
+      await nightlyPost(`/nightly/questions/${encodeURIComponent(button.dataset.id)}/answer`, { answer: text });
+    }
+    await renderNightlyModal();
+  } catch {
+    window.alert("No se pudo guardar. Intenta de nuevo.");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function refreshNightlyBadge() {
+  try {
+    const data = await loadNightly();
+    const pending = data.skipped.length + data.questions.length;
+    for (const id of ["nightlyBadge", "sideNightlyBadge"]) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      el.textContent = pending ? String(pending) : "";
+      el.hidden = !pending;
+    }
+  } catch {
+    // The badge is a convenience; the page works without it.
+  }
+}
+
 resultsGrid.addEventListener("click", (event) => {
   const card = event.target.closest(".job-card");
   if (!card) return;
@@ -697,6 +861,11 @@ resultsGrid.addEventListener("click", (event) => {
 modalBody.addEventListener("click", (event) => {
   if (event.target.closest("#modalCloseBtn")) {
     closeModal();
+    return;
+  }
+  const nightlyBtn = event.target.closest("[data-nightly-action]");
+  if (nightlyBtn) {
+    handleNightlyAction(nightlyBtn);
     return;
   }
   const cacheResetBtn = event.target.closest("[data-cache-reset]");
@@ -842,6 +1011,7 @@ searchInput.addEventListener("input", applyFiltersAndRender);
 
 async function init() {
   connectEvents();
+  refreshNightlyBadge();
   try {
     const res = await fetch("/status");
     const data = await res.json();
@@ -867,6 +1037,10 @@ freshRetryBtn.addEventListener("click", () => startRun(false));
 cancelBtn.addEventListener("click", cancelRun);
 discardBtn.addEventListener("click", discardRun);
 viewLastBtn.addEventListener("click", revealResults);
+for (const id of ["nightlyBtn", "sideNightlyBtn"]) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener("click", openNightlyModal);
+}
 retryBtn.addEventListener("click", () => startRun(true));
 sideRerunBtn.addEventListener("click", () => startRun(true));
 sideRerunBtn.addEventListener("keydown", (event) => {

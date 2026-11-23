@@ -43,6 +43,15 @@ TRACKING_FILE = DATA_DIR / "tracking.jsonl"
 # outlive any single job's time in the inbox).
 INBOX_FILE = DATA_DIR / "inbox.jsonl"
 
+# EATP-037: nightly browser-driven apply — Kevin's kill switch and the two
+# review lists the PC-side runner writes to (rove.nightly). Same append-only /
+# atomic-write discipline as the files above. Runtime data, gitignored with
+# the rest of data/.
+NIGHTLY_SETTINGS_FILE = DATA_DIR / "nightly_settings.json"
+NIGHTLY_SKIPPED_FILE = DATA_DIR / "nightly_skipped.jsonl"
+NIGHTLY_QUESTIONS_FILE = DATA_DIR / "nightly_questions.jsonl"
+NIGHTLY_LEARNED_ANSWERS_FILE = DATA_DIR / "learned_answers.jsonl"
+
 # EATP-034: auto-apply draft/send state per job (rove.apply.store).
 # Append-only, same crash-safety discipline as TRACKING_FILE/INBOX_FILE —
 # latest entry per signature wins. Separate from TRACKING_FILE: an

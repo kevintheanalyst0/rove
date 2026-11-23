@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
   <link rel="manifest" href="/static/manifest.json?v=2">
-  <link rel="stylesheet" href="/static/css/style.css?v=2">
+  <link rel="stylesheet" href="/static/css/style.css?v=3">
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -64,6 +64,7 @@
     </div>
     <button class="text-btn text-btn-side" id="sideClearCacheBtn" type="button">Limpiar caché</button>
     <button class="text-btn text-btn-side" id="sideViewCacheBtn" type="button">Ver cacheadas</button>
+    <button class="text-btn text-btn-side" id="sideNightlyBtn" type="button">Corrida nocturna<span class="nightly-badge" id="sideNightlyBadge" hidden></span></button>
   </aside>
 
   <main>
@@ -91,6 +92,7 @@
         <button class="text-btn" id="startFreshBtn" type="button" hidden>Empezar de nuevo (sin retomar)</button>
         <button class="text-btn" id="viewLastBtn" type="button" hidden>Ver dashboard de la última corrida</button>
         <button class="text-btn" id="clearCacheBtn" type="button">Limpiar caché</button>
+        <button class="text-btn" id="nightlyBtn" type="button">Corrida nocturna<span class="nightly-badge" id="nightlyBadge" hidden></span></button>
       </section>
 
       <section class="state" data-state="working">
@@ -177,6 +179,6 @@
     <div class="modal" id="modalBody"></div>
   </div>
 
-  <script src="/static/js/app.js?v=2"></script>
+  <script src="/static/js/app.js?v=3"></script>
 </body>
 </html>

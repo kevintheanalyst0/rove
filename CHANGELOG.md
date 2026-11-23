@@ -3,6 +3,22 @@
 All notable changes to this project, grouped by build session (`EATP-00X`). Dates are
 the day the work was done; see `ROADMAP.md` for status/complexity/time per project.
 
+## EATP-037 (phase 1, in progress) — Nightly apply: Rove side (2026-11-22)
+- New `src/rove/nightly/` package: `settings.py` (Kevin's kill switch: `enabled`,
+  `skip_next_run`, `pause_until`, `weekly_cap_pct`; fails closed to *off* on a missing/corrupt
+  file), `skipped.py` (vacancies the runner could not finish, with a reason enum) and
+  `questions.py` (questions it could not answer; Kevin's answers feed
+  `data/learned_answers.jsonl`). Append-only JSONL, latest entry per id wins.
+- `web/server.py`: `/nightly/settings`, `/nightly/consume-skip`, `/nightly/skipped`,
+  `/nightly/questions` (+ `/done` and `/answer`); every POST keeps the same-origin guard.
+- Dashboard: "Corrida nocturna" modal (switch, skip-next, pause date, weekly cap, the two lists)
+  reachable from the idle screen and the sidebar, with a pending-count badge. Static asset
+  versions bumped to `v=3`.
+- 72 new tests (suite: 493 green). One bug found by them: `model_copy(update=...)` skips
+  pydantic validation, so an over-long answer got through; fixed with `model_validate`.
+- Not deployed to the VM yet; the PC-side runner is Phase 2. See
+  `projects/EATP-037-nightly-apply/`.
+
 ## EATP-035 — Unattended pre-run submit sweep (2026-09-01)
 - `src/rove/apply/sweep.py`: `sweep_pending_applications()` sends every
   still-pending `draft_ready` application, sequentially, reusing

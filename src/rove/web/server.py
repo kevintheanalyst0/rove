@@ -36,14 +36,14 @@ import threading
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ValidationError
 
 from rove import cancellation, config
 from rove.apply import store as apply_store
@@ -55,6 +55,9 @@ from rove.eval.labels import BadReason, Label
 from rove.events import EventBus, ProgressEvent
 from rove.events import bus as default_bus
 from rove.inbox import store as inbox_store
+from rove.nightly import questions as nightly_questions
+from rove.nightly import settings as nightly_settings
+from rove.nightly import skipped as nightly_skipped
 from rove.pipeline import reset_all_run_data
 from rove.pipeline import run as run_pipeline
 from rove.profile import load_profile
@@ -229,6 +232,37 @@ class CancelRequest(BaseModel):
 class TrackRequest(BaseModel):
     signature: str
     action: TrackingAction
+
+
+class NightlySettingsRequest(BaseModel):
+    """EATP-037: partial update of the kill switch. Every field optional;
+    `clear_pause` is how a pause date is removed (null alone means "unchanged")."""
+
+    enabled: bool | None = None
+    skip_next_run: bool | None = None
+    pause_until: date | None = None
+    clear_pause: bool = False
+    weekly_cap_pct: int | None = Field(default=None, ge=10, le=100)
+
+
+class NightlySkipRequest(BaseModel):
+    url: str = Field(max_length=2000)
+    reason: nightly_skipped.SkipReason
+    title: str = Field(default="", max_length=300)
+    company: str = Field(default="", max_length=300)
+    source: str = Field(default="", max_length=80)
+    note: str = Field(default="", max_length=500)
+    signature: str | None = Field(default=None, max_length=200)
+
+
+class NightlyQuestionRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+    language: str = Field(default="es", pattern="^(es|en)$")
+    vacancy: nightly_questions.VacancyRef
+
+
+class NightlyAnswerRequest(BaseModel):
+    answer: str = Field(min_length=1, max_length=2000)
 
 
 class LabelRequest(BaseModel):
@@ -480,6 +514,102 @@ def create_app(
     def track(request: TrackRequest) -> JSONResponse:
         tracking_store.record_action(request.signature, request.action)
         return JSONResponse({"status": "ok", "signature": request.signature, "action": request.action.value})
+
+    # ------------------------------------------------------------------
+    # EATP-037: nightly browser-driven apply — kill switch + review lists.
+    # The PC-side runner (no Origin header, Tailscale Host) and Kevin's
+    # phone both use these; every POST keeps the same-origin guard.
+    # ------------------------------------------------------------------
+
+    def _nightly_settings_payload() -> dict[str, Any]:
+        current = nightly_settings.load()
+        decision = nightly_settings.decide(current)
+        return {
+            **current.model_dump(mode="json"),
+            "allowed": decision.allowed,
+            "reason": decision.reason,
+        }
+
+    @app.get("/nightly/settings")
+    def get_nightly_settings() -> JSONResponse:
+        return JSONResponse(_nightly_settings_payload())
+
+    @app.post("/nightly/settings", dependencies=[Depends(_verify_same_origin)])
+    def set_nightly_settings(request: NightlySettingsRequest) -> JSONResponse:
+        changes: dict[str, Any] = {}
+        if request.enabled is not None:
+            changes["enabled"] = request.enabled
+        if request.skip_next_run is not None:
+            changes["skip_next_run"] = request.skip_next_run
+        if request.weekly_cap_pct is not None:
+            changes["weekly_cap_pct"] = request.weekly_cap_pct
+        if request.clear_pause:
+            changes["pause_until"] = None
+        elif request.pause_until is not None:
+            changes["pause_until"] = request.pause_until
+        try:
+            nightly_settings.update(**changes)
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return JSONResponse(_nightly_settings_payload())
+
+    @app.post("/nightly/consume-skip", dependencies=[Depends(_verify_same_origin)])
+    def consume_nightly_skip() -> JSONResponse:
+        nightly_settings.consume_skip()
+        return JSONResponse(_nightly_settings_payload())
+
+    @app.get("/nightly/skipped")
+    def get_nightly_skipped() -> JSONResponse:
+        return JSONResponse(
+            {"items": [entry.model_dump(mode="json") for entry in nightly_skipped.list_open()]}
+        )
+
+    @app.post("/nightly/skipped", dependencies=[Depends(_verify_same_origin)])
+    def add_nightly_skipped(request: NightlySkipRequest) -> JSONResponse:
+        try:
+            entry = nightly_skipped.record(
+                request.url,
+                request.reason,
+                title=request.title,
+                company=request.company,
+                source=request.source,
+                note=request.note,
+                signature=request.signature,
+            )
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return JSONResponse(entry.model_dump(mode="json"))
+
+    @app.post("/nightly/skipped/{entry_id}/done", dependencies=[Depends(_verify_same_origin)])
+    def resolve_nightly_skipped(entry_id: str) -> JSONResponse:
+        entry = nightly_skipped.resolve(entry_id)
+        if entry is None:
+            raise HTTPException(status_code=404, detail="unknown skipped entry")
+        return JSONResponse(entry.model_dump(mode="json"))
+
+    @app.get("/nightly/questions")
+    def get_nightly_questions() -> JSONResponse:
+        return JSONResponse(
+            {"items": [entry.model_dump(mode="json") for entry in nightly_questions.list_open()]}
+        )
+
+    @app.post("/nightly/questions", dependencies=[Depends(_verify_same_origin)])
+    def add_nightly_question(request: NightlyQuestionRequest) -> JSONResponse:
+        try:
+            entry = nightly_questions.record(request.question, request.language, request.vacancy)
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return JSONResponse(entry.model_dump(mode="json"))
+
+    @app.post("/nightly/questions/{question_id}/answer", dependencies=[Depends(_verify_same_origin)])
+    def answer_nightly_question(question_id: str, request: NightlyAnswerRequest) -> JSONResponse:
+        try:
+            entry = nightly_questions.answer(question_id, request.answer)
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        if entry is None:
+            raise HTTPException(status_code=404, detail="unknown question")
+        return JSONResponse(entry.model_dump(mode="json"))
 
     @app.get("/applications")
     def get_applications() -> JSONResponse:

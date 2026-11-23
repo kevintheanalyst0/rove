@@ -18,10 +18,10 @@
 - [ ] OCC / Computrabajo apply flows: captcha? account?
 
 ### Phase 1 — Rove side
-- [ ] Review lists: skipped vacancies, pending questions
-- [ ] Kill switch + settings (enabled, skip_tonight, pause_until, weekly_cap_pct) in API and dashboard
-- [ ] `data/applicant_answers.toml` loader (gitignored) + answer-a-question flow that requeues the vacancy
-- [ ] Tests (fixtures, no live AI)
+- [x] Review lists: skipped vacancies, pending questions (2026-11-22)
+- [x] Kill switch + settings (enabled, skip_next_run, pause_until, weekly_cap_pct) in API and dashboard (2026-11-22)
+- [~] Answer-a-question flow done (`learned_answers.jsonl`, `vacancies_to_retry`); the `applicant_answers.toml` loader belongs to the runner (Phase 2)
+- [x] Tests (fixtures, no live AI): 72 new, suite 493 green
 
 ### Phase 2 — PC runner
 - [ ] Wrapper: preflight (switch, quota), batches, per-vacancy progress, cleanup, summary, hibernate
@@ -45,6 +45,7 @@
 | Session date | Phase | Elapsed | Notes |
 |--------------|-------|---------|-------|
 | 2026-11-22 | Planning + read-only spikes | tbd | Plan agreed with Kevin; nothing built |
+| 2026-11-22 | Phase 1 — Rove side (evening) | ~1 h 15 min (estimate, not timed live) | stores, routes, dashboard panel, 72 tests; not deployed |
 
 **Total project time:** _tbd_
 
