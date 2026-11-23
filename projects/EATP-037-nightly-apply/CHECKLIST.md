@@ -7,7 +7,8 @@
 - [x] Read Claude quota from WSL the way Pulse does (2026-11-22: session 45 %, weekly 45 %)
 - [x] Check hibernation / wake-timer support with `powercfg` (2026-11-22: hibernation disabled, S0 only)
 - [x] Compare Kevin's CVs on `D:` with the ones in Notion (identical, SHA-256)
-- [ ] `claude -p` driving Chrome unattended, one OCC vacancy, no submit
+- [x] `claude -p --chrome` drives Chrome from WSL on a sample page (2026-11-22, Haiku, 9 turns, no denials)
+- [ ] Same on a real OCC/Computrabajo vacancy (no submit), with the screen locked after a timed wake
 - [x] Chrome behaviour with the screen locked after waking (2026-11-22 short test: usable)
 - [x] Enable hibernation (2026-11-22, Kevin approved the admin prompt; Fast Startup off)
 - [x] Timed wake from hibernation, short test (2026-11-22, 87 s, worked)

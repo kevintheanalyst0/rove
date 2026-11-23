@@ -184,7 +184,12 @@ whole run, and start within ~2 minutes. **Tested 2026-11-22: it is enough** for 
 hibernation, using the real script). A multi-hour run is still untested.
 
 ## Unverified (spike first, in this order)
-1. Whether `claude -p` can drive Chrome through the extension unattended (permission mode).
+1. ~~Whether `claude -p` can drive Chrome through the extension unattended~~ **Partly answered
+   2026-11-22:** `claude -p "..." --chrome --allowedTools "mcp__claude-in-chrome" --model haiku
+   --max-turns 12 --output-format json`, run from WSL, opened a new tab on example.com, read the title
+   and returned it (9 turns, no permission denials, ~US$0.015 API-equivalent; the tab-close step was
+   requested but not verified). **Still untested:** a real OCC/Computrabajo vacancy, a screen that is
+   locked after a timed wake, and a multi-vacancy batch.
 2. ~~Whether Chrome stays usable with the Windows screen locked after waking.~~ Answered 2026-11-22
    (short test): yes. Re-confirm on an overnight run.
 3. ~~Waking from hibernation with a timer~~ Answered 2026-11-22 (short test): works. Still untested: a
