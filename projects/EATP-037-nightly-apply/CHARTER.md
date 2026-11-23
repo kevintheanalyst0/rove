@@ -188,8 +188,12 @@ hibernation, using the real script). A multi-hour run is still untested.
    2026-11-22:** `claude -p "..." --chrome --allowedTools "mcp__claude-in-chrome" --model haiku
    --max-turns 12 --output-format json`, run from WSL, opened a new tab on example.com, read the title
    and returned it (9 turns, no permission denials, ~US$0.015 API-equivalent; the tab-close step was
-   requested but not verified). **Still untested:** a real OCC/Computrabajo vacancy, a screen that is
-   locked after a timed wake, and a multi-vacancy batch.
+   requested but not verified). **Real vacancy, same day:** the same command (Haiku) opened the OCC
+   "Analista Sr. de BI" page, pressed Postularme, listed all 9 screening questions of the dialog,
+   closed it with the X and closed its tab, **without typing or sending anything** (21 turns, no
+   denials, ~US$0.02). It followed the "do not send" instruction. **Still untested:** a screen that is
+   locked after a timed wake combined with `claude -p`, a multi-vacancy batch, filling a form (as
+   opposed to reading it), and whether Haiku is reliable enough for filling (Sonnet may be needed).
 2. ~~Whether Chrome stays usable with the Windows screen locked after waking.~~ Answered 2026-11-22
    (short test): yes. Re-confirm on an overnight run.
 3. ~~Waking from hibernation with a timer~~ Answered 2026-11-22 (short test): works. Still untested: a
