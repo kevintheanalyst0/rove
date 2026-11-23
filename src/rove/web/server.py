@@ -593,6 +593,14 @@ def create_app(
             {"items": [entry.model_dump(mode="json") for entry in nightly_questions.list_open()]}
         )
 
+    @app.get("/nightly/retry")
+    def get_nightly_retry() -> JSONResponse:
+        return JSONResponse({"urls": [v.url for v in nightly_questions.vacancies_to_retry()]})
+
+    @app.get("/nightly/learned-answers")
+    def get_nightly_learned_answers() -> JSONResponse:
+        return JSONResponse({"items": nightly_questions.learned_answers()})
+
     @app.post("/nightly/questions", dependencies=[Depends(_verify_same_origin)])
     def add_nightly_question(request: NightlyQuestionRequest) -> JSONResponse:
         try:

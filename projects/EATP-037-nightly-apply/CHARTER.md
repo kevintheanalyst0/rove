@@ -125,6 +125,12 @@ Rove has no place to park vacancies that need Kevin (captcha, account, unknown q
   file, push it to Kevin's phone through Home Assistant, then hibernate.
 - A second scheduled run later the same night picks up where the first stopped.
 
+## Phase 2 plan decisions (2026-11-22, Kevin approved)
+- **Batch A first** (Rove inbox: OCC and Computrabajo); batch B (company sites) comes later.
+- Defaults: starts at **3:00 a. m.**, at most **20 vacancies per night** (Kevin raised it from 12), one
+  fresh `claude -p` session (Sonnet) per batch of a few vacancies. All configurable.
+- The PC script marks outcomes in Rove from a structured result; Claude never marks them itself.
+
 ## Review lists in Rove
 - **Skipped vacancies:** url, title, company, source, reason (`captcha`,
   `account_required`, `workday_or_similar`, `pending_question`, `mass_poster`, …), time.
@@ -184,6 +190,37 @@ badge counting what waits for Kevin). **Tests:** `test_nightly_settings.py`, `te
   `git checkout 477e5ef` on the VM + restart (data files are untouched by the code).
 - **Not in this phase:** the `applicant_answers.toml` loader and everything on the PC side (wrapper,
   playbook, scheduled task) — Phase 2.
+
+## Phase 2 — A and B built (PC-side runner code), 2026-11-22
+**Code:** `src/rove/nightly/{client,answers,selector,outcomes,quota,prompt,runner,pc}.py` and
+`pc/nightly/{read_quota,idle_minutes}.ps1`. Run it with `uv run python -m rove.nightly.runner`
+(`--dry-run` reads the real switch-ignored state, quota and inbox and prints the batches it *would*
+run, with no Claude call and no write to Rove; `--max`, `--batch`). **Tests:** `test_nightly_runner.py`,
+`test_nightly_runner_parts.py` (59 new; suite 552 green, no live Claude).
+- **Flow** (`runner.run_night`): switch (fail closed) -> quota (fail closed) -> keep-awake window ->
+  inbox -> select -> batches of `claude -p` (Sonnet) -> parse -> record in Rove -> progress file
+  `data/nightly/<day>.jsonl` -> phone summary -> release keep-awake -> hibernate only if Windows proves Kevin
+  has been idle >= 10 min. Defaults: 20 vacancies per night, batches of 4, stop starting batches at 90 % of
+  the 5 h window or at the weekly cap, stop after 2 failed batches in a row.
+- **Selection:** OCC and Computrabajo only; grade C or better; no excluded titles; companies with 5+
+  vacancies in the inbox are treated as mass posters; nothing already on Kevin's skipped list or handled
+  tonight; vacancies waiting on a question Kevin has since answered go first; URLs are cleaned of Rove's
+  tracking parameters (OCC's `sessionid`, `uuid`...).
+- **Safety decisions:** `applied` needs evidence text or it stays `pending`; a batch whose session dies
+  still has its *confirmed* outcomes recorded (so nothing is applied twice tomorrow) and counts as a
+  failure; the playbook (rule 11) tells Claude to report "already applied" pages as applied; `claude -p`
+  runs from `~/rove-nightly-work`, outside this repo, so it does not load this repo's CLAUDE.md.
+- **Bugs caught by tests:** a bare JSON list was misread as its first object (fixed: whole text, fenced
+  block, then the widest slice that starts first).
+- **Checked live:** `read_quota.ps1` (session 36 %, weekly 52 % at 8:20 p. m.), `idle_minutes.ps1`, and a real
+  `--dry-run` against Kevin's Rove (inbox 259, 6 candidates in 2 batches, nothing written).
+- **Found by the dry run:** the VM runs the Phase 1 code, so `/nightly/retry` and `/nightly/learned-answers`
+  (added in Phase 2) return 404 there. The runner tolerates it (treats both as empty) but the VM needs a
+  redeploy before the first real night.
+- The OCC "Analista Sr. de BI" (needs the CURP) was registered on Kevin's skipped list so the runner does
+  not retry it every night.
+- **Not done:** Phase C (the playbook run live, supervised), Phase D (Windows scheduled task, Vigilante
+  rule, VM redeploy).
 
 ## First supervised run (2026-11-22, Kevin present, 6 candidates from the inbox)
 Result: **2 sent** (Computrabajo: Grupo Autofin, Analista de Ecommerce), **4 skipped**. Findings:

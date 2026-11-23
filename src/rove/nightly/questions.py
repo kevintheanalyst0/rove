@@ -142,6 +142,19 @@ def learned_answer_for(question: str, language: str) -> str | None:
     return found
 
 
+def learned_answers() -> list[dict[str, str]]:
+    """Every answer Kevin has dictated, newest per (question, language)."""
+    latest_by_key: dict[tuple[str, str], dict[str, str]] = {}
+    for raw in read_jsonl(config.NIGHTLY_LEARNED_ANSWERS_FILE):
+        if raw.get("question") and raw.get("answer") and raw.get("language") in ("es", "en"):
+            latest_by_key[(raw.get("normalized", ""), raw["language"])] = {
+                "question": raw["question"],
+                "language": raw["language"],
+                "answer": raw["answer"],
+            }
+    return list(latest_by_key.values())
+
+
 def vacancies_to_retry() -> list[VacancyRef]:
     """Vacancies waiting on a question Kevin has since answered (deduped by URL)."""
     seen: dict[str, VacancyRef] = {}

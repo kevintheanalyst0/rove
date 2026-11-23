@@ -171,3 +171,20 @@ def test_dashboard_wires_the_nightly_panel(client):
     js = client.get("/static/js/app.js").text
     assert "openNightlyModal" in js and "/nightly/settings" in js and "safeHttpUrl" in js
     assert "javascript:" not in js  # links are only ever rendered for http(s) URLs
+
+
+# ------------------------------------------------- runner read endpoints ---
+
+
+def test_retry_and_learned_answers_endpoints(client):
+    created = client.post(
+        "/nightly/questions", json={"question": "¿Looker?", "vacancy": {"url": URL, "title": "BI"}}
+    ).json()
+    assert client.get("/nightly/retry").json() == {"urls": []}
+    assert client.get("/nightly/learned-answers").json() == {"items": []}
+
+    client.post(f"/nightly/questions/{created['id']}/answer", json={"answer": "No."})
+    assert client.get("/nightly/retry").json() == {"urls": [URL]}
+    assert client.get("/nightly/learned-answers").json()["items"] == [
+        {"question": "¿Looker?", "language": "es", "answer": "No."}
+    ]

@@ -20,6 +20,17 @@ the day the work was done; see `ROADMAP.md` for status/complexity/time per proje
   the PC-side runner is Phase 2. See
   `projects/EATP-037-nightly-apply/`.
 
+## EATP-037 (phase 2 A+B, in progress) — Nightly apply: PC-side runner code (2026-11-22)
+- `src/rove/nightly/`: `client.py` (Rove HTTP client), `answers.py` (approved answers for the prompt),
+  `selector.py` (which inbox vacancies to try, URL cleaning), `outcomes.py` (parse a batch's JSON, never
+  trust an unconfirmed "applied", record outcomes in Rove), `quota.py`, `prompt.py` (the 11-rule
+  playbook), `runner.py` (switch -> quota -> keep-awake -> batches -> record -> summary -> hibernate),
+  `pc.py` (real `claude -p --chrome`, PowerShell helpers, phone notices via the Vigilante HA config).
+- `pc/nightly/read_quota.ps1`, `idle_minutes.ps1`. CLI: `python -m rove.nightly.runner [--dry-run]`.
+- Server: `GET /nightly/retry`, `GET /nightly/learned-answers` (not yet deployed to the VM).
+- 59 new tests (suite: 552 green). Caught: a bare JSON list was misparsed. Live-checked the quota
+  script and a real `--dry-run`. Pending: supervised live batch, Windows scheduled task, Vigilante rule.
+
 ## EATP-035 — Unattended pre-run submit sweep (2026-09-01)
 - `src/rove/apply/sweep.py`: `sweep_pending_applications()` sends every
   still-pending `draft_ready` application, sequentially, reusing

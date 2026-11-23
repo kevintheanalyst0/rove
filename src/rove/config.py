@@ -51,6 +51,11 @@ NIGHTLY_SETTINGS_FILE = DATA_DIR / "nightly_settings.json"
 NIGHTLY_SKIPPED_FILE = DATA_DIR / "nightly_skipped.jsonl"
 NIGHTLY_QUESTIONS_FILE = DATA_DIR / "nightly_questions.jsonl"
 NIGHTLY_LEARNED_ANSWERS_FILE = DATA_DIR / "learned_answers.jsonl"
+# EATP-037 phase 2 (PC-side runner): Kevin's approved answers (gitignored, local to his
+# PC checkout), the per-night progress logs, and where Rove's server lives.
+NIGHTLY_ANSWERS_FILE = DATA_DIR / "applicant_answers.toml"
+NIGHTLY_PROGRESS_DIR = DATA_DIR / "nightly"
+ROVE_URL = os.getenv("ROVE_URL", "http://100.97.143.79:8000")
 
 # EATP-034: auto-apply draft/send state per job (rove.apply.store).
 # Append-only, same crash-safety discipline as TRACKING_FILE/INBOX_FILE —

@@ -24,8 +24,8 @@
 - [x] Tests (fixtures, no live AI): 72 new, suite 493 green
 
 ### Phase 2 — PC runner
-- [ ] Wrapper: preflight (switch, quota), batches, per-vacancy progress, cleanup, summary, hibernate
-- [ ] Playbook prompt (rules in the charter)
+- [x] Wrapper: preflight (switch, quota), batches, per-vacancy progress, summary, hibernate (code + tests with fakes, 2026-11-22; `--dry-run` checked live)
+- [~] Playbook prompt written (`prompt.py`, 11 rules + JSON contract); not yet run live: that is the supervised batch
 - [ ] Windows scheduled task (wake to run)
 - [ ] Vigilante rule: hibernate instead of shutdown before a scheduled wake
 
@@ -45,6 +45,7 @@
 | Session date | Phase | Elapsed | Notes |
 |--------------|-------|---------|-------|
 | 2026-11-22 | Planning + read-only spikes | tbd | Plan agreed with Kevin; nothing built |
+| 2026-11-22 | Phase 2 A+B — runner code (night) | ~1 h 30 min (estimate, not timed live) | selector, outcomes, quota, prompt, runner, pc ports, 59 tests; live dry run OK |
 | 2026-11-22 | Phase 1 — Rove side (evening) | ~1 h 15 min (estimate, not timed live) | stores, routes, dashboard panel, 72 tests; not deployed |
 
 **Total project time:** _tbd_
