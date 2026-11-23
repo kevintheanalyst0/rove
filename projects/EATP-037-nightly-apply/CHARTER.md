@@ -73,14 +73,9 @@ Rove has no place to park vacancies that need Kevin (captcha, account, unknown q
    notice period, reasons for leaving, salary expectation, work authorization, English
    level — are answered **only** from that file, never inferred from the CV. If the
    answer is missing: log a pending question, skip the vacancy, do not invent.
-   **"Are you currently employed / working?"** is answered only with the sentence Kevin
-   confirmed is true on 2026-11-22: "I currently work independently on data analysis
-   projects" (Spanish version in the answers file). Claude never names an employer, never
-   writes "Audi" or any company as the current one, and never answers with a bare "yes".
-   **Reason for leaving, notice period, employment gap and the name of any current employer
-   are never answered by Claude** — Kevin handles those himself, face to face in interviews.
-   If a form requires one of them, the vacancy goes to the skipped list
-   (`employment_question`) for Kevin to answer. Approved values live in
+   Questions about current employment, reason for leaving, notice period, employment gap
+   and the name of any employer are **never answered by Claude**: the vacancy goes to the
+   skipped list (`employment_question`) for Kevin to answer. Approved values live in
    `data/applicant_answers.toml` (local to Kevin's PC checkout, gitignored): salary
    expectation 15,000 MXN/month, authorized to work in Mexico, English B2 (deliberately not
    C1: Kevin is out of practice and it would show), 4 years of experience (since 2022). If a
@@ -179,5 +174,8 @@ Not estimated yet. Expect several sessions: spikes, then Rove side, then the PC 
 ## Open questions for Kevin
 - Answered 2026-11-22: salary, work authorization, English level, years of experience (stored in
   `data/applicant_answers.toml`). Employment-status questions are deliberately left to Kevin.
+- Kevin plans to hand this responsibility (applying to vacancies) to ChatGPT at some point.
+  Reason, in his words: he is uncomfortable, and considers it dangerous, having to give
+  personal data so a task can run. Recorded at his request on 2026-11-22.
 - Still open: whether the answers file should also be readable from the VM (where Rove's review
   lists will live) or only from the PC runner.
