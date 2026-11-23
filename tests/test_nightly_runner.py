@@ -441,3 +441,51 @@ def test_an_unreadable_questions_list_does_not_stop_the_night(tmp_path):
     rove = FakeRove(jobs=["a"], fail={"/nightly/questions"})
     h = Harness(tmp_path, rove, quotas=[OK_QUOTA], claude=_all_applied)
     assert run_night(h.ports).applied == 1
+
+
+# ------------------------------------------ charger off before hibernating ---
+
+
+def _ha_config(tmp_path, monkeypatch):
+    token = tmp_path / "tok"
+    token.write_text("abc\n", encoding="utf-8")
+    config_file = tmp_path / "config"
+    config_file.write_text(f'HA="http://ha.test:8123"\nNOTIFY_DEVICES="d"\nTOKEN_FILE="{token}"\nSWITCH=switch.laptop\n', encoding="utf-8")
+    monkeypatch.setattr(pc, "VIGILANTE_CONFIG", config_file)
+    monkeypatch.setattr(pc, "VIGILANTE_STATE_DIR", tmp_path / "state")
+
+
+def test_hibernate_turns_the_charger_off_first_and_leaves_the_vigilante_marker(tmp_path, monkeypatch):
+    _ha_config(tmp_path, monkeypatch)
+    order = []
+    monkeypatch.setattr(pc, "_run_ps", lambda *a, **k: _ps_result("42.0\n"))
+    monkeypatch.setattr(pc.httpx, "post", lambda url, **kw: order.append(("post", url, kw["json"])) or type("R", (), {"status_code": 200})())
+    monkeypatch.setattr(pc.subprocess, "run", lambda cmd, **kw: order.append(("shutdown", cmd)))
+    assert pc.hibernate_if_idle(10.0) is True
+    assert order[0] == ("post", "http://ha.test:8123/api/services/switch/turn_off", {"entity_id": "switch.laptop"})
+    assert order[1] == ("shutdown", [pc.SHUTDOWN, "/h"])
+    assert (tmp_path / "state" / "apagando").read_text(encoding="utf-8").isdigit()
+
+
+def test_hibernate_does_nothing_when_kevin_is_present_or_the_idle_time_is_unreadable(tmp_path, monkeypatch):
+    _ha_config(tmp_path, monkeypatch)
+    calls = []
+    monkeypatch.setattr(pc.httpx, "post", lambda *a, **k: calls.append("post"))
+    monkeypatch.setattr(pc.subprocess, "run", lambda *a, **k: calls.append("shutdown"))
+    for stdout in ("3.0\n", "-1\n", "garbage"):
+        monkeypatch.setattr(pc, "_run_ps", lambda *a, **k: _ps_result(stdout))
+        assert pc.hibernate_if_idle(10.0) is False
+    assert calls == []
+
+
+def test_hibernate_still_hibernates_if_the_charger_call_fails(tmp_path, monkeypatch):
+    _ha_config(tmp_path, monkeypatch)
+    monkeypatch.setattr(pc, "_run_ps", lambda *a, **k: _ps_result("42.0\n"))
+
+    def boom(*a, **k):
+        raise httpx.ConnectError("no route")
+
+    monkeypatch.setattr(pc.httpx, "post", boom)
+    ran = []
+    monkeypatch.setattr(pc.subprocess, "run", lambda cmd, **kw: ran.append(cmd))
+    assert pc.hibernate_if_idle(10.0) is True and ran == [[pc.SHUTDOWN, "/h"]]

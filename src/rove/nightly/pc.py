@@ -172,9 +172,37 @@ def keep_awake(minutes: int = 180) -> Iterator[None]:
             process.terminate()
 
 
+VIGILANTE_STATE_DIR = Path(os.getenv("VIGILANTE_STATE", str(Path.home() / ".cache" / "vigilante")))
+
+
+def charger_off() -> bool:
+    """Turn the laptop's charger (Kevin's smart plug in Home Assistant) off before hibernating,
+    like the Vigilante does: Kevin never wants it left on while the PC sleeps. Also leaves the
+    Vigilante's `apagando` marker so it does not switch it straight back on. Best effort."""
+    cfg = _vigilante_config()
+    try:
+        token = Path(os.path.expanduser(os.path.expandvars(cfg["TOKEN_FILE"]))).read_text(encoding="utf-8").strip()
+        base, switch = cfg["HA"].rstrip("/"), cfg.get("SWITCH", "switch.laptop")
+    except (KeyError, OSError):
+        logger.warning("sin configuración de Home Assistant: no pude apagar el cargador")
+        return False
+    try:
+        VIGILANTE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+        (VIGILANTE_STATE_DIR / "apagando").write_text(str(int(time.time())), encoding="utf-8")
+        response = httpx.post(
+            f"{base}/api/services/switch/turn_off",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"entity_id": switch},
+            timeout=15,
+        )
+        return response.status_code == 200
+    except (OSError, httpx.HTTPError):
+        return False
+
+
 def hibernate_if_idle(min_idle_minutes: float = 10.0) -> bool:
-    """Hibernate only when Windows can prove Kevin has been away; any doubt
-    (script failed, unreadable number) means he is present and nothing happens."""
+    """Hibernate (charger off first) only when Windows can prove Kevin has been away; any
+    doubt (script failed, unreadable number) means he is present and nothing happens."""
     try:
         completed = _run_ps(PC_SCRIPTS / "idle_minutes.ps1", timeout=30)
         idle = float(completed.stdout.strip().splitlines()[-1])
@@ -182,6 +210,7 @@ def hibernate_if_idle(min_idle_minutes: float = 10.0) -> bool:
         return False
     if idle < min_idle_minutes:
         return False
+    charger_off()
     subprocess.run([SHUTDOWN, "/h"], check=False)
     return True
 

@@ -238,6 +238,12 @@ run, with no Claude call and no write to Rove; `--max`, `--batch`). **Tests:** `
   (otherwise the same one would be retried and re-asked every night). 2 tests.
 - **VM redeployed** to `74101f8` (pull + restart `rove-web`, no run in progress): `/nightly/retry` and
   `/nightly/learned-answers` now answer 200; switch off, inbox 257, lists intact, no log errors.
+- **Charger decision (Kevin, same night):** the charger is turned **off** whenever the PC hibernates, also on nightly-run
+  nights (the earlier "charger stays on" exception was dropped: a charger left on all night ruins the battery). So
+  **wake timers on battery were enabled** in the active Windows power plan (reversible) and the Vigilante turns the
+  charger back on when the PC wakes. The runner now also **turns the charger off before it hibernates** at the end
+  (`pc.charger_off`, plus the Vigilante's `apagando` marker); otherwise it would stay on all day, since the
+  Vigilante does not run while the PC hibernates. **Untested: waking from hibernation on battery.**
 - Suite: 559 green. Vigilante scenarios: "todo bien".
 - **Still untested:** the task actually waking the PC and running unattended at 3:00 a. m. with the screen
   locked; the `applied` path with a real confirmation page; a multi-hour hibernation. That is the first
