@@ -8,9 +8,10 @@
 - [x] Check hibernation / wake-timer support with `powercfg` (2026-11-22: hibernation disabled, S0 only)
 - [x] Compare Kevin's CVs on `D:` with the ones in Notion (identical, SHA-256)
 - [ ] `claude -p` driving Chrome unattended, one OCC vacancy, no submit
-- [ ] Chrome behaviour with the screen locked after waking
+- [x] Chrome behaviour with the screen locked after waking (2026-11-22 short test: usable)
 - [x] Enable hibernation (2026-11-22, Kevin approved the admin prompt; Fast Startup off)
-- [ ] Timed wake from hibernation (Vigilante repo)
+- [x] Timed wake from hibernation, short test (2026-11-22, 87 s, worked)
+- [ ] Overnight multi-hour timed wake (Vigilante repo)
 - [ ] OCC / Computrabajo apply flows: captcha? account?
 
 ### Phase 1 — Rove side

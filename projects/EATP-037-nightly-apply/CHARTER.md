@@ -128,7 +128,11 @@ Rove has no place to park vacancies that need Kevin (captcha, account, unknown q
 Provided by the Vigilante project (separate repo). Plan, verified findings and risks:
 `docs/DESPERTAR-PC.md` there. Key facts as of 2026-11-22: hibernation was **enabled that day** (the file lives on `C:`,
 which Windows requires; Fast Startup was turned off so "shutdown" behaves as before), and
-**waking from hibernation with a timer has never been tested**.
+**a single short timed wake from hibernation was tested successfully that evening** (7:08-7:10 p. m.:
+87 s asleep, woken by a wake-to-run task registered without admin rights; WSL and the Claude session
+survived; Chrome stayed drivable with the screen locked — navigate, read text, screenshot, click —
+with one brief extension disconnect that recovered by itself). Long (hours), overnight and
+on-battery wakes are untested.
 
 ## Known limitations
 - Workday-style tenants need a per-company account with a password. Not automated; they
@@ -147,8 +151,10 @@ which Windows requires; Fast Startup was turned off so "shutdown" behaves as bef
 
 ## Unverified (spike first, in this order)
 1. Whether `claude -p` can drive Chrome through the extension unattended (permission mode).
-2. Whether Chrome stays usable with the Windows screen locked after waking.
-3. Waking from hibernation with a timer (Vigilante project; hibernation itself was enabled 2026-11-22).
+2. ~~Whether Chrome stays usable with the Windows screen locked after waking.~~ Answered 2026-11-22
+   (short test): yes. Re-confirm on an overnight run.
+3. ~~Waking from hibernation with a timer~~ Answered 2026-11-22 (short test): works. Still untested: a
+   multi-hour overnight wake (Vigilante project).
 4. That the usage endpoint keeps working (it is not a public API) — keep fixed per-run
    caps as a fallback.
 5. OCC/Computrabajo application flows: captcha? account? — test with one vacancy, no submit.
