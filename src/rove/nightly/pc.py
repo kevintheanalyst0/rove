@@ -151,6 +151,28 @@ def notify(title: str, message: str) -> None:
             )
 
 
+CHROME_START_WAIT = 30  # seconds for Chrome and the extension to come up after launching it
+
+
+def ensure_chrome(*, sleep: Callable[[float], None] = time.sleep) -> bool:
+    """Start Chrome if it is not running (Kevin's rule: the Claude extension only connects while
+    Chrome is open, and he has always fixed it by opening Chrome first). Returns True if it had to
+    launch it. Best effort: a failure here just means the batch will fail and be retried."""
+    try:
+        completed = subprocess.run(
+            [POWERSHELL, "-NoProfile", "-Command",
+             "if (Get-Process chrome -ErrorAction SilentlyContinue) { 'running' } else { Start-Process chrome; 'started' }"],
+            capture_output=True, text=True, timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    if "started" in completed.stdout:
+        logger.info("Chrome estaba cerrado: lo abrí; espero %s s a que conecte la extensión", CHROME_START_WAIT)
+        sleep(CHROME_START_WAIT)
+        return True
+    return False
+
+
 # --- keep the PC awake / let it sleep ----------------------------------------
 
 
@@ -248,6 +270,7 @@ def real_ports(*, dry_run: bool, cfg: RunConfig) -> Ports:
             keep_awake=keep_awake,
             hibernate_if_idle=lambda: hibernate_if_idle(cfg.min_idle_minutes),
             applicant_answers=answers_mod.load_applicant_answers,
+            ensure_chrome=ensure_chrome,
         )
 
     def fake_claude(prompt: str) -> ClaudeResult:

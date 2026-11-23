@@ -506,3 +506,49 @@ def test_every_outcome_ends_with_the_pc_going_back_to_sleep(tmp_path):
         assert h.hibernated == 1, status
     unreadable = Harness(tmp_path / "ns", FakeRove(jobs=["a"], fail={"/nightly/settings"}), quotas=[OK_QUOTA], claude=_all_applied)
     assert run_night(unreadable.ports).status == "no_switch" and unreadable.hibernated == 1
+
+
+# ------------------------------------------------------- Chrome must be open ---
+
+
+def test_chrome_is_ensured_before_the_first_batch_and_again_after_a_failed_one(tmp_path):
+    calls = []
+    outcomes = iter([ClaudeResult(ok=False, error="no extension"), None])
+
+    def claude(text, n):
+        calls.append(("claude", n))
+        first = next(outcomes)
+        return first if first is not None else _all_applied(text, n)
+
+    h = Harness(tmp_path, FakeRove(jobs=list("abcd")), quotas=[OK_QUOTA], claude=claude)
+    h.ports.ensure_chrome = lambda: calls.append(("chrome",))
+    run_night(h.ports, RunConfig(batch_size=2))
+    assert calls == [("chrome",), ("claude", 1), ("chrome",), ("claude", 2)]
+
+
+def test_chrome_is_not_touched_when_there_is_nothing_to_do(tmp_path):
+    calls = []
+    h = Harness(tmp_path, FakeRove(jobs=[_job("a", source="greenhouse")]), quotas=[OK_QUOTA], claude=_all_applied)
+    h.ports.ensure_chrome = lambda: calls.append("chrome")
+    run_night(h.ports)
+    assert calls == []
+
+
+def test_ensure_chrome_launches_it_only_when_it_is_not_running(monkeypatch):
+    waits = []
+    monkeypatch.setattr(pc.subprocess, "run", lambda cmd, **kw: type("R", (), {"stdout": "running\n"})())
+    assert pc.ensure_chrome(sleep=waits.append) is False and waits == []
+    monkeypatch.setattr(pc.subprocess, "run", lambda cmd, **kw: type("R", (), {"stdout": "started\n"})())
+    assert pc.ensure_chrome(sleep=waits.append) is True and waits == [pc.CHROME_START_WAIT]
+
+
+def test_ensure_chrome_never_crashes_the_night(monkeypatch):
+    def boom(*a, **k):
+        raise OSError("no powershell")
+
+    monkeypatch.setattr(pc.subprocess, "run", boom)
+    assert pc.ensure_chrome(sleep=lambda s: None) is False
+
+
+def test_real_ports_wire_ensure_chrome():
+    assert pc.real_ports(dry_run=False, cfg=RunConfig()).ensure_chrome is pc.ensure_chrome

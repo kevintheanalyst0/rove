@@ -64,6 +64,8 @@ class Ports:
     keep_awake: Callable[[], ContextManager[None]]
     hibernate_if_idle: Callable[[], bool]
     applicant_answers: Callable[[], dict[str, Any]]
+    # Make sure Chrome (with Kevin's Claude extension) is running before a batch needs it.
+    ensure_chrome: Callable[[], None] = lambda: None
     now: Callable[[], datetime] = lambda: datetime.now(UTC)
     progress_dir: Path = field(default_factory=lambda: config.NIGHTLY_PROGRESS_DIR)
 
@@ -193,6 +195,7 @@ def _run_batches(ports: Ports, cfg: RunConfig, weekly_cap: float, quota: Quota) 
     by_url = {c.url: c for c in candidates}
     queue = list(candidates)
     consecutive_failures = 0
+    ports.ensure_chrome()  # after a restart (a Windows update, say) Chrome is closed and Claude cannot see the extension
 
     while queue and report.attempted < cfg.max_per_night:
         # The usage endpoint rate-limits: reuse the preflight reading for the first batch
@@ -223,6 +226,7 @@ def _run_batches(ports: Ports, cfg: RunConfig, weekly_cap: float, quota: Quota) 
             report.failures += 1
             consecutive_failures += 1
             report.errors.append(f"lote {report.batches}: {result.error or 'falló'}")
+            ports.ensure_chrome()  # maybe Chrome closed mid-run: make sure it is back before the next batch
             salvage = [o for o in outcomes if o.status != "pending"]
             if salvage:
                 salvaged = record_outcomes(ports.client, by_url, salvage)

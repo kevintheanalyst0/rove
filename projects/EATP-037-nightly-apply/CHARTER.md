@@ -255,6 +255,11 @@ run, with no Claude call and no write to Rove; `--max`, `--batch`). **Tests:** `
   yet. The runner now **always** turns the charger off and hibernates after any wake-run (also switch off, nothing to
   do, failures) unless Kevin is using the PC, so the charger is on only from ~2:55 until the run ends.
 - **First-night cap:** the registered task has `--max 8` (Kevin, 2026-11-22); `install_task.ps1` restores the default 20.
+- **Chrome must be open:** `claude -p --chrome` only sees Kevin's extension while Chrome runs (his standing fix has always
+  been "open Chrome first"). After a hibernation Chrome is still open (hibernate keeps everything), but after a restart
+  (a Windows update, say) it is not. The runner now calls `pc.ensure_chrome()` before the first batch and again after a
+  failed batch: if no `chrome` process exists it runs `Start-Process chrome` and waits 30 s. It cannot fix an extension that
+  signed out after a Chrome restart (the tool warns that can happen); that would show up as failed batches.
 - Suite: 559 green. Vigilante scenarios: "todo bien".
 - **Still untested:** the task actually waking the PC and running unattended at 3:00 a. m. with the screen
   locked; the `applied` path with a real confirmation page; a multi-hour hibernation. That is the first
