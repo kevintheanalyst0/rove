@@ -265,3 +265,11 @@ def test_candidates_use_clean_urls_and_dedupe_by_them():
     assert [c.url for c in result] == ["https://www.occ.com.mx/empleo/oferta/1-x"]
     skipped = selector.candidates_from_inbox(_inbox(a), exclude_urls={"https://www.occ.com.mx/empleo/oferta/1-x"})
     assert skipped == []
+
+
+def test_parse_quota_error_reads_status_and_retry_after():
+    from rove.nightly.quota import parse_quota_error
+
+    assert parse_quota_error('{"ok":false,"status":429,"retry_after":264}') == (429, 264)
+    assert parse_quota_error('{"ok":false,"error":"x"}') == (0, 0)
+    assert parse_quota_error("garbage") == (0, 0) and parse_quota_error("") == (0, 0)

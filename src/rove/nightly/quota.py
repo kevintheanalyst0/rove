@@ -21,6 +21,15 @@ class Quota:
     weekly_resets_at: str | None = None
 
 
+def parse_quota_error(text: str) -> tuple[int, int]:
+    """(http_status, retry_after_seconds) from a failed reading; (0, 0) if unknown."""
+    try:
+        data: Any = json.loads((text or "").strip().splitlines()[-1])
+        return int(data.get("status") or 0), int(data.get("retry_after") or 0)
+    except (json.JSONDecodeError, IndexError, TypeError, ValueError, AttributeError):
+        return 0, 0
+
+
 def parse_quota(text: str) -> Quota | None:
     """Parse the PowerShell script's one-line JSON. `None` for anything unusable."""
     try:

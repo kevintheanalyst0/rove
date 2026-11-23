@@ -11,5 +11,8 @@ try {
      session_resets_at = [string]$r.five_hour.resets_at
      weekly_resets_at  = [string]$r.seven_day.resets_at } | ConvertTo-Json -Compress
 } catch {
-  @{ ok = $false; error = $_.Exception.GetType().Name } | ConvertTo-Json -Compress
+  $resp = $_.Exception.Response
+  $status = 0; $retry = 0
+  if ($resp) { $status = [int]$resp.StatusCode; [void][int]::TryParse([string]$resp.Headers["Retry-After"], [ref]$retry) }
+  @{ ok = $false; error = $_.Exception.GetType().Name; status = $status; retry_after = $retry } | ConvertTo-Json -Compress
 }

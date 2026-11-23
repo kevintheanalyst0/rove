@@ -181,15 +181,15 @@ def test_stops_at_the_nightly_cap(tmp_path):
 
 def test_stops_starting_batches_when_the_window_reaches_90(tmp_path):
     rove = FakeRove(jobs=list("abcdef"))
-    # preflight 40, before batch 1 -> 50, before batch 2 -> 91, final read -> 91
-    h = Harness(tmp_path, rove, quotas=[Quota(40, 45), Quota(50, 46), Quota(91, 50)], claude=_all_applied)
+    # preflight 40 (reused for batch 1), before batch 2 -> 91, final read -> 91
+    h = Harness(tmp_path, rove, quotas=[Quota(40, 45), Quota(91, 50)], claude=_all_applied)
     report = run_night(h.ports, RunConfig(batch_size=2))
     assert report.batches == 1 and report.applied == 2 and "ventana" in report.stop_reason
     assert report.quota_end.session_pct == 91
 
 
 def test_quota_becoming_unreadable_mid_run_stops_it(tmp_path):
-    h = Harness(tmp_path, FakeRove(jobs=list("abcd")), quotas=[OK_QUOTA, OK_QUOTA, None], claude=_all_applied)
+    h = Harness(tmp_path, FakeRove(jobs=list("abcd")), quotas=[OK_QUOTA, None], claude=_all_applied)
     report = run_night(h.ports, RunConfig(batch_size=2))
     assert report.batches == 1 and "cuota" in report.stop_reason
 
@@ -372,3 +372,55 @@ def test_dry_run_client_ignores_the_switch_but_keeps_the_cap():
     client = pc._ReadOnlyClient("http://rove.test", transport=httpx.MockTransport(rove))
     settings = client.get_settings()
     assert settings["allowed"] is True and settings["weekly_cap_pct"] == 60 and "dry-run" in settings["reason"]
+
+
+# ------------------------------------------- rate limit and notice config ---
+
+
+def test_first_batch_reuses_the_preflight_reading_so_the_endpoint_is_read_once_per_gap(tmp_path):
+    reads = {"n": 0}
+    h = Harness(tmp_path, FakeRove(jobs=list("abcd")), quotas=[OK_QUOTA], claude=_all_applied)
+    original = h.ports.read_quota
+
+    def counting():
+        reads["n"] += 1
+        return original()
+
+    h.ports.read_quota = counting
+    run_night(h.ports, RunConfig(batch_size=2))
+    # preflight + one read before batch 2 + the final read; none before batch 1
+    assert reads["n"] == 3
+
+
+def _ps_result(stdout):
+    return type("R", (), {"stdout": stdout})()
+
+
+def test_read_quota_waits_out_a_429_then_succeeds(monkeypatch):
+    answers = ['{"ok":false,"error":"WebException","status":429,"retry_after":264}',
+               '{"ok":true,"session":41,"weekly":53}']
+    monkeypatch.setattr(pc, "_run_ps", lambda *a, **k: _ps_result(answers.pop(0)))
+    slept = []
+    assert pc.read_quota(sleep=slept.append) == Quota(41.0, 53.0, None, None)
+    assert slept == [267]
+
+
+def test_read_quota_gives_up_on_a_very_long_rate_limit_and_after_the_last_try(monkeypatch):
+    monkeypatch.setattr(pc, "_run_ps", lambda *a, **k: _ps_result('{"ok":false,"status":429,"retry_after":3000}'))
+    slept = []
+    assert pc.read_quota(sleep=slept.append) is None and slept == []
+    monkeypatch.setattr(pc, "_run_ps", lambda *a, **k: _ps_result("garbage"))
+    assert pc.read_quota(sleep=slept.append) is None and slept == [15, 15]
+
+
+def test_notify_expands_variables_and_tilde_in_the_token_path(tmp_path, monkeypatch):
+    token = tmp_path / "secret-token"
+    token.write_text("abc123\n", encoding="utf-8")
+    config_file = tmp_path / "config"
+    config_file.write_text('HA="http://ha.test:8123"\nNOTIFY_DEVICES="dev_a"\nTOKEN_FILE="$TOKEN_DIR/secret-token"\n', encoding="utf-8")
+    monkeypatch.setattr(pc, "VIGILANTE_CONFIG", config_file)
+    monkeypatch.setenv("TOKEN_DIR", str(tmp_path))
+    sent = []
+    monkeypatch.setattr(pc.httpx, "post", lambda url, **kw: sent.append((url, kw["headers"]["Authorization"], kw["json"])))
+    pc.notify("Título", "Mensaje")
+    assert sent == [("http://ha.test:8123/api/services/notify/dev_a", "Bearer abc123", {"title": "Título", "message": "Mensaje"})]

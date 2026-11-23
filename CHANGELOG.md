@@ -29,7 +29,11 @@ the day the work was done; see `ROADMAP.md` for status/complexity/time per proje
 - `pc/nightly/read_quota.ps1`, `idle_minutes.ps1`. CLI: `python -m rove.nightly.runner [--dry-run]`.
 - Server: `GET /nightly/retry`, `GET /nightly/learned-answers` (not yet deployed to the VM).
 - 59 new tests (suite: 552 green). Caught: a bare JSON list was misparsed. Live-checked the quota
-  script and a real `--dry-run`. Pending: supervised live batch, Windows scheduled task, Vigilante rule.
+  script and a real `--dry-run`.
+- **First live supervised batch (3 vacancies, Sonnet): 0 sent, 2 dismissed (offer gone, probable scam),
+  1 question for Kevin; window 42->43 %.** It exposed and fixed: the usage endpoint's HTTP 429 (reuse the
+  preflight reading, honour `Retry-After`, retry; still fails closed), `$HOME` in the Vigilante token path,
+  and added `--no-hibernate`. Pending: the Windows scheduled task, the Vigilante rule, a VM redeploy.
 
 ## EATP-035 — Unattended pre-run submit sweep (2026-09-01)
 - `src/rove/apply/sweep.py`: `sweep_pending_applications()` sends every

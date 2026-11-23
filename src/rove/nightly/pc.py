@@ -16,7 +16,8 @@ import os
 import shlex
 import subprocess
 import tempfile
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +26,7 @@ import httpx
 from rove import config
 from rove.nightly import answers as answers_mod
 from rove.nightly.client import RoveClient
-from rove.nightly.quota import Quota, parse_quota
+from rove.nightly.quota import Quota, parse_quota, parse_quota_error
 from rove.nightly.runner import ClaudeResult, Ports, RunConfig
 
 logger = logging.getLogger("rove.nightly.pc")
@@ -58,12 +59,30 @@ def _run_ps(script: Path, *args: str, timeout: int = 60) -> subprocess.Completed
 # --- quota ------------------------------------------------------------------
 
 
-def read_quota() -> Quota | None:
-    try:
-        completed = _run_ps(PC_SCRIPTS / "read_quota.ps1", timeout=45)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return parse_quota(completed.stdout)
+MAX_RETRY_AFTER = 330  # seconds; longer than this and waiting is not worth it
+
+
+def read_quota(*, attempts: int = 3, sleep: Callable[[float], None] = time.sleep) -> Quota | None:
+    """Read the usage, retrying a rate limit (HTTP 429 asks to wait `Retry-After`
+    seconds) or a blip a few times. Still fails closed: `None` after the last try."""
+    for attempt in range(attempts):
+        try:
+            completed = _run_ps(PC_SCRIPTS / "read_quota.ps1", timeout=45)
+            reading = parse_quota(completed.stdout)
+            if reading is not None:
+                return reading
+            status, retry_after = parse_quota_error(completed.stdout)
+        except (OSError, subprocess.SubprocessError):
+            status, retry_after = 0, 0
+        if attempt == attempts - 1:
+            break
+        if status == 429 and retry_after <= MAX_RETRY_AFTER:
+            sleep(retry_after + 3)
+        elif status == 429:
+            return None
+        else:
+            sleep(15)
+    return None
 
 
 # --- Claude -----------------------------------------------------------------
@@ -116,7 +135,8 @@ def _vigilante_config() -> dict[str, str]:
 def notify(title: str, message: str) -> None:
     cfg = _vigilante_config()
     try:
-        token = Path(cfg["TOKEN_FILE"]).read_text(encoding="utf-8").strip()
+        token_path = os.path.expanduser(os.path.expandvars(cfg["TOKEN_FILE"]))
+        token = Path(token_path).read_text(encoding="utf-8").strip()
         base, devices = cfg["HA"].rstrip("/"), cfg["NOTIFY_DEVICES"].split()
     except (KeyError, OSError):
         logger.warning("sin configuración de avisos; no pude notificar: %s", title)

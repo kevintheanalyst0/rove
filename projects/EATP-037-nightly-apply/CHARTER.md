@@ -222,6 +222,32 @@ run, with no Claude call and no write to Rove; `--max`, `--batch`). **Tests:** `
 - **Not done:** Phase C (the playbook run live, supervised), Phase D (Windows scheduled task, Vigilante
   rule, VM redeploy).
 
+## Phase C — first live, supervised batch (2026-11-22, Kevin present)
+Command: `python -m rove.nightly.runner --max 3 --batch 3 --no-hibernate` with the switch turned on only for
+the test (and off again right after). Real Claude (Sonnet), real Chrome, real Rove.
+- **First attempt aborted safely at 20 s, nothing sent:** the usage endpoint answered HTTP 429 (retry in
+  264 s) after many calls that evening, the second read (seconds after the preflight) failed and the
+  runner stopped, as designed. Also found: the phone notice failed because `TOKEN_FILE` in the
+  Vigilante config uses `$HOME`. **Fixes (tests added):** reuse the preflight reading for the first batch,
+  honour `Retry-After` and retry up to 3 times (still fails closed), the PowerShell script now reports
+  `status`/`retry_after`, paths are expanded with `expandvars`/`expanduser`, and `--no-hibernate` for
+  supervised runs.
+- **Second attempt (after waiting out the rate limit): worked.** 3 vacancies, one `claude -p` session,
+  ~4 minutes. Results, all recorded by the runner in Rove: **0 sent, 2 dismissed, 1 question for Kevin.**
+  - Apex Systems "Data Analyst (Remote in Mexico)" (OCC) -> `offer_gone` (OCC showed a 404).
+  - Disability Help Group of Arizona "Remote Administrative Assistant" (OCC) -> `suspected_scam`
+    (asks for a voice note and a WhatsApp number to apply); nothing sent.
+  - IDS Comercial "Data Analyst" (Computrabajo) -> `pending_question`: technical screening questions
+    (Unity Catalog / Azure Databricks) with no approved answer; nothing sent. The salary question did
+    have an approved answer.
+- **Cost:** Claude 5-hour window 42 -> 43 %, weekly unchanged at 53 % for the 3 vacancies (1 % resolution,
+  so rough: on the order of a third of a point of the window per vacancy with Sonnet).
+- **Sonnet followed the rules:** correct classification with a one-line reason each, no submission, no
+  invented answers, valid JSON the parser accepted. Inbox 259 -> 257 (the 2 dismissed).
+- **Not yet exercised live:** the `applied` path (no vacancy passed the rules this time) and therefore the
+  evidence check on a real confirmation page; form filling by the runner; leftover Chrome tabs
+  (not verified); arrival of the phone summary (Kevin to confirm).
+
 ## First supervised run (2026-11-22, Kevin present, 6 candidates from the inbox)
 Result: **2 sent** (Computrabajo: Grupo Autofin, Analista de Ecommerce), **4 skipped**. Findings:
 - OCC and Computrabajo load fine in Kevin's real Chrome (no 403, no captcha seen). This answers the

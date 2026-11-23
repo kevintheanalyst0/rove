@@ -192,7 +192,9 @@ def _run_batches(ports: Ports, cfg: RunConfig, weekly_cap: float, quota: Quota) 
     consecutive_failures = 0
 
     while queue and report.attempted < cfg.max_per_night:
-        current = ports.read_quota()
+        # The usage endpoint rate-limits: reuse the preflight reading for the first batch
+        # (it was taken seconds ago) and only read again between batches.
+        current = quota if report.batches == 0 else ports.read_quota()
         if current is None:
             report.stop_reason = "no pude leer la cuota a mitad de la corrida"
             break
@@ -301,12 +303,15 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - thin CLI o
     parser.add_argument("--dry-run", action="store_true", help="read switch/quota/inbox, show what would run; no Claude, no writes")
     parser.add_argument("--max", type=int, default=RunConfig.max_per_night, help="max vacancies this run")
     parser.add_argument("--batch", type=int, default=RunConfig.batch_size, help="vacancies per Claude session")
+    parser.add_argument("--no-hibernate", action="store_true", help="never hibernate at the end (supervised runs)")
     args = parser.parse_args(argv)
     from rove.nightly import pc
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     cfg = RunConfig(max_per_night=args.max, batch_size=args.batch)
     ports = pc.real_ports(dry_run=args.dry_run, cfg=cfg)
+    if args.no_hibernate:
+        ports.hibernate_if_idle = lambda: False
     report = run_night(ports, cfg)
     logger.info("status=%s detail=%s summary=%s", report.status, report.detail, report.summary)
     print(report.summary or f"{report.status}: {report.detail}")
