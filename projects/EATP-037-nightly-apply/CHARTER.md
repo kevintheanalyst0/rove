@@ -299,6 +299,20 @@ the test (and off again right after). Real Claude (Sonnet), real Chrome, real Ro
 - **Not yet exercised live:** the `applied` path (no vacancy passed the rules this time) and therefore the
   evidence check on a real confirmation page, and form filling by the runner.
 
+## Night preparation: how the PC should look (Kevin's rules, 2026-11-22)
+- Only what the night run needs is open: Chrome, the Claude desktop app and whatever Rove uses. No stray tabs or odd
+  programs. The runner's tabs live in their own Chrome window/tab group and are closed when it finishes; Kevin's own tabs
+  are neither seen nor touched. Claude cannot see or close Kevin's own tabs (closing and reopening Chrome clears them).
+- If the assistant sees an odd program open (a user-launched program with a window that is not Chrome, Claude, a
+  Windows component or something Rove needs) it closes it gently, never by force, and says what it closed. There is no
+  fixed list.
+- **Never closed:** Pulse, anything from the system, anything that starts with Windows (antivirus, services, explorer,
+  Wallpaper Engine's service...).
+- The runner itself ensures Chrome and the Claude app are open before the first batch (see above).
+- Done on 2026-11-22: MiroFish (and its server), the PowerShell terminal, ChatGPT and Wallpaper Engine were closed
+  because Kevin named them; Chrome was fully closed and reopened (clean single new-tab window; the OCC and Computrabajo
+  logins survived and the extension reconnected on its own). Restart MiroFish with `cd ~/MiroFish && npm run dev` in WSL.
+
 ## First supervised run (2026-11-22, Kevin present, 6 candidates from the inbox)
 Result: **2 sent** (Computrabajo: Grupo Autofin, Analista de Ecommerce), **4 skipped**. Findings:
 - OCC and Computrabajo load fine in Kevin's real Chrome (no 403, no captcha seen). This answers the
