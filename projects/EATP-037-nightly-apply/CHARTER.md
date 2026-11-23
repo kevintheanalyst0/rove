@@ -131,8 +131,9 @@ which Windows requires; Fast Startup was turned off so "shutdown" behaves as bef
 **a single short timed wake from hibernation was tested successfully that evening** (7:08-7:10 p. m.:
 87 s asleep, woken by a wake-to-run task registered without admin rights; WSL and the Claude session
 survived; Chrome stayed drivable with the screen locked — navigate, read text, screenshot, click —
-with one brief extension disconnect that recovered by itself). Long (hours), overnight and
-on-battery wakes are untested.
+until Windows re-hibernated on its own ~2 min after the timer wake, reason "System Idle", which is
+the brief extension disconnect seen at the end; Kevin woke it with the power button). Long (hours),
+overnight and on-battery wakes are untested.
 
 ## Known limitations
 - Workday-style tenants need a per-company account with a password. Not automated; they
@@ -148,6 +149,12 @@ on-battery wakes are untested.
   situation but **untested for OCC** — spike 5 decides whether the inbox half of this
   project is viable at all. Computrabajo and OCC did not block the Mexican IP itself
   (2026-08-26 spike).
+
+## Hard requirement found 2026-11-22
+A timer wake is "unattended": Windows puts the PC back to sleep ~2 min later unless something holds
+a keep-awake request. Commands running inside WSL do not count. The wrapper must request keep-awake
+(e.g. Vigilante's `scripts/mantener-despierto.ps1`) from the first second after waking and for the
+whole run, and start within ~2 minutes. Untested whether that request is enough.
 
 ## Unverified (spike first, in this order)
 1. Whether `claude -p` can drive Chrome through the extension unattended (permission mode).
