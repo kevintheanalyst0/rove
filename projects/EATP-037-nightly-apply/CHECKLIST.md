@@ -55,3 +55,6 @@ powercfg, CV comparison). Nothing was submitted, installed or changed on the PC.
 Later the same day Kevin approved his answers (`data/applicant_answers.toml`, created locally,
 gitignored) and decided the Workday question: trial for a few days, then he creates accounts by
 hand if there are many. Employment-status questions stay with Kevin, never answered by Claude.
+
+2026-11-22 (night): Phase 1 built (stores, routes, dashboard panel, 72 tests) and deployed to the VM with
+Kevin's go; verified over Tailscale. Next: Phase 2, the PC-side runner.

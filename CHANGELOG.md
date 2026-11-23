@@ -16,7 +16,8 @@ the day the work was done; see `ROADMAP.md` for status/complexity/time per proje
   versions bumped to `v=3`.
 - 72 new tests (suite: 493 green). One bug found by them: `model_copy(update=...)` skips
   pydantic validation, so an over-long answer got through; fixed with `model_validate`.
-- Not deployed to the VM yet; the PC-side runner is Phase 2. See
+- Deployed to the VM on 2026-11-22 (data backed up first; inbox unchanged at 259; settings default off);
+  the PC-side runner is Phase 2. See
   `projects/EATP-037-nightly-apply/`.
 
 ## EATP-035 — Unattended pre-run submit sweep (2026-09-01)

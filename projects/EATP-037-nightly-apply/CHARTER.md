@@ -177,7 +177,11 @@ badge counting what waits for Kevin). **Tests:** `test_nightly_settings.py`, `te
   answer slipped through; the stores now re-validate (`model_validate`).
 - **Checked live** against a throwaway server with sample data in a temp dir (not Kevin's data):
   badge, modal, skip toggle, "Ya la hice" and answering a question all worked; narrow window fine.
-- **NOT deployed to the VM.** That needs Kevin's go: pull, restart `rove-web.service`.
+- **Deployed to the VM, 2026-11-22 (Kevin's go).** Order: data backup (`~/rove-data-backup-2026-11-22.tgz`, 1 MB, on the VM) ->
+  `git pull --ff-only` to `3165f2e` -> `sudo systemctl restart rove-web`. Verified over Tailscale: settings
+  default to off, both lists empty, inbox unchanged (259), no errors in the service log, a POST without
+  `Origin` is accepted (what the PC runner sends) and one with a foreign `Origin` gets 403. Rollback:
+  `git checkout 477e5ef` on the VM + restart (data files are untouched by the code).
 - **Not in this phase:** the `applicant_answers.toml` loader and everything on the PC side (wrapper,
   playbook, scheduled task) — Phase 2.
 
