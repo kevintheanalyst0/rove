@@ -46,3 +46,6 @@
 ## Session notes
 2026-11-22: planning only. Charter written, three read-only spikes done (quota read,
 powercfg, CV comparison). Nothing was submitted, installed or changed on the PC.
+Later the same day Kevin approved his answers (`data/applicant_answers.toml`, created locally,
+gitignored) and decided the Workday question: trial for a few days, then he creates accounts by
+hand if there are many. Employment-status questions stay with Kevin, never answered by Claude.

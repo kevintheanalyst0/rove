@@ -73,6 +73,14 @@ Rove has no place to park vacancies that need Kevin (captcha, account, unknown q
    notice period, reasons for leaving, salary expectation, work authorization, English
    level — are answered **only** from that file, never inferred from the CV. If the
    answer is missing: log a pending question, skip the vacancy, do not invent.
+   **Current employment status (and reason for leaving, notice period, employment gap)
+   is never answered by Claude.** Kevin handles that himself, face to face in interviews,
+   and decided it is not Claude's call (2026-11-22). If a form requires it, the vacancy goes
+   to the skipped list (`employment_question`) for Kevin to answer. Approved values live in
+   `data/applicant_answers.toml` (local to Kevin's PC checkout, gitignored): salary
+   expectation 15,000 MXN/month, authorized to work in Mexico, English B2 (deliberately not
+   C1: Kevin is out of practice and it would show), 4 years of experience (since 2022). If a
+   form needs another currency or a yearly figure, log a pending question.
 5. **Language follows the form**, Spanish or English, never mixed.
 6. **Exclusions:** call center / customer support, sales, marketing, accounting/payroll,
    HR (EATP-036 list stays). Otherwise Kevin wants breadth, not selectivity: temporary
@@ -125,7 +133,9 @@ on Kevin's laptop** and waking from hibernation has never been tested.
 ## Known limitations
 - Workday-style tenants need a per-company account with a password. Not automated; they
   land on the skipped list. Kevin believes many vacancies will be Workday — **measure the
-  real share after the first nights** before deciding what to do about it.
+  real share after the first nights** before deciding. **Kevin's decision (2026-11-22):** try it
+  for a few days; if many vacancies turn out to be Workday he creates the accounts by hand,
+  and if there are few he applies to them himself when he has time.
 - Greenhouse boards often carry a reCAPTCHA on submit (EATP-034 sampled 8/8). With a real
   Chrome it may pass; if a checkbox appears, rule 1 applies.
 - **OCC blocked Rove's automated browser** (Notion Rove page, 2026-08-31/09-01: HTTP 403
@@ -163,6 +173,7 @@ on Kevin's laptop** and waking from hibernation has never been tested.
 Not estimated yet. Expect several sessions: spikes, then Rove side, then the PC runner.
 
 ## Open questions for Kevin
-- Kevin writes `data/applicant_answers.toml` (employment status, availability, reason for
-  leaving, salary expectation, work authorization, English level). Drafts were proposed
-  in chat on 2026-11-22; nothing is stored until he approves them.
+- Answered 2026-11-22: salary, work authorization, English level, years of experience (stored in
+  `data/applicant_answers.toml`). Employment-status questions are deliberately left to Kevin.
+- Still open: whether the answers file should also be readable from the VM (where Rove's review
+  lists will live) or only from the PC runner.
