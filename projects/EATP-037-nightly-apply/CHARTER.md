@@ -150,6 +150,27 @@ overnight and on-battery wakes are untested.
   project is viable at all. Computrabajo and OCC did not block the Mexican IP itself
   (2026-08-26 spike).
 
+## First supervised run (2026-11-22, Kevin present, 6 candidates from the inbox)
+Result: **2 sent** (Computrabajo: Grupo Autofin, Analista de Ecommerce), **4 skipped**. Findings:
+- OCC and Computrabajo load fine in Kevin's real Chrome (no 403, no captcha seen). This answers the
+  OCC open question for the real browser (not for unattended `claude -p`, still untested).
+- Computrabajo is already signed in; "Postularme" sends in one click with the account's default CV, or
+  first shows screening questions. OCC may ask for the CURP (government ID: Claude never types it;
+  Kevin does) and several screening questions.
+- **CV language:** the Computrabajo account defaulted to the English CV, so the first application went
+  out in English to a Spanish vacancy. With Kevin's permission the Spanish CV (SHA-256 identical to
+  `D:\Descargas\CV´s\Kevin_Castillo_CV_ES.pdf`) was uploaded and set as default. The wrapper must pick the
+  CV by vacancy language where the site allows it.
+- **Uploading a file through the browser tool** needs a path the session can read: copy the file to the
+  session scratch folder first.
+- **Rove's grading misses things:** it gave A+ to a job that requires living in CDMX/Edomex, and it
+  cannot see scam signals. One vacancy was skipped as a probable scam (no experience needed, high
+  pay for part time, and a screening question asking the candidate to message a Telegram user for a
+  "practical test"). Ideas for later: a residence-requirement check and a scam-signal flag.
+- Screening answers Kevin dictates while applying are saved in `data/applicant_answers.toml` and reused
+  (first one: no e-commerce platform experience).
+- Unknown/unanswerable questions skip the vacancy, as designed. Local log: `data/solicitudes_2026-11-22.md`.
+
 ## Hard requirement found 2026-11-22
 A timer wake is "unattended": Windows puts the PC back to sleep ~2 min later unless something holds
 a keep-awake request. Commands running inside WSL do not count. The wrapper must request keep-awake
@@ -165,7 +186,8 @@ hibernation, using the real script). A multi-hour run is still untested.
    multi-hour overnight wake (Vigilante project).
 4. That the usage endpoint keeps working (it is not a public API) — keep fixed per-run
    caps as a fallback.
-5. OCC/Computrabajo application flows: captcha? account? — test with one vacancy, no submit.
+5. ~~OCC/Computrabajo application flows~~ Answered 2026-11-22 for Kevin's real Chrome (see "First
+   supervised run"); unattended `claude -p` is still the open question (item 1).
 
 ## Deliverables
 - Review lists + kill switch in Rove (API + dashboard), with tests (fixtures, no live AI).

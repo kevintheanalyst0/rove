@@ -29,7 +29,7 @@
 
 ### Phase 3 — Rollout
 - [ ] Dry run (no submit)
-- [ ] Supervised real run with Kevin present
+- [x] Supervised real run with Kevin present (2026-11-22: 2 sent, 4 skipped; see CHARTER)
 - [ ] First unattended night; read the summary together
 
 ### Phase 4 — Verify & close
