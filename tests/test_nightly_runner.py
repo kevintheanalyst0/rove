@@ -40,6 +40,7 @@ class FakeRove:
         self.retry: list[str] = []
         self.learned: list[dict] = []
         self.skipped_urls: list[str] = []
+        self.open_questions: list[dict] = []
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
@@ -52,6 +53,7 @@ class FakeRove:
                 "/nightly/retry": {"urls": self.retry},
                 "/nightly/learned-answers": {"items": self.learned},
                 "/nightly/skipped": {"items": [{"url": u} for u in self.skipped_urls]},
+                "/nightly/questions": {"items": self.open_questions},
             }[path]
             return httpx.Response(200, json=data)
         self.posts.append((path, json.loads(request.content) if request.content else None))
@@ -424,3 +426,18 @@ def test_notify_expands_variables_and_tilde_in_the_token_path(tmp_path, monkeypa
     monkeypatch.setattr(pc.httpx, "post", lambda url, **kw: sent.append((url, kw["headers"]["Authorization"], kw["json"])))
     pc.notify("Título", "Mensaje")
     assert sent == [("http://ha.test:8123/api/services/notify/dev_a", "Bearer abc123", {"title": "Título", "message": "Mensaje"})]
+
+
+def test_vacancies_waiting_on_an_unanswered_question_are_not_retried_every_night(tmp_path):
+    rove = FakeRove(jobs=["a", "b"])
+    rove.open_questions = [{"question": "¿Databricks?", "vacancies": [{"url": "https://jobs.test/a"}]}]
+    h = Harness(tmp_path, rove, quotas=[OK_QUOTA], claude=_all_applied)
+    run_night(h.ports, RunConfig(batch_size=5))
+    urls = [line.strip() for line in h.prompts[0].splitlines() if line.strip().startswith("https://jobs.test/")]
+    assert urls == ["https://jobs.test/b"]
+
+
+def test_an_unreadable_questions_list_does_not_stop_the_night(tmp_path):
+    rove = FakeRove(jobs=["a"], fail={"/nightly/questions"})
+    h = Harness(tmp_path, rove, quotas=[OK_QUOTA], claude=_all_applied)
+    assert run_night(h.ports).applied == 1

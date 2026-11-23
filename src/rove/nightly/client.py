@@ -57,6 +57,11 @@ class RoveClient:
     def get_open_skipped_urls(self) -> set[str]:
         return {item["url"] for item in self._get("/nightly/skipped").get("items", [])}
 
+    def get_open_question_urls(self) -> set[str]:
+        """Vacancies waiting on a question Kevin has not answered yet."""
+        items = self._get("/nightly/questions").get("items", [])
+        return {v["url"] for q in items for v in q.get("vacancies", [])}
+
     # --- writes ------------------------------------------------------------
 
     def consume_skip(self) -> dict[str, Any]:

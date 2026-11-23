@@ -175,6 +175,9 @@ def _run_batches(ports: Ports, cfg: RunConfig, weekly_cap: float, quota: Quota) 
         learned = ports.client.get_learned_answers()
     with contextlib.suppress(httpx.HTTPError):
         skipped_urls = ports.client.get_open_skipped_urls()
+    with contextlib.suppress(httpx.HTTPError):
+        # Waiting on a question Kevin has not answered: trying again tonight would only re-ask it.
+        skipped_urls = skipped_urls | ports.client.get_open_question_urls()
 
     progress = _progress_path(ports)
     candidates = selector.candidates_from_inbox(
