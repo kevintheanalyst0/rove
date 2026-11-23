@@ -82,6 +82,7 @@ Two hard rules drive the order (Kevin's): **all scraping is solved before any AI
 | **EATP-033** | Remove Indeed as a source entirely | — | ✅ | 032 | Medium | ~1h (2026-08-27) |
 | **EATP-034** | Auto-apply draft engine (Greenhouse & Lever) — headless-browser fill, AI-answered screening questions, dashboard review/manual-send | — | ✅ | 032, 033 | High | ~5h55m (2026-08-30/31) |
 | **EATP-035** | Unattended pre-run submit sweep — sends pending drafts before the next day's run | — | ✅ | 034 | Light-med | ~40 min (2026-09-01) |
+| **EATP-037** | Nightly browser-driven apply on Kevin's PC (Claude in Chrome) — inbox + outside-Rove sites, review lists, quota guard and kill switch; depends on a wake-up capability in the Vigilante repo | — | ⬜ | 034, 035 | High | tbd |
 
 > **EATP-027 through 030** come from a job-search improvement backlog Kevin had
 > drafted with ChatGPT and pasted into Notion (Rove page, 2026-08-21),
