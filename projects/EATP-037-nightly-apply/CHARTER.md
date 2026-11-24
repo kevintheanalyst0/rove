@@ -313,6 +313,21 @@ the test (and off again right after). Real Claude (Sonnet), real Chrome, real Ro
   because Kevin named them; Chrome was fully closed and reopened (clean single new-tab window; the OCC and Computrabajo
   logins survived and the extension reconnected on its own). Restart MiroFish with `cd ~/MiroFish && npm run dev` in WSL.
 
+## First night (2026-11-22 to 23): the run did NOT happen
+- The switch was on, `NocturnoRove` was registered and Home Assistant switched the charger on at 2:55 a. m. and off at 5:30,
+  but **the laptop never woke at 3:00**: the task shows "never run" (0x41303), no run.log entry, and Windows logs a single
+  wake, 22 hours later at 8:08 p. m., source "Unknown" (Kevin). Nothing was sent or touched in Rove.
+- A replica test at 8:25 p. m. (hibernate on battery, wake-on-battery enabled, charger switched on by Home Assistant 3 min
+  before the due time) also failed; Kevin had to press the button. **On this laptop hibernation only wakes by timer if it is
+  on AC at the moment it hibernates** (3 of 3 worked on AC); AC arriving before the alarm is not enough, and wake timers on
+  battery do not help either. Wake-on-battery was reverted again.
+- Charger automations (2:55 on / 5:30 off) are **disabled** until the wake works. Kevin's rule stays: charger off while the PC
+  sleeps. Open options: (1) hibernate with the charger ON and have Home Assistant switch it off a few minutes after the
+  PC has finished hibernating, then on again before the due time (tests whether a wake armed on AC still fires on battery);
+  (2) sleep (modern standby) instead of hibernating that night; (3) charger on all night (rejected by Kevin). Until one is
+  proven, the nightly run cannot start by itself. Lesson: "every piece tested alone" did not prove the chain; the chain
+  needs an end-to-end test that replicates the real conditions.
+
 ## First supervised run (2026-11-22, Kevin present, 6 candidates from the inbox)
 Result: **2 sent** (Computrabajo: Grupo Autofin, Analista de Ecommerce), **4 skipped**. Findings:
 - OCC and Computrabajo load fine in Kevin's real Chrome (no 403, no captcha seen). This answers the
