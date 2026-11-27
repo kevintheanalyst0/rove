@@ -60,3 +60,5 @@ hand if there are many. Employment-status questions stay with Kevin, never answe
 
 2026-11-22 (night): Phase 1 built (stores, routes, dashboard panel, 72 tests) and deployed to the VM with
 Kevin's go; verified over Tailscale. Next: Phase 2, the PC-side runner.
+
+**Paused 2026-11-27** until the PC can be powered on by hardware (see CHARTER status).

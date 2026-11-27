@@ -1,6 +1,14 @@
 # EATP-037 — Nightly browser-driven apply (Claude in Chrome)
 
-> Status: **planned, nothing built.** Written 2026-11-22 from a planning conversation
+> Status (2026-11-27): **PAUSED.** The code is built, tested and deployed; one supervised batch ran; no unattended run ever did,
+> because the laptop cannot be woken by timer on battery (hibernated or suspended: 2026-11-22 to 25, details in the Vigilante
+> repo, `docs/DECISIONES.md`). The owner will resume once a button-pusher (Fingerbot) can power the PC on. State left:
+> Windows task `NocturnoRove` disabled, nightly switch off. To resume: first prove the wake end to end, then
+> `Enable-ScheduledTask NocturnoRove` (re-run `pc/nightly/install_task.ps1` to go back to 20 per night; the registered task
+> says `--max 8`) and turn the switch on in Rove. The runner depends on a Claude subscription (`claude -p --chrome` and the
+> usage endpoint in `read_quota.ps1`); with another assistant, `src/rove/nightly/pc.py` and `quota.py` must be adapted.
+>
+> Original status: **planned, nothing built.** Written 2026-11-22 from a planning conversation
 > with Kevin so the design is not lost. Every item under "Unverified" below must be
 > spiked before anything else is built.
 
