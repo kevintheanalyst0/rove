@@ -296,9 +296,9 @@ GEMINI_FLASH_MODEL = os.getenv("GEMINI_FLASH_MODEL", "gemini-flash-latest")
 GEMINI_FLASH_LITE_MODEL = os.getenv(
     "GEMINI_FLASH_LITE_MODEL", "gemini-flash-lite-latest"
 )
-OPENROUTER_MODEL = os.getenv(
-    "OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free"
-)
+# "openrouter/free" is OpenRouter's own alias that picks whatever free model is up. A pinned ":free" model disappears
+# without notice (confirmed 2026-11-24: llama-3.3-70b ":free" started answering 404 and a whole batch went unscored).
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 
 # Jobs per AI request. Keeps prompts within per-day TOKEN caps (which bite
 # before per-day request caps on the bigger models) while still batching
