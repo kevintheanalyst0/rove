@@ -6,7 +6,7 @@
 > Windows task `NocturnoRove` disabled, nightly switch off. To resume: first prove the wake end to end, then
 > `Enable-ScheduledTask NocturnoRove` (re-run `pc/nightly/install_task.ps1` to go back to 20 per night; the registered task
 > says `--max 8`) and turn the switch on in Rove. The runner depends on a Claude subscription (`claude -p --chrome` and the
-> usage endpoint in `read_quota.ps1`); with another assistant, `src/rove/nightly/pc.py` and `quota.py` must be adapted.
+> usage endpoint in `read_quota.ps1`), so it needs the subscription active again before resuming.
 >
 > Original status: **planned, nothing built.** Written 2026-11-22 from a planning conversation
 > with Kevin so the design is not lost. Every item under "Unverified" below must be
@@ -406,8 +406,8 @@ Not estimated yet. Expect several sessions: spikes, then Rove side, then the PC 
 ## Open questions for Kevin
 - Answered 2026-11-22: salary, work authorization, English level, years of experience (stored in
   `data/applicant_answers.toml`). Employment-status questions are deliberately left to Kevin.
-- Kevin plans to hand this responsibility (applying to vacancies) to ChatGPT at some point.
-  Reason, in his words: he is uncomfortable, and considers it dangerous, having to give
-  personal data so a task can run. Recorded at his request on 2026-11-22.
+- Correction (2026-11-27): Kevin is NOT moving to ChatGPT. The earlier note about handing this job over no longer applies; the
+  subscription only lapses for cost reasons and Kevin intends to resume it. His concern about giving personal data for a task
+  still stands: ask for the minimum and leave sensitive fields to him.
 - Still open: whether the answers file should also be readable from the VM (where Rove's review
   lists will live) or only from the PC runner.
