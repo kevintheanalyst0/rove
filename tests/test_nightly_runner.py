@@ -454,6 +454,7 @@ def _ha_config(tmp_path, monkeypatch):
     config_file.write_text(f'HA="http://ha.test:8123"\nNOTIFY_DEVICES="d"\nTOKEN_FILE="{token}"\nSWITCH=switch.laptop\n', encoding="utf-8")
     monkeypatch.setattr(pc, "VIGILANTE_CONFIG", config_file)
     monkeypatch.setattr(pc, "VIGILANTE_STATE_DIR", tmp_path / "state")
+    monkeypatch.setattr(pc, "claude_in_use", lambda: False)  # not the real transcripts of this PC
 
 
 def test_hibernate_turns_the_charger_off_first_and_leaves_the_vigilante_marker(tmp_path, monkeypatch):

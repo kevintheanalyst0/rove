@@ -4,11 +4,13 @@ runner (EATP-037 phase 2). No network, no AI: Rove is a `httpx.MockTransport`.""
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 
 import httpx
 import pytest
 
-from rove.nightly import answers, outcomes, selector
+from rove.nightly import answers, outcomes, pc, selector
 from rove.nightly.client import RoveClient
 from rove.nightly.selector import Candidate
 from rove.nightly.skipped import SkipReason
@@ -273,3 +275,67 @@ def test_parse_quota_error_reads_status_and_retry_after():
     assert parse_quota_error('{"ok":false,"status":429,"retry_after":264}') == (429, 264)
     assert parse_quota_error('{"ok":false,"error":"x"}') == (0, 0)
     assert parse_quota_error("garbage") == (0, 0) and parse_quota_error("") == (0, 0)
+
+
+# --- never hibernate under remote work ---------------------------------------
+
+
+def _transcript(root, project, age_minutes):
+    path = root / project / "session.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text("{}", encoding="utf-8")
+    stamp = 1_000_000 - age_minutes * 60
+    os.utime(path, (stamp, stamp))
+
+
+@pytest.fixture
+def claude_dirs(tmp_path, monkeypatch):
+    monkeypatch.setattr(pc, "CLAUDE_PROJECTS_DIR", tmp_path)
+    monkeypatch.setattr(pc, "WORK_DIR", pc.Path("/home/someone/rove-nightly-work"))
+    return tmp_path
+
+
+def _in_use(running=False):
+    return pc.claude_in_use(now=lambda: 1_000_000, command_running=lambda: running)
+
+
+def test_recent_conversation_counts_as_in_use(claude_dirs):
+    _transcript(claude_dirs, "-home-someone", 5)
+    assert _in_use()
+
+
+def test_old_conversations_and_the_runners_own_do_not_count(claude_dirs):
+    _transcript(claude_dirs, "-home-someone", 40)
+    _transcript(claude_dirs, "-home-someone-rove-nightly-work", 1)
+    assert not _in_use()
+
+
+def test_a_running_command_counts_as_in_use(claude_dirs):
+    assert _in_use(running=True)
+
+
+def test_doubt_counts_as_in_use(claude_dirs):
+    def broken():
+        raise subprocess.TimeoutExpired("pgrep", 1)
+
+    assert pc.claude_in_use(now=lambda: 1_000_000, command_running=broken)
+
+
+@pytest.mark.parametrize(
+    ("child", "expected"),
+    [("12 /bin/bash -c pytest", True), ("12 bash -c ~/bin/vigilante-inactividad.sh", False), ("12 node server.js", False)],
+)
+def test_session_running_command_reads_child_shells(child, expected):
+    def run(args, **_):
+        out = "7\n" if args[1] == "-f" else child + "\n"
+        return subprocess.CompletedProcess(args, 0, out, "")
+
+    assert pc.session_running_command(run) is expected
+
+
+def test_hibernate_is_skipped_while_claude_is_in_use(monkeypatch):
+    monkeypatch.setattr(pc, "claude_in_use", lambda: True)
+    monkeypatch.setattr(pc, "charger_off", lambda: pytest.fail("must not touch the charger"))
+    monkeypatch.setattr(pc.subprocess, "run", lambda *a, **k: pytest.fail("must not run anything"))
+    assert pc.hibernate_if_idle() is False
+

@@ -62,3 +62,7 @@ hand if there are many. Employment-status questions stay with Kevin, never answe
 Kevin's go; verified over Tailscale. Next: Phase 2, the PC-side runner.
 
 **Paused 2026-11-27** until the PC can be powered on by hardware (see CHARTER status).
+
+2026-11-28: the PC can now be powered on with a Fingerbot (Vigilante repo). The runner no longer hibernates while
+Kevin is working through Claude (a conversation in the last 15 min, its own batches excluded, or a command running).
+Still paused until the wake-by-finger chain is tested end to end.

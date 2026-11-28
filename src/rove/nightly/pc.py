@@ -13,6 +13,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import shlex
 import subprocess
 import tempfile
@@ -250,9 +251,52 @@ def charger_off() -> bool:
         return False
 
 
+# --- is Kevin working with Claude remotely? ---------------------------------
+
+CLAUDE_PROJECTS_DIR = Path(os.getenv("CLAUDE_PROJECTS_DIR", str(Path.home() / ".claude" / "projects")))
+RECENT_CHAT_MINUTES = 15  # same "you are here" threshold the Vigilante uses before asking
+_CLAUDE_SESSION_PATTERN = r"\.local/share/claude/versions/|\.claude/remote/ccd-cli/"
+_SESSION_COMMAND = re.compile(r"(ba)?sh -c ")
+
+
+def session_running_command(run: Callable[..., Any] = subprocess.run) -> bool:
+    """True if some Claude session is executing a command (it shows up as a child shell)."""
+    sessions = run(["pgrep", "-f", "--", _CLAUDE_SESSION_PATTERN], capture_output=True, text=True, timeout=20)
+    for pid in sessions.stdout.split():
+        children = run(["pgrep", "-P", pid, "-a"], capture_output=True, text=True, timeout=20)
+        if any(_SESSION_COMMAND.search(line) and "vigilante-inactividad" not in line
+               for line in children.stdout.splitlines()):
+            return True
+    return False
+
+
+def claude_in_use(
+    *,
+    now: Callable[[], float] = time.time,
+    command_running: Callable[[], bool] = session_running_command,
+) -> bool:
+    """Remote work never touches the keyboard, so look at Claude itself: a conversation written
+    in the last minutes (the nightly batches' own transcripts do not count) or a command running.
+    Any doubt means in use."""
+    own = str(WORK_DIR).replace("/", "-").replace(".", "-")
+    try:
+        for transcript in CLAUDE_PROJECTS_DIR.glob("**/*.jsonl"):
+            if transcript.relative_to(CLAUDE_PROJECTS_DIR).parts[0] == own:
+                continue
+            if now() - transcript.stat().st_mtime < RECENT_CHAT_MINUTES * 60:
+                return True
+        return command_running()
+    except (OSError, subprocess.SubprocessError):
+        return True
+
+
 def hibernate_if_idle(min_idle_minutes: float = 10.0) -> bool:
-    """Hibernate (charger off first) only when Windows can prove Kevin has been away; any
-    doubt (script failed, unreadable number) means he is present and nothing happens."""
+    """Hibernate (charger off first) only when Windows can prove Kevin has been away and nobody
+    is working through Claude; any doubt (script failed, unreadable number) means he is present
+    and nothing happens. The Vigilante takes it from there."""
+    if claude_in_use():
+        logger.info("Hay trabajo reciente con Claude: no hiberno")
+        return False
     try:
         completed = _run_ps(PC_SCRIPTS / "idle_minutes.ps1", timeout=30)
         idle = float(completed.stdout.strip().splitlines()[-1])
