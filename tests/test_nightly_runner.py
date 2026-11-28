@@ -424,9 +424,22 @@ def test_notify_expands_variables_and_tilde_in_the_token_path(tmp_path, monkeypa
     monkeypatch.setattr(pc, "VIGILANTE_CONFIG", config_file)
     monkeypatch.setenv("TOKEN_DIR", str(tmp_path))
     sent = []
-    monkeypatch.setattr(pc.httpx, "post", lambda url, **kw: sent.append((url, kw["headers"]["Authorization"], kw["json"])))
+    status = {"code": 200}
+
+    def post(url, **kw):
+        sent.append((url, kw["headers"]["Authorization"], kw["json"]))
+        return type("R", (), {"status_code": status["code"]})()
+
+    monkeypatch.setattr(pc.httpx, "post", post)
     pc.notify("Título", "Mensaje")
-    assert sent == [("http://ha.test:8123/api/services/notify/dev_a", "Bearer abc123", {"title": "Título", "message": "Mensaje"})]
+    script = ("http://ha.test:8123/api/services/script/aviso_pc", "Bearer abc123",
+              {"titulo": "Título", "mensaje": "Mensaje", "telefono": True})
+    assert sent == [script]
+    sent.clear()
+    status["code"] = 400  # the notice script is missing: go straight to the devices
+    pc.notify("Título", "Mensaje")
+    assert sent == [script, ("http://ha.test:8123/api/services/notify/dev_a", "Bearer abc123",
+                             {"title": "Título", "message": "Mensaje"})]
 
 
 def test_vacancies_waiting_on_an_unanswered_question_are_not_retried_every_night(tmp_path):

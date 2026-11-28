@@ -134,6 +134,8 @@ def _vigilante_config() -> dict[str, str]:
 
 
 def notify(title: str, message: str) -> None:
+    """Phone notice through the Vigilante's single notice script (it also keeps the history
+    page); if that script is not there, straight to the devices."""
     cfg = _vigilante_config()
     try:
         token_path = os.path.expanduser(os.path.expandvars(cfg["TOKEN_FILE"]))
@@ -142,11 +144,21 @@ def notify(title: str, message: str) -> None:
     except (KeyError, OSError):
         logger.warning("sin configuración de avisos; no pude notificar: %s", title)
         return
+    headers = {"Authorization": f"Bearer {token}"}
+    with contextlib.suppress(httpx.HTTPError):
+        response = httpx.post(
+            f"{base}/api/services/script/aviso_pc",
+            headers=headers,
+            json={"titulo": title, "mensaje": message, "telefono": True},
+            timeout=20,
+        )
+        if response.status_code == 200:
+            return
     for device in devices:
         with contextlib.suppress(httpx.HTTPError):
             httpx.post(
                 f"{base}/api/services/notify/{device}",
-                headers={"Authorization": f"Bearer {token}"},
+                headers=headers,
                 json={"title": title, "message": message},
                 timeout=15,
             )
